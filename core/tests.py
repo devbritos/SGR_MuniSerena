@@ -77,5 +77,9 @@ class PasswordResetEmailTests(TestCase):
         )
 
         self.assertRedirects(response, reverse('password_reset_complete'))
+        response = self.client.get(response.url)
+        self.assertTemplateUsed(response, 'registration/password_reset_complete.html')
+        self.assertContains(response, 'Contraseña restablecida')
+        self.assertContains(response, reverse('login'))
         user.refresh_from_db()
         self.assertTrue(user.check_password('New-secure-test-password-2026!'))
