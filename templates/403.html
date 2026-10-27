@@ -1,0 +1,43 @@
+{% extends "base.html" %}
+
+{% block title %}Acceso denegado — SGR{% endblock %}
+
+{% block content %}
+<section class="container py-5 text-center">
+    <p class="display-1 fw-bold text-danger mb-0">403</p>
+    <h1 class="h3 mb-3">Acceso denegado</h1>
+    <p class="text-muted mb-4">No tienes permisos para acceder a esta página.</p>
+    <button type="button" id="go-back" class="btn btn-primary">
+        Volver a la página anterior
+    </button>
+</section>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        function goBack() {
+            if (window.history.length > 1) {
+                window.history.back();
+            } else {
+                window.location.assign('/');
+            }
+        }
+
+        document.getElementById('go-back').addEventListener('click', goBack);
+
+        if (window.Swal) {
+            Swal.fire({
+                title: 'Acceso denegado',
+                text: 'No tienes permisos para acceder a esta página.',
+                icon: 'error',
+                confirmButtonText: 'Volver'
+            }).then(function (result) {
+                if (result.isConfirmed) {
+                    goBack();
+                }
+            });
+        }
+    });
+</script>
+{% endblock %}

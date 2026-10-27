@@ -1,132 +1,158 @@
-# Django_Back
-Project of Back-end Linked to Integrated-Project :) 
-
 # Sistema de Gestión de Resultados (SGR)
 
-Proyecto de Programación Back End (TI3041), INACAP sede La Serena. Es una aplicación web en Django para registrar y medir la gestión de funcionarios y delegaciones municipales, trabajada principalmente desde el Django Admin.
+Aplicación web desarrollada con Django para apoyar el seguimiento de la gestión de funcionarios y delegaciones municipales de La Serena. Permite administrar información del personal, registrar actividades y evidencias, gestionar compromisos y consultar indicadores de avance.
 
-**Integrantes:** [Nombre 1], [Nombre 2]
-**Sección:** [sección]
-**Docente:** Javier Ahumada
+Este proyecto fue desarrollado para la asignatura Programación Back End (TI3041), INACAP, sede La Serena.
 
-## Qué hace el sistema
+## Funcionalidades
 
-Cada funcionario pertenece a una delegación y tiene un cargo y uno o más roles. Para cada cargo y período se definen metas sobre mediciones. Los funcionarios registran actividades con sus evidencias, que un verificador aprueba o rechaza, y también compromisos con fecha. Solo las evidencias aprobadas cuentan para el avance.
+- Administración de funcionarios, delegaciones, cargos, roles y asignaciones de roles.
+- Registro y seguimiento de actividades y sus evidencias, con un flujo de validación.
+- Gestión de compromisos y sus fechas.
+- Configuración de períodos, mediciones y metas.
+- Registro e historial de atención ciudadana con tipo y subatención dependiente.
+- Paneles de seguimiento con indicadores para administración y funcionarios.
+- Inicio de sesión y permisos según la cuenta y el rol.
+- Páginas personalizadas para errores 403 y 404.
+
+## Tecnologías
+
+- Python
+- Django 5.2
+- MySQL o MariaDB
+- `mysqlclient` para la conexión a la base de datos
+- Bootstrap 5 y `django-crispy-forms` para los formularios
 
 ## Requisitos
 
-- Python 3.11
-- Git
+- Python compatible con Django 5.2.
+- MySQL o MariaDB en ejecución, con una base de datos creada para el proyecto.
+- Git.
 
-## Instalación
+## Instalación local en Windows
 
-1. Clonar el repositorio:
+1. Clona el repositorio y entra a su carpeta:
 
-```bash
-git clone https://github.com/devbritos/Django_Back.git
-cd Django_Back
-```
+   ```powershell
+   git clone https://github.com/devbritos/Django_Back.git
+   cd Django_Back
+   ```
 
-2. Crear y activar el entorno virtual:
+2. Crea y activa un entorno virtual:
 
-```bash
-python -m venv .venv
-.venv\Scripts\activate
-```
+   ```powershell
+   python -m venv .venv
+   .\.venv\Scripts\Activate.ps1
+   ```
 
-En Linux o Mac se activa con `source .venv/bin/activate`.
+3. Instala las dependencias:
 
-3. Instalar las dependencias:
+   ```powershell
+   python -m pip install -r requirements.txt
+   ```
 
-```bash
-pip install -r requirements.txt
-```
+4. Copia el archivo de ejemplo y configura `.env` con los valores de tu entorno:
 
-4. Crear el archivo `.env` a partir del ejemplo:
+   ```powershell
+   Copy-Item .env.example .env
+   ```
 
-```bash
-copy .env.example .env
-```
+   Genera una clave secreta fuerte con `python -c "import secrets; print(secrets.token_urlsafe(50))"` y copia el resultado en `SECRET_KEY`. Completa las variables de base de datos. En desarrollo puedes poner `DEBUG=True`; en AWS debe quedar `DEBUG=False`. No compartas ni subas `.env` al repositorio.
 
-En Linux o Mac: `cp .env.example .env`. Después se abre `.env` y se completan los valores (ver la sección siguiente).
+5. Comprueba la configuración y crea las tablas:
 
-5. Revisar el proyecto y aplicar las migraciones:
+   ```powershell
+   python manage.py check
+   python manage.py migrate
+   ```
 
-```bash
-python manage.py check
-python manage.py migrate
-```
+6. Crea una cuenta administradora para acceder al sistema:
 
-6. Cargar los datos de prueba:
+   ```powershell
+   python manage.py createsuperuser
+   ```
 
-```bash
-python manage.py seed_data
-```
+7. Inicia el servidor de desarrollo:
 
-7. Levantar el servidor:
+   ```powershell
+   python manage.py runserver
+   ```
 
-```bash
-python manage.py runserver
-```
+Abre `http://127.0.0.1:8000/` para entrar al sistema o `http://127.0.0.1:8000/admin/` para usar el administrador de Django.
 
-El Admin queda en http://127.0.0.1:8000/admin/
+## Recuperación de contraseña por correo
 
-## Variables de entorno
+La pantalla `¿Olvidaste tu contraseña?` mantiene la recuperación estándar de Django mediante enlace seguro. También está disponible el flujo de código temporal de seis dígitos desde el inicio de sesión. El código vence según `PASSWORD_RESET_CODE_TIMEOUT` (600 segundos por defecto), es de un solo uso y se bloquea después de cinco intentos. La respuesta de solicitud es genérica para no revelar si una dirección está registrada.
 
-La configuración sensible no está en el código, `settings.py` la lee desde `.env`. El archivo `.env` no se sube al repositorio, solo `.env.example`.
+- Sin `EMAIL_HOST`, Django usa el backend de consola y muestra el mensaje/enlace en la terminal; no llega a una bandeja de entrada.
+- Para enviar correo real, configura en `.env` `EMAIL_HOST`, `EMAIL_PORT`, `EMAIL_HOST_USER`, `EMAIL_HOST_PASSWORD`, `EMAIL_USE_TLS`, `EMAIL_USE_SSL` y `DEFAULT_FROM_EMAIL`. El backend SMTP se selecciona automáticamente al configurar `EMAIL_HOST`.
+- Para Gmail usa `smtp.gmail.com`, puerto `587`, TLS activado y una contraseña de aplicación de Google. No uses la contraseña normal de la cuenta. Otra opción es usar un proveedor SMTP transaccional.
+- Reinicia Django/Gunicorn después de modificar `.env`. No publiques credenciales de correo.
 
-| Variable | Para qué sirve | Ejemplo |
+## Secciones principales
+
+| Sección | Ruta local | Descripción |
 |---|---|---|
-| SECRET_KEY | Clave secreta de Django | una cadena larga y aleatoria |
-| DEBUG | Modo desarrollo | True |
-| ALLOWED_HOSTS | Hosts permitidos | 127.0.0.1,localhost |
-| DB_ENGINE | Motor de base de datos | django.db.backends.sqlite3 |
-| DB_NAME | Nombre o ruta de la base | db.sqlite3 |
+| Personal | `/personal/` | Funcionarios, delegaciones, cargos y roles |
+| Actividades | `/activities/` | Actividades, evidencias y validación |
+| Agenda | `/agenda/` | Compromisos |
+| Configuración | `/configuration/` | Ítems de medición, metas y períodos |
+| Atención ciudadana | `/atenciones/` | Registro y consulta de atenciones y catálogos |
+| Paneles | `/dashboard/` | Redirección al panel correspondiente al usuario |
+| Administración Django | `/admin/` | Administración interna de Django |
 
-Para usar otro motor (por ejemplo PostgreSQL) se cambian `DB_ENGINE` y `DB_NAME` y se agregan `DB_USER`, `DB_PASSWORD`, `DB_HOST` y `DB_PORT`, sin tocar el código.
+## Aplicaciones Django
 
-## Cuentas de prueba
-
-Son cuentas ficticias, solo para la demostración.
-
-| Usuario | Contraseña | Rol | Qué puede hacer |
-|---|---|---|---|
-| [admin_sgr] | [contraseña] | Administrador | Ve y modifica todo |
-| [usuario_limitado] | [contraseña] | Usuario limitado | Solo ve los datos de su delegación |
-
-## Estructura del proyecto
-
-Cada app tiene una responsabilidad del dominio:
-
-| App | Responsabilidad |
+| Aplicación | Responsabilidad |
 |---|---|
-| core | `BaseModel` abstracto con `created_at`, `updated_at` y `deleted_at`, del que heredan las entidades principales |
-| personal | Delegation, Position, Role, Functionary, FunctionaryRole |
-| configuration | Period, Measuring, Goal (períodos, qué se mide y metas por cargo) |
-| agenda | Commitment (compromisos con fecha y estado) |
-| activities | Activity y Evidence (trabajo realizado y su evidencia) |
-| auditory | Registro de auditoría de operaciones |
-| analytics | Sin tablas propias, reservada para los cálculos de avance, cumplimiento y semáforo |
+| `core` | Modelos y utilidades compartidas, incluidos los permisos |
+| `personal` | Funcionarios, delegaciones, cargos, roles y sus asignaciones |
+| `activities` | Actividades y evidencias |
+| `agenda` | Compromisos |
+| `configuration` | Períodos, mediciones y metas |
+| `analytics` | Paneles e indicadores de seguimiento |
+| `atenciones` | Tipos, subatenciones y transacciones de atención ciudadana |
 
-En cada app, `models.py` tiene los modelos y `admin.py` la configuración del Admin. Los nombres de modelos y atributos están en inglés.
+## Pruebas
 
-## Funcionalidades del Admin
+Ejecuta la suite de pruebas con:
 
-- **Admin básico:** todos los modelos tienen `list_display`, `search_fields`, `list_filter` y `ordering`, y `list_select_related` donde la lista muestra relaciones.
-- **Inline:** los roles de un funcionario se asignan dentro de su propia pantalla (`FunctionaryRole`), y las evidencias se agregan dentro de cada actividad (`Evidence`).
-- **Acción personalizada:** "Approve selected evidences" aprueba varias evidencias a la vez y actualiza su fecha de validación.
-- **Validación:** `Period.clean()` rechaza un período cuya fecha de término sea anterior a la de inicio, o con más días computables que los del período.
+```powershell
+python manage.py test
+```
 
-## Seguridad
+## Configuración y despliegue
 
-[Completar cuando esté implementado: explicar cómo el usuario limitado solo ve registros de su delegación y en qué archivo se aplica la restricción.]
+La aplicación carga sus variables desde `.env`. `SECRET_KEY` es obligatoria; por compatibilidad, también se reconoce el nombre antiguo `SECRETKEY`. Usa una clave aleatoria larga y secreta, y cámbiala manualmente antes de desplegar porque la clave configurada actualmente no pasa la comprobación de seguridad de Django. Cambiarla invalida las sesiones y firmas existentes. La conexión requiere `DB_NAME`, `DB_USER` y `DB_HOST`; `DB_PASSWORD` puede quedar vacío si el servidor local no usa contraseña y `DB_PORT` usa `3306` por defecto.
 
-## Trabajo con Git
+`DEBUG` está desactivado por defecto. `ALLOWED_HOSTS` acepta una lista separada por comas y por defecto contempla la IP usada actualmente y las direcciones locales. Si el servidor usa un dominio, configura ese dominio en `ALLOWED_HOSTS` y su origen completo (incluyendo `https://`) en `CSRF_TRUSTED_ORIGINS`.
 
-- `main`: versión final entregada.
-- `develop`: integración del trabajo del equipo.
-- `feature/*`: una rama por funcionalidad (por ejemplo `feature/personal-models`, `feature/personal-admin`, `feature/configuration-admin`), que se integra a `develop` con merge.
+### Preparar el servidor AWS
 
-El `.env` y `.venv` están en `.gitignore` y no se suben.
+En el servidor, instala las dependencias, configura un `.env` con los valores privados del entorno, y luego ejecuta:
 
-**Commit final evaluado:** [hash]
+```bash
+python manage.py check --deploy
+python manage.py migrate
+python manage.py collectstatic --noinput
+gunicorn config.wsgi:application --bind 0.0.0.0:8000
+```
+
+Ejecuta Gunicorn como servicio detrás de un proxy web (por ejemplo, Nginx) y permite en el grupo de seguridad solo el tráfico necesario. WhiteNoise sirve los archivos estáticos recopilados por `collectstatic`, incluidos los logos y recursos de la interfaz. Las evidencias subidas se guardan en `MEDIA_ROOT`; en AWS configura almacenamiento persistente o un servicio de objetos como S3 y sirve esos archivos de forma segura.
+
+No actives `SECURE_SSL_REDIRECT`, `SESSION_COOKIE_SECURE`, `CSRF_COOKIE_SECURE` ni HSTS mientras el sitio solo use HTTP. Una vez configurado y probado HTTPS, habilita esas opciones en el `.env` y aumenta `SECURE_HSTS_SECONDS` gradualmente.
+
+## Estructura del repositorio
+
+```text
+config/          Configuración y rutas principales de Django
+core/            Componentes compartidos
+personal/        Gestión del personal municipal
+activities/      Actividades y evidencias
+agenda/          Compromisos
+configuration/   Períodos, mediciones y metas
+analytics/       Paneles e indicadores
+atenciones/      Atención ciudadana y sus catálogos
+templates/       Plantillas HTML compartidas y páginas de error
+static/          Archivos estáticos
+```

@@ -1,0 +1,181 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Mi panel — SGR{% endblock %}
+
+{% block extra_head %}
+<style>
+    .dashboard-wrap { max-width: 1400px; }
+    .dashboard-welcome { position: relative; min-height: 320px; overflow: hidden; color: #fff; background: linear-gradient(115deg, #d51f25 0%, #ad0000 48%, #7a2021 100%); }
+    .dashboard-welcome::after { position: absolute; inset: 0; z-index: 0; background: linear-gradient(90deg, rgba(0, 0, 0, .08) 0%, rgba(0, 0, 0, .03) 42%, transparent 72%); content: ""; pointer-events: none; }
+    .dashboard-welcome-lighthouse { position: absolute; top: 50%; right: 0; z-index: 1; width: 61.5%; height: auto; object-fit: contain; object-position: right center; opacity: .9; filter: drop-shadow(0 0 1.5rem rgba(255, 255, 255, .2)) brightness(1.08); transform: translateY(-50%); pointer-events: none; }
+    .dashboard-welcome-content { position: relative; z-index: 2; max-width: 37%; }
+    .dashboard-welcome-actions { margin-top: 1.5rem; }
+    .dashboard-stat { border: 1px solid #ece8e6; border-radius: 1rem; height: 100%; }
+    .dashboard-stat-icon { width: 2.65rem; height: 2.65rem; display: inline-flex; align-items: center; justify-content: center; border-radius: .8rem; font-size: 1.15rem; }
+    .dashboard-section { border: 1px solid #ece8e6; border-radius: 1rem; }
+    .dashboard-section .card-header { background: #fff; border-bottom: 1px solid #f0ecea; }
+    .dashboard-table > :not(caption) > * > * { padding: .8rem .75rem; vertical-align: middle; }
+    .dashboard-table tbody tr:hover > * { background-color: #fff8f8; }
+    .goal-row + .goal-row { border-top: 1px solid #f0ecea; }
+    .goal-progress { height: .55rem; background: #f0ecea; }
+    @media (min-width: 768px) and (max-width: 991.98px) {
+        .dashboard-welcome-lighthouse { width: 54%; }
+        .dashboard-welcome-content { max-width: 45%; }
+    }
+    @media (max-width: 767.98px) {
+        .dashboard-welcome { min-height: 0; }
+        .dashboard-welcome::after { background: linear-gradient(90deg, rgba(0, 0, 0, .12), rgba(0, 0, 0, .05) 62%, transparent); }
+        .dashboard-welcome-content { max-width: 100%; }
+        .dashboard-welcome-lighthouse { position: relative; display: block; top: auto; right: auto; bottom: auto; width: 112%; max-width: 112%; margin: 1.25rem -6% -0.5rem; opacity: .75; transform: none; }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<main class="container-fluid dashboard-wrap py-4 px-3 px-lg-4">
+    <header class="dashboard-welcome rounded-4 p-4 p-lg-5 mb-4 shadow-sm">
+        <div class="dashboard-welcome-content">
+            <div>
+                <p class="small text-white-50 fw-semibold text-uppercase mb-2 d-flex flex-wrap align-items-center gap-2">
+                    <span>Mi espacio de trabajo</span>
+                    <time class="badge rounded-pill bg-white bg-opacity-10 border border-white border-opacity-25 px-3 py-2" datetime="{% now 'Y-m-d' %}">
+                        <i class="bi bi-calendar3 me-1" aria-hidden="true"></i>Hoy, {% now "d/m/Y" %}
+                    </time>
+                </p>
+                <h1 class="h2 fw-bold mb-2">Hola, {{ funcionario.names }}</h1>
+                <p class="mb-0 text-white-50">{{ funcionario.position.name }} <span aria-hidden="true">·</span> {{ funcionario.delegation.name }}</p>
+            </div>
+            <div class="dashboard-welcome-actions d-flex flex-wrap gap-2">
+                <a href="{% url 'activities:activity_create' %}" class="btn btn-light text-danger fw-semibold">
+                    <i class="bi bi-plus-lg me-2" aria-hidden="true"></i>Registrar actividad
+                </a>
+                <a href="{% url 'atenciones:attention_create' %}" class="btn btn-outline-light">
+                    <i class="bi bi-chat-left-text me-2" aria-hidden="true"></i>Nueva atención
+                </a>
+            </div>
+        </div>
+        <img class="dashboard-welcome-lighthouse" src="{% static 'images/serena.png' %}" alt="" aria-hidden="true">
+    </header>
+
+    <section aria-label="Mis indicadores" class="row g-3 mb-4">
+        <div class="col-6 col-xl">
+            <article class="dashboard-stat card p-3 p-lg-4">
+                <div class="d-flex justify-content-between align-items-start"><div><p class="small fw-semibold text-muted mb-2">Actividades este mes</p><p class="h2 fw-bold mb-0">{{ actividades_mes }}</p></div><span class="dashboard-stat-icon bg-success-subtle text-success"><i class="bi bi-list-check" aria-hidden="true"></i></span></div>
+                <a href="{% url 'activities:activity_list' %}" class="small text-decoration-none mt-3">Mis actividades <i class="bi bi-arrow-right" aria-hidden="true"></i></a>
+            </article>
+        </div>
+        <div class="col-6 col-xl">
+            <article class="dashboard-stat card p-3 p-lg-4">
+                <div class="d-flex justify-content-between align-items-start"><div><p class="small fw-semibold text-muted mb-2">Por validar</p><p class="h2 fw-bold mb-0">{{ actividades_por_validar }}</p></div><span class="dashboard-stat-icon bg-warning-subtle text-warning-emphasis"><i class="bi bi-hourglass-split" aria-hidden="true"></i></span></div>
+                <span class="small text-muted mt-3">Actividades pendientes</span>
+            </article>
+        </div>
+        <div class="col-6 col-xl">
+            <article class="dashboard-stat card p-3 p-lg-4">
+                <div class="d-flex justify-content-between align-items-start"><div><p class="small fw-semibold text-muted mb-2">Compromisos abiertos</p><p class="h2 fw-bold mb-0">{{ compromisos_abiertos }}</p></div><span class="dashboard-stat-icon bg-primary-subtle text-primary"><i class="bi bi-calendar2-check" aria-hidden="true"></i></span></div>
+                <a href="{% url 'agenda:commitment_list' %}" class="small text-decoration-none mt-3">Ver compromisos <i class="bi bi-arrow-right" aria-hidden="true"></i></a>
+            </article>
+        </div>
+        <div class="col-6 col-xl">
+            <article class="dashboard-stat card p-3 p-lg-4">
+                <div class="d-flex justify-content-between align-items-start"><div><p class="small fw-semibold text-muted mb-2">Compromisos vencidos</p><p class="h2 fw-bold mb-0 {% if compromisos_vencidos %}text-danger{% endif %}">{{ compromisos_vencidos }}</p></div><span class="dashboard-stat-icon {% if compromisos_vencidos %}bg-danger-subtle text-danger{% else %}bg-success-subtle text-success{% endif %}"><i class="bi bi-alarm" aria-hidden="true"></i></span></div>
+                <span class="small text-muted mt-3">Requieren seguimiento</span>
+            </article>
+        </div>
+        <div class="col-6 col-xl">
+            <article class="dashboard-stat card p-3 p-lg-4">
+                <div class="d-flex justify-content-between align-items-start"><div><p class="small fw-semibold text-muted mb-2">Atenciones este mes</p><p class="h2 fw-bold mb-0">{{ atenciones_mes }}</p></div><span class="dashboard-stat-icon bg-secondary-subtle text-secondary"><i class="bi bi-chat-square-text" aria-hidden="true"></i></span></div>
+                <a href="{% url 'atenciones:attention_list' %}" class="small text-decoration-none mt-3">Ver atenciones <i class="bi bi-arrow-right" aria-hidden="true"></i></a>
+            </article>
+        </div>
+    </section>
+
+    <section class="row g-4">
+        <div class="col-12 col-xl-7">
+            <article class="dashboard-section card h-100">
+                <div class="card-header d-flex align-items-center justify-content-between p-3 p-lg-4">
+                    <div><h2 class="h5 fw-bold mb-1">Mi avance</h2><p class="small text-muted mb-0">{% if period %}Período {{ period.start_date|date:"d/m/Y" }} – {{ period.end_date|date:"d/m/Y" }}{% else %}No hay período activo{% endif %}</p></div>
+                    <a href="{% url 'activities:traffic_light' %}" class="btn btn-sm btn-outline-secondary">Ver semáforo</a>
+                </div>
+                {% if indicador %}
+                    {% if indicador.items %}
+                    <div class="card-body p-0">
+                        {% for item in indicador.items %}
+                        <div class="goal-row p-3 p-lg-4">
+                            <div class="d-flex flex-column flex-sm-row justify-content-between gap-2 mb-2">
+                                <div><div class="fw-semibold">{{ item.measuring.service }}</div><small class="text-muted">{{ item.avance }} de {{ item.meta }} {{ item.measuring.measurable_item }}</small></div>
+                                <div class="text-sm-end">
+                                    {% if item.semaforo == 'verde' %}<span class="badge text-bg-success">En ritmo</span>
+                                    {% elif item.semaforo == 'ambar' %}<span class="badge text-bg-warning">Atención</span>
+                                    {% else %}<span class="badge text-bg-danger">Bajo el ritmo</span>{% endif %}
+                                    <span class="small fw-semibold ms-1">{{ item.porcentaje_cumplimiento }}%</span>
+                                </div>
+                            </div>
+                            <div class="progress goal-progress" role="progressbar" aria-label="Avance de {{ item.measuring.service }}" aria-valuenow="{{ item.porcentaje_cumplimiento }}" aria-valuemin="0" aria-valuemax="100">
+                                <div class="progress-bar {% if item.semaforo == 'verde' %}bg-success{% elif item.semaforo == 'ambar' %}bg-warning{% else %}bg-danger{% endif %}" style="width: {% if item.porcentaje_cumplimiento > 100 %}100{% else %}{{ item.porcentaje_cumplimiento }}{% endif %}%"></div>
+                            </div>
+                            <div class="d-flex justify-content-between mt-2"><small class="text-muted">Ponderación {{ item.ponderador }}%</small><small class="text-muted">Aporte {{ item.cumplimiento_ponderado }}%</small></div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                    <div class="card-footer bg-light d-flex justify-content-between align-items-center p-3 p-lg-4">
+                        <span class="fw-semibold">Cumplimiento ponderado</span><span class="h5 fw-bold mb-0">{{ indicador.total_ponderado }}%</span>
+                    </div>
+                    {% else %}
+                    <div class="card-body text-center text-muted py-5"><i class="bi bi-clipboard2-x fs-2 d-block mb-2" aria-hidden="true"></i>No hay metas configuradas para tu cargo en este período.</div>
+                    {% endif %}
+                {% else %}
+                <div class="card-body text-center text-muted py-5"><i class="bi bi-calendar3 fs-2 d-block mb-2" aria-hidden="true"></i>No hay un período activo configurado todavía.</div>
+                {% endif %}
+            </article>
+        </div>
+        <div class="col-12 col-xl-5">
+            <article class="dashboard-section card h-100">
+                <div class="card-header d-flex align-items-center justify-content-between p-3 p-lg-4">
+                    <div><h2 class="h5 fw-bold mb-1">Mis compromisos</h2><p class="small text-muted mb-0">Fechas y próximos pasos</p></div>
+                    <a href="{% url 'agenda:commitment_list' %}" class="btn btn-sm btn-outline-secondary">Ver todos</a>
+                </div>
+                <div class="table-responsive">
+                    <table class="table dashboard-table mb-0">
+                        <thead class="table-light"><tr><th>Solicitante</th><th>Fecha</th><th>Estado</th></tr></thead>
+                        <tbody>
+                            {% for commitment in mis_compromisos %}
+                            <tr>
+                                <td><div class="fw-semibold">{{ commitment.applic_name }}</div><small class="text-muted">{{ commitment.origin|truncatechars:38 }}</small></td>
+                                <td class="text-nowrap {% if commitment.is_overdue %}text-danger fw-semibold{% endif %}">{{ commitment.commitment_date|date:"d/m/Y" }}</td>
+                                <td><span class="badge {% if commitment.state == 'DONE' %}text-bg-success{% elif commitment.is_overdue %}text-bg-danger{% else %}text-bg-secondary{% endif %}">{% if commitment.state == 'JOINED' %}Registrado{% elif commitment.state == 'PENDING' %}Pendiente{% elif commitment.state == 'IN_PROGRESS' %}En curso{% else %}Realizado{% endif %}</span></td>
+                            </tr>
+                            {% empty %}<tr><td colspan="3" class="text-center text-muted py-5">No tienes compromisos registrados.</td></tr>{% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </article>
+        </div>
+        <div class="col-12">
+            <article class="dashboard-section card">
+                <div class="card-header d-flex align-items-center justify-content-between p-3 p-lg-4">
+                    <div><h2 class="h5 fw-bold mb-1">Mis actividades recientes</h2><p class="small text-muted mb-0">Últimos registros del período de trabajo</p></div>
+                    <a href="{% url 'activities:activity_list' %}" class="btn btn-sm btn-outline-secondary">Ver todas</a>
+                </div>
+                <div class="table-responsive">
+                    <table class="table dashboard-table mb-0">
+                        <thead class="table-light"><tr><th>Actividad</th><th>Ítem</th><th>Fecha</th><th>Cantidad</th><th>Estado</th></tr></thead>
+                        <tbody>
+                            {% for activity in actividades_recientes %}
+                            <tr>
+                                <td class="fw-semibold">{{ activity.application|truncatechars:55 }}</td>
+                                <td>{{ activity.measuring.service }}</td>
+                                <td class="text-nowrap">{{ activity.date|date:"d/m/Y" }}</td>
+                                <td>{{ activity.quantity }}</td>
+                                <td>{% if activity.state_validity == 'VALIDATED' %}<span class="badge text-bg-success">Validada</span>{% elif activity.state_validity == 'REJECTED' %}<span class="badge text-bg-danger">Rechazada</span>{% else %}<span class="badge text-bg-warning">Pendiente</span>{% endif %}</td>
+                            </tr>
+                            {% empty %}<tr><td colspan="5" class="text-center text-muted py-5">Aún no has registrado actividades.</td></tr>{% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </article>
+        </div>
+    </section>
+</main>
+{% endblock %}

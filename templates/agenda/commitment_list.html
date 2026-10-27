@@ -1,0 +1,204 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<style>
+    /* Ajustes compactos para evitar el scroll horizontal */
+    .table-compact {
+        width: 100%;
+        font-size: 0.875rem; /* Tamaño de fuente ligeramente más compacto */
+    }
+    .table-compact > :not(caption) > * > * {
+        padding: 0.65rem 0.5rem; /* Padding horizontal reducido */
+    }
+    .card {
+        border-radius: 12px;
+    }
+    .kpi-card {
+        transition: transform 0.2s ease-in-out;
+    }
+    .kpi-card:hover {
+        transform: translateY(-2px);
+    }
+    .form-control, .form-select {
+        border-radius: 8px;
+        padding: 0.5rem 0.75rem;
+        font-size: 0.875rem;
+    }
+    .badge-status {
+        font-size: 0.75rem;
+        padding: 0.35em 0.65em;
+        border-radius: 20px;
+        font-weight: 600;
+        white-space: nowrap;
+    }
+</style>
+
+<div class="container-fluid mt-4 px-4 pb-5">
+    <!-- Cabecera de vista -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h2 class="fw-bold text-dark mb-1">
+                <i class="bi bi-kanban text-primary me-2"></i>Tubo de trabajo · Agenda colectiva
+            </h2>
+            <p class="text-muted small mb-0">Gestión y seguimiento de compromisos con la comunidad</p>
+        </div>
+        {% if user.functionary %}
+        <a href="{% url 'agenda:commitment_create' %}" class="btn btn-primary shadow-sm px-3 py-2 fw-semibold">
+            <i class="bi bi-plus-lg me-1"></i> Nuevo compromiso
+        </a>
+        {% endif %}
+    </div>
+
+    <!-- Indicadores superiores (RF-15 / RF-16) -->
+    <div class="row g-3 mb-4">
+        <div class="col-md-4">
+            <div class="card border-0 shadow-sm bg-white kpi-card">
+                <div class="card-body text-center py-3">
+                    <span class="text-muted d-block small mb-1">Cumplimiento del tubo</span>
+                    <h3 class="fw-bold text-success mb-0">{{ completion_percentage }} %</h3>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card border-0 shadow-sm bg-white kpi-card">
+                <div class="card-body text-center py-3">
+                    <span class="text-muted d-block small mb-1">Compromisos pendientes</span>
+                    <h3 class="fw-bold text-warning mb-0">{{ pending_count }}</h3>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card border-0 shadow-sm bg-white kpi-card">
+                <div class="card-body text-center py-3">
+                    <span class="text-muted d-block small mb-1">Compromisos vencidos</span>
+                    <h3 class="fw-bold text-danger mb-0">{{ expired_count }}</h3>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Filtros de búsqueda (RF-14) -->
+    <div class="card border-0 shadow-sm mb-4">
+        <div class="card-body p-3">
+            <form method="get" class="row g-2 align-items-end">
+                <div class="col-xl-3 col-md-6">
+                    <label class="form-label small fw-bold text-muted mb-1">Buscar texto</label>
+                    <input type="search" name="q" class="form-control" value="{{ search_query }}" placeholder="Origen, solicitante, responsable">
+                </div>
+                <div class="col-xl-3 col-md-6">
+                    <label class="form-label small fw-bold text-muted mb-1">Responsable</label>
+                    <select name="functionary" class="form-select">
+                        <option value="">Todos los funcionarios</option>
+                        {% for func in functionaries %}
+                            <option value="{{ func.id }}" {% if selected_functionary == func.id|stringformat:"i" %}selected{% endif %}>
+                                {{ func.names }} {{ func.lastnames }}
+                            </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-xl-2 col-md-6">
+                    <label class="form-label small fw-bold text-muted mb-1">Territorio</label>
+                    <input type="text" name="territory" class="form-control" placeholder="Ej: Las Compañías" value="{{ selected_territory }}">
+                </div>
+                <div class="col-xl-2 col-md-4">
+                    <label class="form-label small fw-bold text-muted mb-1">Estado</label>
+                    <select name="state" class="form-select">
+                        <option value="">Todos los estados</option>
+                        {% for val, label in states %}
+                            <option value="{{ val }}" {% if selected_state == val %}selected{% endif %}>{{ label }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-xl-2 col-md-4">
+                    <label class="form-label small fw-bold text-muted mb-1">Desde</label>
+                    <input type="date" name="date_from" class="form-control" value="{{ request.GET.date_from }}">
+                </div>
+                <div class="col-xl-2 col-md-4">
+                    <label class="form-label small fw-bold text-muted mb-1">Hasta</label>
+                    <input type="date" name="date_to" class="form-control" value="{{ request.GET.date_to }}">
+                </div>
+                <div class="col-xl-1 col-md-12 d-flex gap-1 mt-3 mt-xl-0">
+                    <button type="submit" class="btn btn-dark w-100 py-2" title="Buscar">
+                        <i class="bi bi-search"></i>
+                    </button>
+                    <a href="{% url 'agenda:commitment_list' %}" class="btn btn-outline-secondary py-2" title="Limpiar filtros">
+                        <i class="bi bi-x-lg"></i>
+                    </a>
+                    <a href="{{ request.path }}?{{ query_params }}{% if query_params %}&{% endif %}export=xlsx" class="btn btn-outline-success py-2" title="Exportar a Excel">
+                        <i class="bi bi-file-earmark-excel"></i>
+                    </a>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Tabla de compromisos adaptada al ancho completo -->
+    <div class="card border-0 shadow-sm overflow-hidden">
+        <div class="card-body p-0">
+            <table class="table table-hover align-middle mb-0 table-compact">
+                <thead class="table-dark">
+                    <tr>
+                        <th class="ps-3 py-2 text-nowrap" style="width: 10%;">N° / Reg.</th>
+                        <th class="py-2">Origen / Solicitud</th>
+                        <th class="py-2 text-nowrap" style="width: 14%;">Solicitante</th>
+                        <th class="py-2 text-nowrap" style="width: 12%;">Territorio</th>
+                        <th class="py-2 text-nowrap" style="width: 16%;">Responsable</th>
+                        <th class="py-2 text-nowrap" style="width: 11%;">F. Compr.</th>
+                        <th class="text-center py-2 text-nowrap" style="width: 10%;">Estado</th>
+                        <th class="text-center py-2 text-nowrap" style="width: 7%;">Acciones</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for c in commitments %}
+                    <tr class="{% if c.is_overdue %}table-danger{% endif %}">
+                        <td class="ps-3 fw-semibold text-nowrap">
+                            #{{ c.id }}<br>
+                            <small class="text-muted fw-normal">{{ c.created_at|date:"d/m/Y" }}</small>
+                        </td>
+                        <td>
+                            <span class="fw-semibold text-dark">{{ c.origin }}</span>
+                            {% if c.support %}
+                                <br><small class="text-muted"><i class="bi bi-people me-1"></i>Apoyo: {{ c.support }}</small>
+                            {% endif %}
+                        </td>
+                        <td class="text-truncate" style="max-width: 140px;" title="{{ c.applic_name }}">{{ c.applic_name }}</td>
+                        <td class="text-nowrap">{{ c.territory }}</td>
+                        <td class="text-nowrap">{{ c.functionary.names }} {{ c.functionary.lastnames }}</td>
+                        <td class="fw-bold text-secondary text-nowrap">{{ c.commitment_date|date:"d/m/Y" }}</td>
+                        <td class="text-center text-nowrap">
+                            {% if c.state == 'DONE' %}
+                                <span class="badge bg-success badge-status">Realizado</span>
+                            {% elif c.state == 'IN_PROGRESS' %}
+                                <span class="badge bg-primary badge-status">En proceso</span>
+                            {% elif c.state == 'PENDING' %}
+                                <span class="badge bg-warning text-dark badge-status">Pendiente</span>
+                            {% else %}
+                                <span class="badge bg-secondary badge-status">Ingresado</span>
+                            {% endif %}
+                        </td>
+                        <td class="text-center text-nowrap">
+                            <a href="{% url 'agenda:commitment_update' c.id %}" class="btn btn-sm btn-outline-primary px-2 py-1" title="Editar / Cambiar estado">
+                                <i class="bi bi-pencil-fill"></i>
+                            </a>
+                            {% if can_delete_commitments %}
+                            <a href="{% url 'agenda:commitment_delete' c.id %}" class="btn btn-sm btn-outline-danger px-2 py-1" title="Eliminar compromiso" aria-label="Eliminar compromiso #{{ c.id }}">
+                                <i class="bi bi-trash3"></i>
+                            </a>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="8" class="text-center text-muted py-5">
+                            <i class="bi bi-inbox fs-2 d-block mb-2 text-secondary"></i>
+                            No hay compromisos registrados en la agenda colectiva.
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% include "_pagination.html" %}
+{% endblock %}

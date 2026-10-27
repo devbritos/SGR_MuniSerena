@@ -7,7 +7,7 @@ AUDIT_FIELDS = ('created_at', 'updated_at', 'deleted_at')
 
 class GoalInline(admin.TabularInline):
     model = Goal
-    fields = ('position', 'measuring', 'target_value', 'unity', 'goal_value', 'validity')
+    fields = ('position', 'measuring', 'target_value', 'unity', 'weight', 'validity')
     autocomplete_fields = ('position', 'measuring')
     extra = 0
 
@@ -46,7 +46,7 @@ class GoalAdmin(admin.ModelAdmin):
     list_display = (
         'id',
         'target_value',
-        'goal_value',
+        'weight',
         'unity',
         'position',
         'measuring',

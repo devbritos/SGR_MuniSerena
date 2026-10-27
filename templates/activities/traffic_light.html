@@ -1,0 +1,138 @@
+{% extends 'base.html' %}
+
+{% block extra_head %}
+<style>
+    .traffic-light-indicator {
+        display: inline-block;
+        width: 1rem;
+        height: 1rem;
+        border-radius: 50%;
+        box-shadow: 0 .125rem .25rem rgba(0, 0, 0, .2);
+        vertical-align: middle;
+    }
+    .traffic-light-indicator--green { background-color: var(--bs-success); }
+    .traffic-light-indicator--yellow { background-color: var(--bs-warning); }
+    .traffic-light-indicator--red { background-color: var(--bs-danger); }
+    .traffic-light-indicator--unavailable { background-color: #adb5bd; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid mt-4 px-4">
+    <h2 class="mb-4 text-dark fw-bold">
+        <i class="bi bi-stoplights text-primary"></i> Semáforo · Seguimiento de avance al día
+    </h2>
+
+    {% if unmatched_validated_activity_count %}
+    <div class="alert alert-warning d-flex align-items-start gap-2" role="alert">
+        <i class="bi bi-exclamation-triangle-fill mt-1" aria-hidden="true"></i>
+        <div>
+            <strong>{{ unmatched_validated_activity_count }} actividad(es) validada(s) no se están contabilizando.</strong>
+            No coinciden con una meta activa del mismo cargo, ítem y período. Revisa
+            <strong>Administración → Metas y ponderaciones</strong> y confirma que
+            la meta corresponda al cargo y al ítem usados en las actividades.
+        </div>
+    </div>
+    {% endif %}
+    
+    <div class="row">
+        <!-- Tabla principal del semáforo -->
+        <div class="col-lg-8 mb-4">
+            <div class="card shadow-sm border-0">
+                <div class="card-body p-0 table-responsive">
+                    <table class="table table-hover align-middle mb-0">
+                        <thead class="table-dark">
+                            <tr>
+                                <th class="ps-4 py-3">Área / Cargo</th>
+                                <th class="py-3">Responsable</th>
+                                <th class="text-center py-3">Objetivo al día</th>
+                                <th class="text-center py-3">Avance logrado</th>
+                                <th class="text-center py-3">Estado</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for item in traffic_light_data %}
+                            <tr>
+                                <td class="ps-4 fw-semibold text-secondary">{{ item.functionary.position.name }}</td>
+                                <!-- Se corrige la llamada al nombre usando los campos de tu modelo -->
+                                <td>{{ item.functionary.names|default:"-" }} {{ item.functionary.lastnames|default:"" }}</td>
+                                <td class="text-center">{{ item.expected_percentage|floatformat:1 }}%</td>
+                                <td class="text-center fw-bold">
+                                    {% if item.has_active_goals %}
+                                        {{ item.achieved_percentage|floatformat:1 }}%
+                                    {% else %}
+                                        —
+                                    {% endif %}
+                                    {% if not item.has_active_goals %}
+                                    <small class="d-block text-muted fw-normal">Sin meta activa para este cargo</small>
+                                    {% elif not item.has_matched_activities %}
+                                    <small class="d-block text-muted fw-normal">Sin actividades validadas para sus metas</small>
+                                    {% endif %}
+                                </td>
+                                <td class="text-center">
+                                    {% if item.status == 'green' %}
+                                        <span class="traffic-light-indicator traffic-light-indicator--green" role="img" aria-label="{{ item.label }}" title="{{ item.label }}"><span class="visually-hidden">{{ item.label }}</span></span>
+                                    {% elif item.status == 'yellow' %}
+                                        <span class="traffic-light-indicator traffic-light-indicator--yellow" role="img" aria-label="{{ item.label }}" title="{{ item.label }}"><span class="visually-hidden">{{ item.label }}</span></span>
+                                    {% elif item.status == 'red' %}
+                                        <span class="traffic-light-indicator traffic-light-indicator--red" role="img" aria-label="{{ item.label }}" title="{{ item.label }}"><span class="visually-hidden">{{ item.label }}</span></span>
+                                    {% else %}
+                                        <span class="traffic-light-indicator traffic-light-indicator--unavailable" role="img" aria-label="{{ item.label }}" title="{{ item.label }}"><span class="visually-hidden">{{ item.label }}</span></span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% empty %}
+                            <tr>
+                                <td colspan="5" class="text-center text-muted py-5">
+                                    <i class="bi bi-info-circle fs-3 d-block mb-2"></i>
+                                    No hay datos de funcionarios para este período.
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Cuadro resumen del período -->
+        <div class="col-lg-4">
+            <div class="card shadow-sm border-0">
+                <div class="card-header bg-white border-bottom-0 pt-4 pb-2">
+                    <h5 class="card-title fw-bold text-secondary mb-0">
+                        <i class="bi bi-calendar3"></i> Resumen del período
+                    </h5>
+                </div>
+                <div class="card-body pt-0">
+                    <ul class="list-group list-group-flush">
+                        <li class="list-group-item d-flex justify-content-between align-items-center px-0 py-3">
+                            <span class="text-muted">Fecha de hoy:</span>
+                            <span class="fw-semibold">{{ today|date:"d/m/Y" }}</span>
+                        </li>
+                        <li class="list-group-item d-flex justify-content-between align-items-center px-0 py-3">
+                            <span class="text-muted">Fecha de inicio:</span>
+                            <span class="fw-semibold">{{ period.start_date|date:"d/m/Y" }}</span>
+                        </li>
+                        <li class="list-group-item d-flex justify-content-between align-items-center px-0 py-3">
+                            <span class="text-muted">Fecha de término:</span>
+                            <span class="fw-semibold">{{ period.end_date|date:"d/m/Y" }}</span>
+                        </li>
+                        <li class="list-group-item d-flex justify-content-between align-items-center px-0 py-3">
+                            <span class="text-muted">Días totales:</span>
+                            <span class="fw-semibold">{{ total_days }}</span>
+                        </li>
+                        <li class="list-group-item d-flex justify-content-between align-items-center px-0 py-3">
+                            <span class="text-muted">Días de avance:</span>
+                            <span class="fw-semibold">{{ elapsed_days }}</span>
+                        </li>
+                        <li class="list-group-item d-flex justify-content-between align-items-center px-3 py-3 bg-light rounded border-0 mt-3 shadow-sm">
+                            <span class="fw-bold text-dark mb-0">% Diario esperado:</span>
+                            <span class="fw-bold text-primary fs-5 mb-0">{{ expected_percentage|floatformat:1 }}%</span>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

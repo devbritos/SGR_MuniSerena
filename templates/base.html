@@ -4,57 +4,473 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{% block title %}SGR{% endblock %}</title>
+    <title>{% block title %}SGR — Municipalidad de La Serena{% endblock %}</title>
+    <!-- Bootstrap 5.3 & Icons -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet">
+
     <style>
-        /* Color ajustado exactamente al rojo de la imagen del logo */
-        .bg-municipal {
-            background-color: #9e2a2b !important; 
+        :root {
+            --municipal-red: #AD0000;
+            --municipal-red-dark: #7a2021;
+            --municipal-gold: #d4af37;
+            --municipal-bg: #f8f9fa;
+            --bs-primary: #AD0000;
+            --bs-primary-rgb: 173, 0, 0;
         }
-        
+
+        body {
+            font-family: Arial, sans-serif;
+            background-color: var(--municipal-bg);
+            color: #333;
+        }
+
+        /* Navbar superior */
+        .bg-municipal {
+            background: linear-gradient(135deg, var(--municipal-red) 0%, var(--municipal-red-dark) 100%);
+        }
+
         .navbar-brand-logo {
-            height: 48px;
+            height: 40px;
             width: auto;
             object-fit: contain;
         }
-    </style>
-</head>
-<body>
-    <nav class="navbar navbar-expand-lg navbar-dark bg-municipal shadow-sm">
-        <div class="container">
-            <a class="navbar-brand d-flex align-items-center me-4" href="{% url 'personal:functionary_list' %}">
-                <img src="{% static 'images/faroletras.png' %}" alt="Ilustre Municipalidad de La Serena" class="navbar-brand-logo">
-            </a>
 
-            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
-                <span class="navbar-toggler-icon"></span>
+        .btn-menu-toggle {
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            color: #fff;
+            font-size: 1.25rem;
+            padding: 0.35rem 0.75rem;
+            border-radius: 0.5rem;
+            transition: all 0.2s ease;
+        }
+        .btn-menu-toggle:hover,
+        .btn-menu-toggle:focus {
+            background-color: rgba(255, 255, 255, 0.25);
+            color: #fff;
+        }
+
+        /* Dropdown de usuario */
+        .user-menu .btn {
+            background-color: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.25);
+            transition: all 0.2s ease;
+        }
+        .user-menu .btn:hover {
+            background-color: rgba(255, 255, 255, 0.22);
+            border-color: #fff;
+        }
+        .user-menu .dropdown-menu {
+            border: none;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.15);
+            border-radius: 0.75rem;
+            margin-top: 0.5rem;
+        }
+        .active-delegation {
+            max-width: 45vw;
+            white-space: normal;
+            line-height: 1.2;
+            margin-left: 0.75rem;
+        }
+        .delegation-code {
+            font-weight: 700;
+        }
+        .user-menu-trigger {
+            border-color: rgba(255, 255, 255, 0.45) !important;
+            border-radius: 0.4rem !important;
+        }
+        .nav-account-actions {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        .nav-logout-button {
+            border-radius: 0.4rem;
+        }
+        .form-card {
+            overflow: hidden;
+            border-radius: 1rem;
+            box-shadow: 0 0.8rem 2.2rem rgba(35, 25, 25, 0.08) !important;
+        }
+        .form-card .card-header {
+            padding: 1.1rem 1.35rem;
+            border-bottom: 0;
+        }
+        .form-card .card-body {
+            padding: clamp(1.1rem, 4vw, 2rem);
+        }
+        .form-card .form-label {
+            color: #343a40;
+            font-weight: 600;
+        }
+        .form-card .form-control,
+        .form-card .form-select {
+            min-height: 2.75rem;
+            border-color: #d9dee3;
+            border-radius: 0.65rem;
+            transition: border-color 0.15s ease, box-shadow 0.15s ease;
+        }
+        .form-card textarea.form-control {
+            min-height: 6rem;
+        }
+        .form-card .form-control:focus,
+        .form-card .form-select:focus {
+            border-color: var(--municipal-red);
+            box-shadow: 0 0 0 0.2rem rgba(173, 0, 0, 0.12);
+        }
+        .form-card .form-text {
+            color: #68717a;
+        }
+        .form-card .invalid-feedback,
+        .form-card .errorlist {
+            font-size: 0.875rem;
+        }
+        .form-card .btn {
+            min-height: 2.65rem;
+            border-radius: 0.65rem;
+            font-weight: 600;
+        }
+        @media (max-width: 575.98px) {
+            .active-delegation {
+                max-width: 36vw;
+                margin-left: 0.35rem;
+                font-size: 0.68rem !important;
+                overflow-wrap: anywhere;
+            }
+            .nav-account-actions {
+                gap: 0.3rem;
+            }
+        }
+
+        /* Sidebar Offcanvas Ultra Compacto (210px) y No Bloqueante */
+        .offcanvas-municipal {
+            width: 210px !important;
+            background-color: #ffffff;
+            box-shadow: 4px 0 15px rgba(0, 0, 0, 0.06);
+            border-right: 1px solid #e9ecef;
+        }
+
+        .offcanvas-municipal .offcanvas-header {
+            background: linear-gradient(135deg, var(--municipal-red) 0%, var(--municipal-red-dark) 100%);
+            color: #fff;
+            padding: 0.75rem 1rem;
+        }
+
+        .sidebar-pin-toggle {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+            width: calc(100% - 1.5rem);
+            min-height: 2.4rem;
+            margin: 0.75rem 0.75rem 0;
+            padding: 0.45rem 0.7rem;
+            border: 1px solid #dedede;
+            border-radius: 0.4rem;
+            background: #fff;
+            color: #495057;
+            font-size: 0.82rem;
+            font-weight: 600;
+        }
+
+        .sidebar-pin-toggle:hover,
+        .sidebar-pin-toggle[aria-pressed="true"] {
+            border-color: #ad0000;
+            background: #fff8f8;
+            color: #8a0000;
+        }
+
+        .app-layout {
+            min-width: 0;
+        }
+
+        .app-main {
+            min-width: 0;
+        }
+
+        @media (min-width: 992px) {
+            body.sidebar-pinned .offcanvas-municipal .offcanvas-header {
+                display: none;
+            }
+
+            body.sidebar-pinned .app-layout {
+                display: flex;
+                align-items: stretch;
+                min-height: calc(100vh - 56px);
+            }
+
+            body.sidebar-pinned .offcanvas-municipal {
+                position: sticky;
+                top: 0;
+                right: auto;
+                bottom: auto;
+                left: auto;
+                z-index: 1;
+                flex: 0 0 220px;
+                width: 220px !important;
+                height: calc(100vh - 56px);
+                border-right: 1px solid #e9ecef;
+                box-shadow: 2px 0 10px rgba(0, 0, 0, 0.05);
+                transform: none;
+                visibility: visible !important;
+            }
+
+            body.sidebar-pinned .app-main {
+                flex: 1 1 auto;
+                width: calc(100% - 220px);
+            }
+
+            body.sidebar-pinned .page-content {
+                width: 100%;
+                margin-right: 0;
+                margin-left: 0;
+            }
+
+            body.sidebar-pinned .sidebar-pin-toggle i {
+                transform: rotate(45deg);
+            }
+        }
+
+        @media (max-width: 991.98px) {
+            .sidebar-pin-toggle {
+                display: none;
+            }
+        }
+
+        .sidebar-section-title {
+            font-size: 0.65rem;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            color: #8c857b;
+            padding: 0.8rem 0.85rem 0.25rem;
+            font-weight: 700;
+        }
+
+        .sidebar-link {
+            display: flex;
+            align-items: center;
+            gap: 0.55rem;
+            padding: 0.5rem 0.85rem;
+            color: #495057;
+            text-decoration: none;
+            font-weight: 500;
+            font-size: 0.83rem;
+            border-left: 3px solid transparent;
+            transition: all 0.15s ease-in-out;
+            white-space: nowrap;
+        }
+
+        .sidebar-link i {
+            font-size: 1rem;
+            width: 1.2rem;
+            text-align: center;
+            color: var(--municipal-red);
+            transition: transform 0.15s ease;
+        }
+
+        .role-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.35rem;
+            padding: 0.4rem 0.65rem;
+            border: 1px solid transparent;
+            border-radius: 999px;
+            font-size: 0.78rem;
+            font-weight: 600;
+            line-height: 1.1;
+            white-space: nowrap;
+        }
+        .role-badge--admin { color: #842029; background: #f8d7da; border-color: #f1aeb5; }
+        .role-badge--coordinator { color: #59359a; background: #eee5ff; border-color: #d2bfff; }
+        .role-badge--delegate { color: #805400; background: #fff1cc; border-color: #ffdf80; }
+        .role-badge--functionary { color: #084298; background: #cfe2ff; border-color: #9ec5fe; }
+        .role-badge--verifier { color: #0f6256; background: #d1e7dd; border-color: #a3cfbb; }
+        .role-badge--readonly,
+        .role-badge--custom { color: #495057; background: #e9ecef; border-color: #ced4da; }
+
+        .sidebar-link:hover {
+            background-color: #fcf4f4;
+            color: var(--municipal-red-dark);
+            border-left-color: var(--municipal-gold);
+        }
+
+        .sidebar-link:hover i {
+            transform: translateX(2px);
+        }
+
+        .sidebar-link.active {
+            background-color: #fdf0f0;
+            color: var(--municipal-red-dark);
+            font-weight: 700;
+            border-left-color: var(--municipal-red);
+        }
+
+        .sidebar-link.active i {
+            color: var(--municipal-red-dark);
+        }
+
+        /* Contenido Principal */
+        .page-content {
+            animation: fadeIn 0.3s ease-in-out;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(6px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* Estilo de Alertas */
+        .alert {
+            border: none;
+            border-radius: 0.5rem;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+        }
+
+        /* Footer */
+        .footer-municipal {
+            background-color: #1e1b18;
+            color: #a09990;
+            font-size: 0.85rem;
+            border-top: 3px solid var(--municipal-gold);
+        }
+    </style>
+    {% block extra_head %}{% endblock %}
+</head>
+<body{% if request.resolver_match.url_name == 'login' %} class="login-page"{% endif %}>
+    {% if request.resolver_match.url_name != 'login' %}
+    <!-- Navbar superior -->
+    <nav class="navbar navbar-expand-lg navbar-dark bg-municipal shadow-sm sticky-top">
+        <div class="container-fluid px-3">
+            <button class="btn-menu-toggle me-2" type="button" id="sidebarMenuToggle" aria-controls="sidebarMenu" aria-expanded="false" title="Abrir menú" aria-label="Abrir menú">
+                <i class="bi bi-list"></i>
             </button>
 
-            <div class="collapse navbar-collapse" id="navbarNav">
-                <ul class="navbar-nav me-auto">
-                    <li class="nav-item">
-                        <a class="nav-link fw-semibold" href="{% url 'personal:functionary_list' %}">Funcionarios</a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link fw-semibold" href="{% url 'personal:delegation_list' %}">Delegaciones</a>
-                    </li>
-                </ul>
+            <a class="navbar-brand d-flex align-items-center me-auto" href="{% url 'dashboard_redirect' %}">
+                <img src="{% static 'images/faroletras.png' %}" alt="Logo SGR" class="navbar-brand-logo me-2">
+                <span class="fw-bold fs-5 tracking-tight d-none d-sm-inline"></span>
+            </a>
 
-                {% if user.is_authenticated %}
-                <form method="post" action="{% url 'logout' %}" class="d-flex align-items-center m-0">
-                    {% csrf_token %}
-                    <span class="text-white-50 me-2 small">Conectado como <strong>{{ user.username }}</strong></span>
-                    <button type="submit" class="btn btn-outline-light btn-sm">Salir</button>
-                </form>
-                {% endif %}
+            {% if user.is_authenticated %}
+            {% if user.functionary %}
+            <div class="text-white small text-end me-2 active-delegation">
+                <span class="delegation-code">{{ user.functionary.delegation.code|default:"Sin código" }}</span>
+                <span aria-hidden="true">·</span>
+                <span>{{ user.functionary.delegation.name }}</span>
             </div>
+            {% endif %}
+            <div class="nav-account-actions">
+                <div class="dropdown user-menu">
+                    <button class="btn btn-outline-light btn-sm dropdown-toggle d-flex align-items-center gap-2 px-2 py-1 user-menu-trigger" type="button" data-bs-toggle="dropdown" aria-expanded="false" aria-label="Menú de {{ user.username }}">
+                        <i class="bi bi-person-circle" aria-hidden="true"></i>
+                        <span class="d-none d-sm-inline fw-semibold">{{ user.username }}</span>
+                    </button>
+                    <ul class="dropdown-menu dropdown-menu-end shadow">
+                        <li><h6 class="dropdown-header">Usuario activo</h6></li>
+                        <li><span class="dropdown-item-text text-muted small fw-medium">{{ user.email|default:user.username }}</span></li>
+                    </ul>
+                </div>
+                <form method="post" action="{% url 'logout' %}" class="m-0">
+                    {% csrf_token %}
+                    <button type="submit" class="btn btn-outline-light btn-sm nav-logout-button d-flex align-items-center gap-2 px-2 py-1" aria-label="Cerrar sesión" title="Cerrar sesión">
+                        <i class="bi bi-box-arrow-right" aria-hidden="true"></i>
+                        <span class="d-none d-md-inline">Salir</span>
+                    </button>
+                </form>
+            </div>
+            {% endif %}
         </div>
     </nav>
 
-    <div class="container mt-4">
+    <div class="app-layout" id="appLayout">
+    <!-- Sidebar Offcanvas Compacto y No Bloqueante -->
+    <div class="offcanvas offcanvas-start offcanvas-municipal" 
+         data-bs-scroll="true" 
+         data-bs-backdrop="false" 
+         tabindex="-1" 
+         id="sidebarMenu" 
+         aria-labelledby="sidebarMenuLabel">
+        
+        <div class="offcanvas-header">
+            <h5 class="offcanvas-title d-flex align-items-center fs-6 fw-bold" id="sidebarMenuLabel">
+                <img src="{% static 'images/faroletras.png' %}" alt="Logo SGR" style="height: 24px;" class="me-2">
+                Menú SGR
+            </h5>
+            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="offcanvas" aria-label="Cerrar"></button>
+        </div>
+
+        <div class="offcanvas-body p-0">
+            <button class="sidebar-pin-toggle" type="button" id="sidebarPinToggle"
+                    aria-label="Mantener el menú abierto y ajustar el contenido"
+                    aria-pressed="false" title="Mantener menú abierto">
+                <i class="bi bi-pin-angle" aria-hidden="true"></i>
+                <span id="sidebarPinLabel">Fijar menú abierto</span>
+            </button>
+            <div class="sidebar-section-title">Principal</div>
+            <a href="{% url 'dashboard_redirect' %}" class="sidebar-link {% if 'dashboard' in request.path %}active{% endif %}">
+                <i class="bi bi-speedometer2"></i> Dashboard
+            </a>
+
+            <div class="sidebar-section-title">Gestión</div>
+            {% if user.is_superuser or user.functionary.is_delegate or user.functionary.is_admin %}
+            <a href="{% url 'activities:traffic_light' %}" class="sidebar-link {% if 'semaforo' in request.path or 'traffic' in request.path %}active{% endif %}">
+                <i class="bi bi-stoplights"></i> Semáforo
+            </a>
+            {% endif %}
+            {% if user.is_staff or user.is_superuser or user.functionary %}
+            <a href="{% url 'atenciones:attention_list' %}" class="sidebar-link {% if 'atenciones' in request.path %}active{% endif %}">
+                <i class="bi bi-chat-left-text-fill"></i> Atención ciudadana
+            </a>
+            <a href="{% url 'agenda:commitment_list' %}" class="sidebar-link {% if 'agenda' in request.path or 'commitment' in request.path %}active{% endif %}">
+                <i class="bi bi-calendar-check-fill"></i> Tubo de Trabajo
+            </a>
+            <a href="{% url 'activities:activity_list' %}" class="sidebar-link {% if 'activities' in request.path and 'evidencias' not in request.path and 'traffic' not in request.path %}active{% endif %}">
+                <i class="bi bi-clipboard2-check-fill"></i> Actividades
+            </a>
+            <a href="{% url 'activities:evidence_list' %}" class="sidebar-link {% if 'evidencias' in request.path %}active{% endif %}">
+                <i class="bi bi-file-earmark-image-fill"></i> Evidencias
+            </a>
+            {% endif %}
+
+            {% if user.is_superuser or user.functionary.is_admin %}
+            <div class="sidebar-section-title">Administración</div>
+            <a href="{% url 'personal:functionary_list' %}" class="sidebar-link {% if 'functionaries' in request.path %}active{% endif %}">
+                <i class="bi bi-people-fill"></i> Funcionarios
+            </a>
+            <a href="{% url 'personal:role_list' %}" class="sidebar-link {% if '/roles/' in request.path %}active{% endif %}">
+                <i class="bi bi-shield-lock-fill"></i> Roles y permisos
+            </a>
+            <a href="{% url 'personal:delegation_list' %}" class="sidebar-link {% if 'delegations' in request.path %}active{% endif %}">
+                <i class="bi bi-geo-alt-fill"></i> Delegaciones
+            </a>
+            <a href="{% url 'configuration:goal_list' %}" class="sidebar-link {% if 'metas' in request.path %}active{% endif %}">
+                <i class="bi bi-bar-chart-fill"></i> Metas y ponderaciones
+            </a>
+            <a href="{% url 'configuration:period_create' %}" class="sidebar-link {% if 'periodos' in request.path %}active{% endif %}">
+                <i class="bi bi-calendar-plus"></i> Nuevo período
+            </a>
+            <a href="{% url 'configuration:measuring_list' %}" class="sidebar-link {% if 'items' in request.path %}active{% endif %}">
+                <i class="bi bi-list-check"></i> Ítems de medición
+            </a>
+            <a href="{% url 'atenciones:attention_type_list' %}" class="sidebar-link {% if 'tipos' in request.path %}active{% endif %}">
+                <i class="bi bi-tags-fill"></i> Tipos de atención
+            </a>
+            <a href="{% url 'atenciones:subattention_list' %}" class="sidebar-link {% if 'subatenciones' in request.path %}active{% endif %}">
+                <i class="bi bi-diagram-3-fill"></i> Subatenciones
+            </a>
+            {% endif %}
+        </div>
+    </div>
+    {% endif %}
+
+    <div class="app-main">
+    <!-- Contenido Principal -->
+    <div class="{% if request.resolver_match.url_name == 'login' %}login-content{% else %}container-fluid px-4 mt-4 page-content{% endif %}">
         {% for message in messages %}
-        <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
-            {{ message }}
+        <div class="alert alert-{{ message.tags }} alert-dismissible fade show"
+             data-swal-message data-swal-icon="{% if 'error' in message.tags or 'danger' in message.tags %}error{% elif 'success' in message.tags %}success{% elif 'warning' in message.tags %}warning{% else %}info{% endif %}"
+             role="alert">
+            <i class="bi bi-info-circle-fill me-2"></i> {{ message }}
             <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
         </div>
         {% endfor %}
@@ -62,6 +478,193 @@
         {% block content %}{% endblock %}
     </div>
 
+    <!-- Footer -->
+    {% if request.resolver_match.url_name != 'login' %}
+    <footer class="footer-municipal text-center py-3 mt-5">
+        <div class="container-fluid">
+            <span>Sistema de Gestión de Resultados — Ilustre Municipalidad de La Serena</span>
+        </div>
+    </footer>
+    {% endif %}
+    </div>
+    {% if request.resolver_match.url_name != 'login' %}
+    </div>
+    {% endif %}
+
+    <!-- Bootstrap JS Bundle -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            const sidebar = document.getElementById('sidebarMenu');
+            const sidebarToggle = document.getElementById('sidebarMenuToggle');
+            const sidebarPinToggle = document.getElementById('sidebarPinToggle');
+            const closeSidebarButton = sidebar?.querySelector('[data-bs-dismiss="offcanvas"]');
+            const offcanvas = sidebar
+                ? bootstrap.Offcanvas.getOrCreateInstance(sidebar)
+                : null;
+            const pinnedStorageKey = 'sgr-sidebar-pinned';
+
+            function setPinned(isPinned) {
+                document.body.classList.toggle('sidebar-pinned', isPinned);
+                if (sidebarPinToggle) {
+                    sidebarPinToggle.setAttribute('aria-pressed', String(isPinned));
+                    sidebarPinToggle.setAttribute(
+                        'title',
+                        isPinned ? 'Desanclar menú' : 'Mantener menú abierto'
+                    );
+                    sidebarPinToggle.setAttribute(
+                        'aria-label',
+                        isPinned
+                            ? 'Desanclar el menú y volver a modo deslizable'
+                            : 'Mantener el menú abierto y ajustar el contenido'
+                    );
+                    const icon = sidebarPinToggle.querySelector('i');
+                    const label = document.getElementById('sidebarPinLabel');
+                    if (icon) {
+                        icon.className = isPinned
+                            ? 'bi bi-pin-angle-fill'
+                            : 'bi bi-pin-angle';
+                    }
+                    if (label) {
+                        label.textContent = isPinned
+                            ? 'Desfijar menú'
+                            : 'Fijar menú abierto';
+                    }
+                }
+                if (sidebarToggle) {
+                    sidebarToggle.setAttribute('aria-expanded', String(isPinned));
+                    sidebarToggle.setAttribute(
+                        'title',
+                        isPinned ? 'Desanclar menú' : 'Abrir menú'
+                    );
+                }
+                try {
+                    window.localStorage.setItem(pinnedStorageKey, String(isPinned));
+                } catch (error) {
+                    console.warn('No se pudo guardar la preferencia del menú:', error);
+                }
+            }
+
+            if (sidebar && sidebarToggle && offcanvas) {
+                let shouldPin = false;
+                try {
+                    shouldPin = window.innerWidth >= 992
+                        && window.localStorage.getItem(pinnedStorageKey) === 'true';
+                } catch (error) {
+                    console.warn('No se pudo leer la preferencia del menú:', error);
+                }
+                setPinned(shouldPin);
+
+                sidebarToggle.addEventListener('click', function () {
+                    if (document.body.classList.contains('sidebar-pinned')) {
+                        setPinned(false);
+                        offcanvas.hide();
+                        return;
+                    }
+                    offcanvas.toggle();
+                });
+
+                sidebar.addEventListener('shown.bs.offcanvas', function () {
+                    sidebarToggle.setAttribute('aria-expanded', 'true');
+                });
+                sidebar.addEventListener('hidden.bs.offcanvas', function () {
+                    if (!document.body.classList.contains('sidebar-pinned')) {
+                        sidebarToggle.setAttribute('aria-expanded', 'false');
+                    }
+                });
+
+                if (sidebarPinToggle) {
+                    sidebarPinToggle.addEventListener('click', function () {
+                        const isPinned = document.body.classList.contains('sidebar-pinned');
+                        if (isPinned) {
+                            setPinned(false);
+                            offcanvas.hide();
+                        } else {
+                            offcanvas.hide();
+                            setPinned(true);
+                        }
+                    });
+                }
+
+                if (closeSidebarButton) {
+                    closeSidebarButton.addEventListener('click', function () {
+                        if (document.body.classList.contains('sidebar-pinned')) {
+                            setPinned(false);
+                        }
+                    });
+                }
+
+                window.addEventListener('resize', function () {
+                    if (window.innerWidth < 992
+                        && document.body.classList.contains('sidebar-pinned')) {
+                        setPinned(false);
+                        offcanvas.hide();
+                    }
+                });
+            }
+
+            document.querySelectorAll('[data-swal-message]').forEach(function (message) {
+                if (!window.Swal) {
+                    return;
+                }
+
+                Swal.fire({
+                    toast: true,
+                    position: 'top-end',
+                    icon: message.dataset.swalIcon || 'info',
+                    title: 'Notificación',
+                    text: message.textContent.trim(),
+                    showConfirmButton: false,
+                    timer: 4500,
+                    timerProgressBar: true
+                });
+                message.remove();
+            });
+
+            document.querySelectorAll('[data-confirm-delete]').forEach(function (button) {
+                button.addEventListener('click', function (event) {
+                    if (!window.Swal) {
+                        return;
+                    }
+                    event.preventDefault();
+                    const form = button.closest('form');
+                    const label = button.dataset.confirmDelete || '¿Estás seguro que deseas eliminar este registro?';
+
+                    Swal.fire({
+                        title: 'Confirmación',
+                        text: label,
+                        icon: 'warning',
+                        showCancelButton: true,
+                        confirmButtonColor: '#d33',
+                        cancelButtonColor: '#6c757d',
+                        confirmButtonText: 'Sí, eliminar',
+                        cancelButtonText: 'Cancelar'
+                    }).then((result) => {
+                        if (result.isConfirmed && form) {
+                            form.submit();
+                        }
+                    });
+                });
+
+                document.querySelectorAll('form[data-prevent-double-submit]').forEach(function (form) {
+                    form.addEventListener('submit', function (event) {
+                        if (form.dataset.submitted === 'true') {
+                            event.preventDefault();
+                            return;
+                        }
+                        form.dataset.submitted = 'true';
+                        form.querySelectorAll('button[type="submit"]').forEach(function (button) {
+                            button.disabled = true;
+                            button.setAttribute('aria-busy', 'true');
+                            button.innerHTML = '<span class="spinner-border spinner-border-sm me-2" aria-hidden="true"></span>Guardando...';
+                        });
+                    });
+                });
+            });
+        });
+    </script>
+    {% block extra_scripts %}{% endblock %}
 </body>
 </html>

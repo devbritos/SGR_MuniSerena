@@ -1,12 +1,29 @@
-from django.contrib.auth.decorators import login_required, permission_required
+from functools import wraps
+
+from django.contrib.auth.decorators import login_required
+from django.core.exceptions import PermissionDenied
  
  
 def require(perm):
-    """Exige estar logueado y tener el permiso indicado (ej: "personal.add_position").
+    """Exige permiso Django o el rol Administrador, además de iniciar sesión.
  
-    Sin permiso responde 403. Sin login redirige al login.
+    Sin acceso responde 403. Sin login redirige al login.
     """
     def decorator(view):
-        return login_required(permission_required(perm, raise_exception=True)(view))
+        def has_access(user):
+            if user.has_perm(perm) or user.is_superuser:
+                return True
+            functionary = getattr(user, 'functionary', None)
+            return bool(functionary and functionary.is_admin)
+
+        @login_required
+        @wraps(view)
+        def wrapped_view(request, *args, **kwargs):
+            if not has_access(request.user):
+                raise PermissionDenied
+            return view(request, *args, **kwargs)
+
+        return wrapped_view
+
     return decorator
  

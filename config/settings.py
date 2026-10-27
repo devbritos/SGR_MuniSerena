@@ -9,25 +9,45 @@ https://docs.djangoproject.com/en/5.2/topics/settings/
 For the full list of settings and their values, see
 https://docs.djangoproject.com/en/5.2/ref/settings/
 """
- 
+from decouple import config, Csv
 from pathlib import Path
 import os
 from django.contrib.messages import constants as messages
- 
+from django.core.exceptions import ImproperlyConfigured
+from dotenv import load_dotenv 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
- 
+load_dotenv(BASE_DIR / '.env')  # Forzar la lectura del archivo .env
  
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/5.2/howto/deployment/checklist/
  
-# SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure-&kn^$u$y^d**)8lq3=pq(wawhl6=n2f_2gz#+*k=!tvtf7*37_'
+SECRET_KEY = config('SECRET_KEY', default=config('SECRETKEY', default=''))
+if not SECRET_KEY:
+    raise ImproperlyConfigured(
+        'Define SECRET_KEY in the environment or in the .env file.'
+    )
  
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = config('DEBUG', default=False, cast=bool)
  
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = config(
+    'ALLOWED_HOSTS',
+    default='3.82.124.141,localhost,127.0.0.1',
+    cast=Csv(),
+)
+CSRF_TRUSTED_ORIGINS = config(
+    'CSRF_TRUSTED_ORIGINS',
+    default='http://3.82.124.141',
+    cast=Csv(),
+)
+
+# Enable these only after HTTPS is configured on the AWS endpoint.
+SECURE_SSL_REDIRECT = config('SECURE_SSL_REDIRECT', default=False, cast=bool)
+SESSION_COOKIE_SECURE = config('SESSION_COOKIE_SECURE', default=False, cast=bool)
+CSRF_COOKIE_SECURE = config('CSRF_COOKIE_SECURE', default=False, cast=bool)
+SECURE_HSTS_SECONDS = config('SECURE_HSTS_SECONDS', default=0, cast=int)
+SECURE_CONTENT_TYPE_NOSNIFF = True
  
  
 # Application definition
@@ -47,10 +67,12 @@ INSTALLED_APPS = [
     "agenda",
     "analytics",
     "configuration",
+    "atenciones",
 ]
  
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
+    'whitenoise.middleware.WhiteNoiseMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
@@ -77,19 +99,44 @@ TEMPLATES = [
 ]
  
 WSGI_APPLICATION = 'config.wsgi.application'
- 
+EMAIL_HOST = config('EMAIL_HOST', default='')
+EMAIL_PORT = config('EMAIL_PORT', default=587, cast=int)
+EMAIL_HOST_USER = config('EMAIL_HOST_USER', default='')
+EMAIL_HOST_PASSWORD = config('EMAIL_HOST_PASSWORD', default='')
+EMAIL_USE_TLS = config('EMAIL_USE_TLS', default=False, cast=bool)
+EMAIL_USE_SSL = config('EMAIL_USE_SSL', default=False, cast=bool)
+EMAIL_TIMEOUT = config('EMAIL_TIMEOUT', default=10, cast=int)
+EMAIL_BACKEND = config(
+    'EMAIL_BACKEND',
+    default=(
+        'django.core.mail.backends.smtp.EmailBackend'
+        if EMAIL_HOST
+        else 'django.core.mail.backends.console.EmailBackend'
+    ),
+)
+DEFAULT_FROM_EMAIL = config(
+    'DEFAULT_FROM_EMAIL',
+    default='',
+) or EMAIL_HOST_USER or 'webmaster@localhost'
  
 # Database
 # https://docs.djangoproject.com/en/5.2/ref/settings/#databases
- 
+
+    # Producción (AWS con MariaDB)
 DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
+        'default': {
+            'ENGINE': 'django.db.backends.mysql',
+            'NAME': config('DB_NAME', 'dbsgr'),
+            'USER': config('DB_USER', 'admin_sgr'),
+            'PASSWORD': config('DB_PASSWORD', default=''),
+            'HOST': config('DB_HOST'),
+            'PORT': config('DB_PORT', default='3306'),
+            'OPTIONS': {
+                'init_command': "SET sql_mode='STRICT_TRANS_TABLES'",
+            },
+        }
     }
-}
- 
- 
+
 # Password validation
 # https://docs.djangoproject.com/en/5.2/ref/settings/#auth-password-validators
  
@@ -107,6 +154,18 @@ AUTH_PASSWORD_VALIDATORS = [
         'NAME': 'django.contrib.auth.password_validation.NumericPasswordValidator',
     },
 ]
+
+AUTHENTICATION_BACKENDS = [
+    'django.contrib.auth.backends.ModelBackend',
+    'core.backends.FunctionaryRoleBackend',
+]
+PASSWORD_RESET_CODE_TIMEOUT = config(
+    'PASSWORD_RESET_CODE_TIMEOUT',
+    default=600,
+    cast=int,
+)
+if PASSWORD_RESET_CODE_TIMEOUT < 1:
+    raise ImproperlyConfigured('PASSWORD_RESET_CODE_TIMEOUT debe ser mayor que cero.')
  
  
 # Internationalization
@@ -124,19 +183,30 @@ USE_TZ = True
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/5.2/howto/static-files/
  
-STATIC_URL = 'static/'
+STATIC_URL = '/static/'
 STATICFILES_DIRS = [
     os.path.join(BASE_DIR, 'static'),
 ]
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field
- 
+STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
+STORAGES = {
+    'default': {
+        'BACKEND': 'django.core.files.storage.FileSystemStorage',
+    },
+    'staticfiles': {
+        'BACKEND': 'whitenoise.storage.CompressedStaticFilesStorage',
+    },
+}
+MEDIA_URL = '/media/'
+MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
  
  
 # Login / Logout (las rutas "login" y "logout" están en config/urls.py)
 LOGIN_URL = "login"
-LOGIN_REDIRECT_URL = "personal:functionary_list"
+#dashboard_redirect it's in analytics/views
+LOGIN_REDIRECT_URL = 'dashboard_redirect'
 LOGOUT_REDIRECT_URL = "login"
  
 # Bootstrap llama "danger" a los errores

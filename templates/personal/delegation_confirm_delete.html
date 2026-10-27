@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+
+{% block title %}Desactivar delegación — SGR{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-8 col-lg-6">
+        <div class="card border-0 shadow-sm">
+            <div class="card-header bg-warning text-dark">
+                <h1 class="h5 mb-0"><i class="bi bi-exclamation-triangle me-2"></i>Desactivar delegación</h1>
+            </div>
+            <div class="card-body p-4">
+                <p>¿Deseas desactivar la delegación <strong>{{ object.name }}</strong>?</p>
+                <p class="text-muted">El registro se conservará, pero dejará de aparecer entre las delegaciones activas.</p>
+                <form method="post" class="d-flex justify-content-end gap-2 pt-3 border-top">
+                    {% csrf_token %}
+                    <a href="{% url 'personal:delegation_list' %}" class="btn btn-outline-secondary">Cancelar</a>
+                    <button type="submit" class="btn btn-warning" data-confirm-delete="La delegación quedará inactiva.">
+                        Desactivar
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

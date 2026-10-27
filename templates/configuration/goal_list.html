@@ -1,0 +1,91 @@
+{% extends "base.html" %}
+{% block title %}Metas y ponderaciones por cargo{% endblock %}
+{% block content %}
+<div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3 mb-3">
+    <div>
+        <h2 class="mb-1">Metas y ponderaciones por cargo</h2>
+        <p class="text-muted mb-0">Define el valor objetivo de cada meta y cuánto aporta al cumplimiento del cargo.</p>
+    </div>
+    {% if user.is_superuser or user.functionary.is_admin %}
+    <div class="d-flex flex-wrap gap-2">
+        <a href="{% url 'configuration:period_create' %}" class="btn btn-outline-primary">
+            <i class="bi bi-calendar-plus me-1" aria-hidden="true"></i>Crear período
+        </a>
+        <a href="{% url 'configuration:goal_create' %}" class="btn btn-primary">
+            <i class="bi bi-plus-lg me-1" aria-hidden="true"></i>Nueva meta
+        </a>
+    </div>
+    {% endif %}
+</div>
+
+<form method="get" class="row g-2 mb-4">
+    <div class="col-md-5">
+        <input class="form-control" name="q" type="search" value="{{ search_query }}" placeholder="Buscar cargo, ítem o unidad">
+    </div>
+    <div class="col-md-3">
+        <select name="period" class="form-select">
+            <option value="">Todos los períodos</option>
+            {% for p in periods %}
+            <option value="{{ p.id }}" {% if selected_period == p.id|stringformat:"s" %}selected{% endif %}>
+                {{ p.start_date }} — {{ p.end_date }}
+            </option>
+            {% endfor %}
+        </select>
+    </div>
+    {% if showing_all %}<input type="hidden" name="all" value="1">{% endif %}
+    <div class="col-auto"><button type="submit" class="btn btn-outline-secondary"><i class="bi bi-search"></i> Buscar</button></div>
+    <div class="col-auto"><a class="btn btn-outline-success" href="{{ request.path }}?{{ query_params }}{% if query_params %}&{% endif %}export=xlsx"><i class="bi bi-file-earmark-excel"></i> Exportar a Excel</a></div>
+    <div class="col-auto">
+        {% if showing_all %}
+        <a class="btn btn-outline-secondary" href="{% url 'configuration:goal_list' %}">Ver activas</a>
+        {% else %}
+        <a class="btn btn-outline-secondary" href="{% url 'configuration:goal_list' %}?all=1">Ver todas</a>
+        {% endif %}
+    </div>
+</form>
+
+{% for grupo in resumen %}
+<div class="card mb-3">
+    <div class="card-body">
+        <div class="d-flex justify-content-between align-items-center mb-2">
+            <h5 class="mb-0">{{ grupo.position }}</h5>
+            <span class="badge {% if grupo.total_weight == 100 %}bg-success{% else %}bg-danger{% endif %} fs-6">
+                Total: {{ grupo.total_weight }}%
+            </span>
+        </div>
+        <p class="text-muted small mb-2">Período: {{ grupo.period }}</p>
+        <table class="table table-sm mb-0">
+            <thead>
+                <tr><th>Ítem de medición</th><th>Valor objetivo</th><th>Unidad</th><th>Ponderación</th><th>Estado</th><th>Acciones</th></tr>
+            </thead>
+            <tbody>
+                {% for g in grupo.items %}
+                <tr>
+                    <td>{{ g.measuring }}</td>
+                    <td>{{ g.target_value }}</td>
+                    <td>{{ g.unity }}</td>
+                    <td>{{ g.weight }}%</td>
+                    <td>{% if g.validity %}<span class="badge bg-success">Activa</span>{% else %}<span class="badge bg-secondary">Inactiva</span>{% endif %}</td>
+                    <td>
+                        <a class="btn btn-sm btn-outline-primary" href="{% url 'configuration:goal_update' g.pk %}"><i class="bi bi-pencil"></i></a>
+                        {% if g.validity %}
+                        <a class="btn btn-sm btn-outline-danger" href="{% url 'configuration:goal_deactivate' g.pk %}"><i class="bi bi-trash"></i></a>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% if grupo.total_weight != 100 %}
+        <div class="alert alert-warning mt-2 mb-0 py-2 small">
+            <i class="bi bi-exclamation-triangle-fill me-1"></i>
+            La suma de ponderadores no llega a 100% (RN-001).
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% empty %}
+<p class="text-muted text-center">No hay metas registradas todavía.</p>
+{% endfor %}
+{% include "_pagination.html" %}
+{% endblock %}

@@ -1,0 +1,57 @@
+{% extends "base.html" %}
+
+{% block title %}Roles asignados — SGR{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h1 class="h3 fw-bold mb-1"><i class="bi bi-shield-check text-primary me-2"></i>Roles asignados</h1>
+        <p class="text-muted mb-0">Asignaciones de roles a funcionarios</p>
+    </div>
+    {% if perms.personal.add_functionaryrole or user.is_superuser or user.functionary.is_admin %}
+    <a href="{% url 'personal:functionary_role_create' %}" class="btn btn-primary"><i class="bi bi-plus-lg me-1"></i>Asignar rol</a>
+    {% endif %}
+</div>
+<form method="get" class="card card-body border-0 shadow-sm mb-3">
+    <label for="search-roles" class="form-label">Buscar asignaciones</label>
+    <div class="d-flex gap-2 mb-3">
+        <input id="search-roles" class="form-control" type="search" name="q" value="{{ search_query }}" placeholder="Funcionario o rol">
+        <button class="btn btn-outline-secondary" type="submit"><i class="bi bi-search"></i> Buscar</button>
+        <a class="btn btn-outline-success text-nowrap" href="{{ request.path }}?{{ query_params }}{% if query_params %}&{% endif %}export=xlsx"><i class="bi bi-file-earmark-excel"></i> Excel</a>
+    </div>
+    <label for="filter-functionary" class="form-label">Funcionario</label>
+    <div class="d-flex gap-2">
+        <select id="filter-functionary" name="functionary" class="form-select">
+            <option value="">Todos</option>
+            {% for functionary in functionaries %}
+            <option value="{{ functionary.pk }}" {% if request.GET.functionary == functionary.pk|stringformat:"s" %}selected{% endif %}>{{ functionary.full_name }}</option>
+            {% endfor %}
+        </select>
+        <button class="btn btn-outline-primary" type="submit">Filtrar</button>
+        <a href="{% url 'personal:functionary_role_list' %}" class="btn btn-outline-secondary">Limpiar</a>
+    </div>
+</form>
+<div class="card border-0 shadow-sm">
+    <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0">
+            <thead class="table-dark"><tr><th class="ps-3">Funcionario</th><th>Rol</th><th class="text-end pe-3">Acciones</th></tr></thead>
+            <tbody>
+                {% for assignment in object_list %}
+                <tr>
+                    <td class="ps-3">{{ assignment.functionary.full_name }}</td>
+                    <td>{% include "personal/_role_badge.html" with role=assignment.role %}</td>
+                    <td class="text-end pe-3">
+                        {% if perms.personal.delete_functionaryrole or user.is_superuser or user.functionary.is_admin %}
+                        <a href="{% url 'personal:functionary_role_delete' assignment.pk %}" class="btn btn-sm btn-outline-danger" aria-label="Quitar rol"><i class="bi bi-trash3"></i></a>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% empty %}
+                <tr><td colspan="3" class="text-center text-muted py-4">No hay roles asignados.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% include "_pagination.html" %}
+{% endblock %}

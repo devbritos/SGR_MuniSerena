@@ -1,0 +1,326 @@
+{% extends "base.html" %}
+{% load crispy_forms_tags %}
+{% block title %}{% if object %}Editar atención{% else %}Registrar atención ciudadana{% endif %}{% endblock %}
+{% block extra_head %}
+<style>
+    .attention-form-page {
+        max-width: 900px;
+        margin: 0 auto;
+    }
+    .attention-form-heading {
+        display: flex;
+        align-items: flex-start;
+        gap: 1rem;
+        margin-bottom: 1.5rem;
+    }
+    .attention-form-icon {
+        display: grid;
+        width: 3.25rem;
+        height: 3.25rem;
+        flex: 0 0 auto;
+        place-items: center;
+        border-radius: 1rem;
+        background: rgba(173, 0, 0, 0.08);
+        color: var(--municipal-red);
+        font-size: 1.4rem;
+    }
+    .attention-form-heading h1 {
+        margin-bottom: 0.35rem;
+        color: #252a30;
+        font-size: clamp(1.45rem, 3vw, 1.9rem);
+        font-weight: 700;
+        letter-spacing: -0.025em;
+    }
+    .attention-form-heading p {
+        max-width: 44rem;
+        margin-bottom: 0;
+        color: #68717a;
+    }
+    .attention-form-card {
+        overflow: hidden;
+        border: 1px solid #e5e7eb;
+        border-radius: 1rem;
+        background: #fff;
+        box-shadow: 0 0.8rem 2.2rem rgba(35, 25, 25, 0.07);
+    }
+    .attention-form-section {
+        padding: clamp(1.15rem, 3vw, 1.75rem);
+    }
+    .attention-form-section + .attention-form-section {
+        border-top: 1px solid #edf0f2;
+    }
+    .attention-section-heading {
+        display: flex;
+        align-items: flex-start;
+        gap: 0.8rem;
+        margin-bottom: 1.25rem;
+    }
+    .attention-section-heading i {
+        margin-top: 0.1rem;
+        color: var(--municipal-red);
+        font-size: 1.1rem;
+    }
+    .attention-section-heading h2 {
+        margin: 0 0 0.2rem;
+        color: #343a40;
+        font-size: 1rem;
+        font-weight: 700;
+    }
+    .attention-section-heading p {
+        margin: 0;
+        color: #747d86;
+        font-size: 0.875rem;
+    }
+    .attention-edit-summary {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 0.75rem;
+        margin-bottom: 1.25rem;
+    }
+    .attention-edit-summary-item {
+        min-width: 0;
+        padding: 0.8rem 0.9rem;
+        border: 1px solid #e7eaed;
+        border-radius: 0.75rem;
+        background: #fafbfc;
+    }
+    .attention-edit-summary-item span {
+        display: block;
+        margin-bottom: 0.2rem;
+        color: #747d86;
+        font-size: 0.75rem;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+    }
+    .attention-edit-summary-item strong {
+        display: block;
+        overflow-wrap: anywhere;
+        color: #343a40;
+        font-size: 0.9rem;
+        font-weight: 600;
+    }
+    .attention-form-page .form-label {
+        font-size: 0.9rem;
+    }
+    .attention-form-page .form-control,
+    .attention-form-page .form-select {
+        min-height: 2.8rem;
+    }
+    .attention-form-page textarea.form-control {
+        min-height: 8rem;
+    }
+    .attention-form-actions {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 1rem;
+        padding: 1rem clamp(1.15rem, 3vw, 1.75rem);
+        border-top: 1px solid #edf0f2;
+        background: #fafbfc;
+    }
+    .attention-form-actions .btn {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.45rem;
+    }
+    .attention-form-note {
+        margin: 0;
+        color: #68717a;
+        font-size: 0.825rem;
+    }
+    @media (max-width: 767.98px) {
+        .attention-edit-summary {
+            grid-template-columns: 1fr;
+        }
+    }
+    @media (max-width: 575.98px) {
+        .attention-form-heading {
+            gap: 0.75rem;
+        }
+        .attention-form-icon {
+            width: 2.8rem;
+            height: 2.8rem;
+            border-radius: 0.85rem;
+        }
+        .attention-form-actions {
+            align-items: stretch;
+            flex-direction: column-reverse;
+        }
+        .attention-form-action-buttons {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+        }
+    }
+</style>
+{% endblock %}
+{% block content %}
+<main class="attention-form-page">
+    <div class="attention-form-heading">
+        <div class="attention-form-icon" aria-hidden="true">
+            <i class="bi bi-chat-left-text"></i>
+        </div>
+        <div>
+            <h1>{% if object %}Editar atención ciudadana{% else %}Registrar atención ciudadana{% endif %}</h1>
+            <p>
+                {% if object %}
+                Revisa y actualiza la información de esta solicitud. La persona responsable y la delegación se mantienen.
+                {% else %}
+                Registra la solicitud y describe cómo podemos ayudar a la persona.
+                {% endif %}
+            </p>
+        </div>
+    </div>
+
+    {% if not has_active_attention_types %}
+    <div class="alert alert-warning" role="alert">
+        <h2 class="h6"><i class="bi bi-exclamation-triangle me-1" aria-hidden="true"></i>No hay tipos de atención activos</h2>
+        <p class="mb-2">Para registrar atenciones, primero se debe crear y activar al menos un tipo de atención.</p>
+        {% if can_manage_attention_types %}
+        <a class="btn btn-sm btn-primary" href="{% url 'atenciones:attention_type_create' %}">
+            <i class="bi bi-plus-lg me-1" aria-hidden="true"></i>Crear tipo de atención
+        </a>
+        {% else %}
+        <p class="mb-0">Solicita al administrador que configure el catálogo de tipos de atención.</p>
+        {% endif %}
+    </div>
+    {% endif %}
+
+    <div class="attention-form-card">
+        {% if object %}
+        <div class="attention-form-section">
+            <div class="alert alert-info d-flex align-items-start gap-2 mb-0" role="note">
+                <i class="bi bi-info-circle mt-1" aria-hidden="true"></i>
+                <div>Los cambios se aplicarán al registro existente. La delegación y el usuario responsable no se pueden modificar desde este formulario.</div>
+            </div>
+        </div>
+        <div class="attention-form-section">
+            <div class="attention-edit-summary" aria-label="Datos del registro">
+                <div class="attention-edit-summary-item">
+                    <span>Delegación</span>
+                    <strong>{{ object.delegation.name }}</strong>
+                </div>
+                <div class="attention-edit-summary-item">
+                    <span>Responsable</span>
+                    <strong>{{ object.functionary.full_name }}</strong>
+                </div>
+                <div class="attention-edit-summary-item">
+                    <span>Registrada</span>
+                    <strong><time datetime="{{ object.created_at|date:'c' }}">{{ object.created_at|date:"d/m/Y H:i" }}</time></strong>
+                </div>
+            </div>
+        </div>
+        {% elif can_manage_attention_types and has_active_attention_types %}
+        <div class="attention-form-section d-flex justify-content-end">
+            <a class="btn btn-sm btn-outline-primary" href="{% url 'atenciones:attention_type_list' %}">
+                <i class="bi bi-gear me-1" aria-hidden="true"></i>Administrar tipos de atención
+            </a>
+        </div>
+        {% else %}
+        <div class="attention-form-section">
+            <div class="alert alert-info d-flex align-items-start gap-2 mb-0" role="note">
+                <i class="bi bi-info-circle mt-1" aria-hidden="true"></i>
+                <div>La delegación y el usuario responsable se asignan automáticamente desde tu sesión.</div>
+            </div>
+        </div>
+        {% endif %}
+
+        <form method="post">
+            {% csrf_token %}
+            {% if form.non_field_errors %}
+            <div class="alert alert-danger m-3 mb-0" role="alert">{{ form.non_field_errors }}</div>
+            {% endif %}
+            <section class="attention-form-section" aria-labelledby="attention-requester-heading">
+                <div class="attention-section-heading">
+                    <i class="bi bi-person" aria-hidden="true"></i>
+                    <div>
+                        <h2 id="attention-requester-heading">Datos de la persona</h2>
+                        <p>Indica quién solicita la atención y cómo contactarle.</p>
+                    </div>
+                </div>
+                <div class="row g-3">
+                    <div class="col-md-7">{{ form.requester_name|as_crispy_field }}</div>
+                    <div class="col-md-5">{{ form.requester_contact|as_crispy_field }}</div>
+                </div>
+            </section>
+
+            <section class="attention-form-section" aria-labelledby="attention-category-heading">
+                <div class="attention-section-heading">
+                    <i class="bi bi-tags" aria-hidden="true"></i>
+                    <div>
+                        <h2 id="attention-category-heading">Clasificación</h2>
+                        <p>Selecciona el tipo y la subatención que mejor describen la solicitud.</p>
+                    </div>
+                </div>
+                <div class="row g-3">
+                    <div class="col-md-6">{{ form.attention_type|as_crispy_field }}</div>
+                    <div class="col-md-6">{{ form.sub_attention|as_crispy_field }}</div>
+                </div>
+                <div id="subattention-error" class="alert alert-danger d-none mb-0" role="alert" aria-live="polite"></div>
+            </section>
+
+            <section class="attention-form-section" aria-labelledby="attention-description-heading">
+                <div class="attention-section-heading">
+                    <i class="bi bi-card-text" aria-hidden="true"></i>
+                    <div>
+                        <h2 id="attention-description-heading">Detalle de la atención</h2>
+                        <p>Resume la solicitud y agrega la información importante para su seguimiento.</p>
+                    </div>
+                </div>
+                {{ form.description|as_crispy_field }}
+            </section>
+
+            <div class="attention-form-actions">
+                <p class="attention-form-note"><span class="text-danger" aria-hidden="true">*</span> Completa los campos obligatorios.</p>
+                <div class="attention-form-action-buttons d-flex gap-2">
+                    <a class="btn btn-outline-secondary" href="{% url 'atenciones:attention_list' %}">
+                        <i class="bi bi-arrow-left" aria-hidden="true"></i>Cancelar
+                    </a>
+                    {% if has_active_attention_types %}
+                    <button class="btn btn-primary" type="submit">
+                        <i class="bi bi-check2" aria-hidden="true"></i>{% if object %}Guardar cambios{% else %}Registrar atención{% endif %}
+                    </button>
+                    {% endif %}
+                </div>
+            </div>
+        </form>
+    </div>
+</main>
+{% endblock %}
+{% block extra_scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    const typeSelect = document.getElementById('id_attention_type');
+    const subSelect = document.getElementById('id_sub_attention');
+    const errorBox = document.getElementById('subattention-error');
+    if (!typeSelect || !subSelect || !errorBox) return;
+
+    const endpointTemplate = "{% url 'atenciones:subattention_options' 0 %}";
+    typeSelect.addEventListener('change', async function () {
+        subSelect.replaceChildren(new Option('---------', ''));
+        subSelect.disabled = true;
+        errorBox.classList.add('d-none');
+        if (!typeSelect.value) {
+            subSelect.disabled = false;
+            return;
+        }
+        try {
+            const endpoint = endpointTemplate.replace('/0/', '/' + typeSelect.value + '/');
+            const response = await fetch(endpoint, {
+                headers: {'X-Requested-With': 'XMLHttpRequest'}
+            });
+            if (!response.ok) throw new Error('No se pudieron cargar las subatenciones.');
+            const payload = await response.json();
+            payload.results.forEach(function (item) {
+                subSelect.add(new Option(item.name, item.id));
+            });
+            subSelect.disabled = false;
+        } catch (error) {
+            errorBox.textContent = error.message;
+            errorBox.classList.remove('d-none');
+        }
+    });
+});
+</script>
+{% endblock %}

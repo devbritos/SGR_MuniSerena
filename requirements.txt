@@ -4,3 +4,9 @@ sqlparse==0.6.0
 tzdata==2026.4
 django-crispy-forms>=2.3
 crispy-bootstrap5>=2024.10
+whitenoise>=6.9,<7.0
+python-decouple
+python-dotenv
+gunicorn
+mysqlclient>=2.2.7
+openpyxl>=3.1.5
