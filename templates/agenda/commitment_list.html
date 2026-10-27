@@ -180,6 +180,11 @@
                             <a href="{% url 'agenda:commitment_update' c.id %}" class="btn btn-sm btn-outline-primary px-2 py-1" title="Editar / Cambiar estado">
                                 <i class="bi bi-pencil-fill"></i>
                             </a>
+                            {% if can_delete_commitments %}
+                            <a href="{% url 'agenda:commitment_delete' c.id %}" class="btn btn-sm btn-outline-danger px-2 py-1" title="Eliminar compromiso" aria-label="Eliminar compromiso #{{ c.id }}">
+                                <i class="bi bi-trash3"></i>
+                            </a>
+                            {% endif %}
                         </td>
                     </tr>
                     {% empty %}

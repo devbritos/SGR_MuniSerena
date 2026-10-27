@@ -1,7 +1,10 @@
 from django.test import TestCase
 from datetime import timedelta
+from tempfile import TemporaryDirectory
 
 from django.contrib.auth.models import User
+from django.core.files.uploadedfile import SimpleUploadedFile
+from django.test import override_settings
 from django.urls import reverse
 from django.utils import timezone
 
@@ -113,6 +116,61 @@ class StaffEvidenceAccessTests(TestCase):
         self.assertEqual(self.evidence.validity_state, Evidence.Validity.APPROVED)
         self.assertEqual(self.evidence.date_validity, timezone.localdate())
 
+    def test_functionary_cannot_review_their_own_evidence(self):
+        verifier_role = Role.objects.create(role_name=Role.VERIFIER)
+        FunctionaryRole.objects.create(
+            functionary=self.functionary,
+            role=verifier_role,
+        )
+        self.client.force_login(self.owner_user)
+        validate_url = reverse(
+            'activities:evidence_validate',
+            args=[self.evidence.pk],
+        )
+
+        list_response = self.client.get(reverse('activities:evidence_list'))
+        get_response = self.client.get(validate_url)
+        post_response = self.client.post(
+            validate_url,
+            {
+                'validity_state': Evidence.Validity.APPROVED,
+                'observations_validity': '',
+            },
+        )
+
+        self.assertNotContains(list_response, validate_url)
+        self.assertContains(list_response, 'No puedes validar tu propia evidencia')
+        self.assertEqual(get_response.status_code, 404)
+        self.assertEqual(post_response.status_code, 404)
+        self.evidence.refresh_from_db()
+        self.assertEqual(self.evidence.validity_state, Evidence.Validity.PENDING)
+
+    def test_admin_can_review_their_own_evidence(self):
+        self.functionary.user = self.staff_user
+        self.functionary.save(update_fields=['user', 'updated_at'])
+        validate_url = reverse(
+            'activities:evidence_validate',
+            args=[self.evidence.pk],
+        )
+
+        list_response = self.client.get(reverse('activities:evidence_list'))
+        post_response = self.client.post(
+            validate_url,
+            {
+                'validity_state': Evidence.Validity.APPROVED,
+                'observations_validity': '',
+            },
+        )
+
+        self.assertContains(list_response, validate_url)
+        self.assertNotContains(
+            list_response,
+            'No puedes validar tu propia evidencia',
+        )
+        self.assertRedirects(post_response, reverse('activities:evidence_list'))
+        self.evidence.refresh_from_db()
+        self.assertEqual(self.evidence.validity_state, Evidence.Validity.APPROVED)
+
     def test_staff_can_view_and_edit_other_users_commitments(self):
         list_response = self.client.get(reverse('agenda:commitment_list'))
         edit_response = self.client.get(
@@ -211,6 +269,7 @@ class ActivityValidationAndTrafficLightTests(TestCase):
             names='Verificador',
             lastnames='Semáforo',
         )
+        self.verifier_functionary = verifier_functionary
         FunctionaryRole.objects.create(
             functionary=verifier_functionary,
             role=self.verifier_role,
@@ -255,6 +314,15 @@ class ActivityValidationAndTrafficLightTests(TestCase):
         self.assertEqual(Activity.objects.count(), initial_count + 1)
 
     def test_activity_advances_semaphore_only_after_validation(self):
+        evidence = Evidence.objects.create(
+            name='Respaldo de la actividad',
+            author='Funcionario responsable',
+            date_evidence=timezone.localdate(),
+            metadata='Evidencia de prueba para validar actividad.',
+            file='evidences/test.pdf',
+            activity=self.activity,
+            functionary=self.functionary,
+        )
         self.client.force_login(self.admin)
 
         pending_response = self.client.get(
@@ -266,18 +334,24 @@ class ActivityValidationAndTrafficLightTests(TestCase):
             ],
             0,
         )
+        self.assertEqual(
+            pending_response.context['traffic_light_data'][0]['status'],
+            'red',
+        )
 
         self.client.force_login(self.verifier)
         validation_response = self.client.post(
-            reverse('activities:activity_validate', args=[self.activity.pk]),
-            {'state_validity': 'VALIDATED'},
+            reverse('activities:evidence_validate', args=[evidence.pk]),
+            {'validity_state': Evidence.Validity.APPROVED},
         )
         self.assertRedirects(
             validation_response,
-            reverse('activities:activity_list'),
+            reverse('activities:evidence_list'),
         )
         self.activity.refresh_from_db()
         self.assertEqual(self.activity.state_validity, 'VALIDATED')
+        evidence.refresh_from_db()
+        self.assertEqual(evidence.validity_state, Evidence.Validity.APPROVED)
 
         self.client.force_login(self.admin)
         progress_response = self.client.get(
@@ -289,6 +363,15 @@ class ActivityValidationAndTrafficLightTests(TestCase):
             ],
             50,
         )
+        self.assertEqual(
+            progress_response.context['traffic_light_data'][0]['status'],
+            'green',
+        )
+        self.assertContains(
+            progress_response,
+            'traffic-light-indicator--green',
+        )
+        self.assertContains(progress_response, 'En línea con lo esperado')
 
     def test_functionary_can_view_only_their_own_traffic_light(self):
         self.client.force_login(self.functionary_user)
@@ -305,6 +388,18 @@ class ActivityValidationAndTrafficLightTests(TestCase):
         )
 
     def test_traffic_light_warns_when_validated_activity_has_no_matching_goal(self):
+        Evidence.objects.create(
+            name='Respaldo de actividad sin meta',
+            author='Funcionario responsable',
+            date_evidence=timezone.localdate(),
+            metadata='Evidencia de prueba.',
+            file='evidences/test.pdf',
+            activity=self.activity,
+            functionary=self.functionary,
+            validity_state=Evidence.Validity.APPROVED,
+            date_validity=timezone.localdate(),
+            verificator=self.verifier_functionary,
+        )
         self.activity.state_validity = 'VALIDATED'
         self.activity.save(update_fields=['state_validity'])
         mismatched_position = Position.objects.create(
@@ -323,46 +418,36 @@ class ActivityValidationAndTrafficLightTests(TestCase):
             'actividad(es) validada(s) no se están contabilizando',
         )
         self.assertFalse(
-            response.context['traffic_light_data'][0]['has_active_goals']
+            next(
+                item['has_active_goals']
+                for item in response.context['traffic_light_data']
+                if item['functionary'].pk == self.functionary.pk
+            )
         )
+        item = next(
+            item
+            for item in response.context['traffic_light_data']
+            if item['functionary'].pk == self.functionary.pk
+        )
+        self.assertIsNone(item['achieved_percentage'])
+        self.assertEqual(item['status'], 'no_goal')
+        self.assertContains(response, 'traffic-light-indicator--unavailable')
+        self.assertContains(response, '—')
 
-    def test_functionary_cannot_validate_their_own_activity(self):
-        FunctionaryRole.objects.create(
-            functionary=self.functionary,
-            role=self.verifier_role,
-        )
+    def test_legacy_validated_activity_without_approved_evidence_does_not_count(self):
+        self.activity.state_validity = 'VALIDATED'
+        self.activity.save(update_fields=['state_validity'])
         self.client.force_login(self.functionary_user)
 
-        response = self.client.get(
-            reverse('activities:activity_validate', args=[self.activity.pk]),
+        response = self.client.get(reverse('activities:traffic_light'))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(
+            response.context['traffic_light_data'][0]['achieved_percentage'],
+            0,
         )
 
-        self.assertEqual(response.status_code, 404)
-
-    def test_admin_functionary_can_validate_own_activity(self):
-        admin_role = Role.objects.create(role_name=Role.ADMIN)
-        FunctionaryRole.objects.create(
-            functionary=self.functionary,
-            role=admin_role,
-        )
-        self.client.force_login(self.functionary_user)
-
-        list_response = self.client.get(reverse('activities:activity_list'))
-        self.assertContains(
-            list_response,
-            reverse('activities:activity_validate', args=[self.activity.pk]),
-        )
-
-        response = self.client.post(
-            reverse('activities:activity_validate', args=[self.activity.pk]),
-            {'state_validity': 'VALIDATED'},
-        )
-
-        self.assertRedirects(response, reverse('activities:activity_list'))
-        self.activity.refresh_from_db()
-        self.assertEqual(self.activity.state_validity, 'VALIDATED')
-
-    def test_validation_button_only_appears_on_pending_other_functionarys_activities(self):
+    def test_activity_list_links_to_evidence_instead_of_direct_activity_validation(self):
         other_user = User.objects.create_user(username='otro_responsable')
         other_functionary = Functionary.objects.create(
             user=other_user,
@@ -381,40 +466,132 @@ class ActivityValidationAndTrafficLightTests(TestCase):
             measuring=self.measuring,
             state_validity='PENDING',
         )
-        validated_activity = Activity.objects.create(
-            date=timezone.localdate(),
-            application='Actividad ya validada de otro funcionario',
-            taken_action='Acción ya validada.',
-            name_contact='Contacto validado',
-            telephone_contact='12345678',
-            functionary=other_functionary,
-            measuring=self.measuring,
-            state_validity='VALIDATED',
-        )
         self.client.force_login(self.verifier)
 
         response = self.client.get(reverse('activities:activity_list'))
 
         self.assertEqual(response.status_code, 200)
-        self.assertContains(
-            response,
-            reverse('activities:activity_validate', args=[pending_activity.pk]),
-        )
-        self.assertNotContains(
-            response,
-            reverse(
-                'activities:activity_validate',
-                args=[validated_activity.pk],
-            ),
+        self.assertContains(response, 'Pendiente de evidencia')
+        self.assertContains(response, pending_activity.application)
+
+    def test_activity_form_checkbox_redirects_to_evidence_with_activity_selected(self):
+        self.client.force_login(self.functionary_user)
+        payload = {
+            'date': timezone.localdate().isoformat(),
+            'measuring': self.measuring.pk,
+            'application': 'Actividad con evidencia inmediata',
+            'taken_action': 'Gestión respaldada con evidencia.',
+            'quantity': 1,
+            'name_contact': 'Contacto',
+            'telephone_contact': '12345678',
+            'submission_key': 'cb1b4575-57e8-4d0a-8d5c-29b9d4708055',
+            'upload_evidence': 'on',
+        }
+
+        response = self.client.post(
+            reverse('activities:activity_create'),
+            payload,
         )
 
-    def test_already_validated_activity_cannot_be_validated_again(self):
-        self.activity.state_validity = 'VALIDATED'
-        self.activity.save(update_fields=['state_validity'])
+        new_activity = Activity.objects.get(
+            application='Actividad con evidencia inmediata',
+        )
+        expected_url = (
+            f'{reverse("activities:evidence_create")}'
+            f'?activity_id={new_activity.pk}'
+        )
+        self.assertRedirects(response, expected_url)
+
+        evidence_form_response = self.client.get(expected_url)
+        self.assertEqual(evidence_form_response.status_code, 200)
+        self.assertEqual(
+            evidence_form_response.context['form']['activity'].value(),
+            str(new_activity.pk),
+        )
+
+    def test_rejected_evidence_pauses_activity_until_corrected_evidence_is_approved(self):
+        rejected_evidence = Evidence.objects.create(
+            name='Evidencia inicial',
+            author='Funcionario responsable',
+            date_evidence=timezone.localdate(),
+            metadata='Respaldo inicial.',
+            file='evidences/test.pdf',
+            activity=self.activity,
+            functionary=self.functionary,
+        )
         self.client.force_login(self.verifier)
 
-        response = self.client.get(
-            reverse('activities:activity_validate', args=[self.activity.pk]),
+        reject_response = self.client.post(
+            reverse('activities:evidence_validate', args=[rejected_evidence.pk]),
+            {
+                'validity_state': Evidence.Validity.REJECTED,
+                'observations_validity': 'Debe adjuntar el archivo corregido.',
+            },
         )
 
-        self.assertEqual(response.status_code, 404)
+        self.assertRedirects(reject_response, reverse('activities:evidence_list'))
+        self.activity.refresh_from_db()
+        self.assertEqual(self.activity.state_validity, 'REJECTED')
+        self.client.force_login(self.admin)
+        progress = self.client.get(reverse('activities:traffic_light'))
+        self.assertEqual(
+            progress.context['traffic_light_data'][0]['achieved_percentage'],
+            0,
+        )
+
+        self.client.force_login(self.functionary_user)
+        with TemporaryDirectory() as media_root:
+            with override_settings(MEDIA_ROOT=media_root):
+                upload_response = self.client.post(
+                    reverse('activities:evidence_create'),
+                    {
+                        'activity': self.activity.pk,
+                        'name': 'Evidencia corregida',
+                        'author': 'Funcionario responsable',
+                        'date_evidence': timezone.localdate().isoformat(),
+                        'metadata': 'Archivo corregido con el respaldo solicitado.',
+                        'file': SimpleUploadedFile(
+                            'evidencia-corregida.txt',
+                            b'Respaldo corregido.',
+                            content_type='text/plain',
+                        ),
+                    },
+                )
+                self.assertRedirects(
+                    upload_response,
+                    reverse('activities:evidence_list'),
+                )
+                corrected_evidence = Evidence.objects.order_by('-pk').first()
+                self.assertEqual(
+                    corrected_evidence.validity_state,
+                    Evidence.Validity.PENDING,
+                )
+                self.activity.refresh_from_db()
+                self.assertEqual(self.activity.state_validity, 'PENDING')
+
+                self.client.force_login(self.verifier)
+                rejected_resubmission = self.client.post(
+                    reverse(
+                        'activities:evidence_validate',
+                        args=[rejected_evidence.pk],
+                    ),
+                    {'validity_state': Evidence.Validity.APPROVED},
+                )
+                self.assertEqual(rejected_resubmission.status_code, 404)
+                approve_response = self.client.post(
+                    reverse(
+                        'activities:evidence_validate',
+                        args=[corrected_evidence.pk],
+                    ),
+                    {'validity_state': Evidence.Validity.APPROVED},
+                )
+
+        self.assertRedirects(approve_response, reverse('activities:evidence_list'))
+        self.activity.refresh_from_db()
+        self.assertEqual(self.activity.state_validity, 'VALIDATED')
+        self.client.force_login(self.admin)
+        progress = self.client.get(reverse('activities:traffic_light'))
+        self.assertEqual(
+            progress.context['traffic_light_data'][0]['achieved_percentage'],
+            50,
+        )

@@ -1,30 +1,141 @@
 {% extends "base.html" %}
-{% load crispy_forms_tags %}
 
 {% block title %}{% if object %}Editar{% else %}Nuevo{% endif %} compromiso{% endblock %}
 
+{% block extra_head %}
+<style>
+    .commitment-form-wrap { max-width: 1040px; }
+    .commitment-form-card { overflow: hidden; border: 0; border-radius: 1rem; box-shadow: 0 .8rem 2.2rem rgba(35, 25, 25, .08); }
+    .commitment-form-header { padding: 1.4rem clamp(1.25rem, 4vw, 2rem); background: linear-gradient(120deg, #8e0000, #ad0000 58%, #7a2021); }
+    .commitment-form-body { padding: clamp(1.25rem, 4vw, 2rem); }
+    .commitment-form-section + .commitment-form-section { margin-top: 1.75rem; padding-top: 1.5rem; border-top: 1px solid #ece8e6; }
+    .commitment-section-title { display: flex; align-items: center; gap: .65rem; margin-bottom: 1rem; color: #343a40; font-size: 1rem; font-weight: 700; }
+    .commitment-section-title i { color: #ad0000; font-size: 1.1rem; }
+    .commitment-form-card .form-label { margin-bottom: .4rem; color: #343a40; font-weight: 600; }
+    .commitment-form-card .form-control,
+    .commitment-form-card .form-select { min-height: 2.75rem; border-color: #d9dee3; border-radius: .65rem; }
+    .commitment-form-card textarea.form-control { min-height: 7rem; }
+    .commitment-form-card .form-control:focus,
+    .commitment-form-card .form-select:focus { border-color: #ad0000; box-shadow: 0 0 0 .2rem rgba(173, 0, 0, .12); }
+    .commitment-responsible-field { padding: 1rem; border: 1px solid #f0dada; border-radius: .85rem; background: #fffafa; }
+    .commitment-form-card .form-text { color: #68717a; }
+    .commitment-form-card .invalid-feedback,
+    .commitment-form-card .errorlist { display: block; margin-top: .35rem; color: #b02a37; font-size: .875rem; list-style: none; padding-left: 0; }
+    .commitment-form-actions .btn { min-height: 2.65rem; border-radius: .65rem; font-weight: 600; }
+    @media (max-width: 575.98px) {
+        .commitment-form-actions { flex-direction: column-reverse; }
+        .commitment-form-actions .btn { width: 100%; }
+    }
+</style>
+{% endblock %}
+
 {% block content %}
-<div class="row justify-content-center">
-    <div class="col-md-9 col-lg-7">
-        <div class="card border-0 shadow-sm form-card">
-            <div class="card-header bg-municipal text-white py-3">
-                <h1 class="h5 mb-0">
-                    {% if object %}Editar{% else %}Nuevo{% endif %} compromiso
-                </h1>
+<main class="container-fluid commitment-form-wrap py-4 px-3 px-lg-4">
+    <article class="commitment-form-card card">
+        <header class="commitment-form-header text-white">
+            <div class="d-flex align-items-center gap-3">
+                <span class="d-inline-flex align-items-center justify-content-center rounded-circle bg-white bg-opacity-10" style="width: 2.8rem; height: 2.8rem;">
+                    <i class="bi bi-calendar2-check fs-5" aria-hidden="true"></i>
+                </span>
+                <div>
+                    <h1 class="h4 fw-bold mb-1">{% if object %}Editar compromiso{% else %}Nuevo compromiso{% endif %}</h1>
+                    <p class="mb-0 text-white-50">Registra la solicitud, asigna un responsable y define su seguimiento.</p>
+                </div>
             </div>
-            <div class="card-body p-4">
-                <form method="post">
-                    {% csrf_token %}
-                    {{ form|crispy }}
-                    <div class="d-flex justify-content-end gap-2 mt-4 pt-3 border-top">
-                        <a href="{% url 'agenda:commitment_list' %}" class="btn btn-outline-secondary">Cancelar</a>
-                        <button type="submit" class="btn btn-primary">
-                            <i class="bi bi-check-circle me-1"></i>Guardar compromiso
-                        </button>
+        </header>
+
+        <div class="commitment-form-body card-body">
+            <form method="post">
+                {% csrf_token %}
+                {% if form.activity_id %}{{ form.activity_id }}{% endif %}
+
+                {% if form.non_field_errors %}
+                <div class="alert alert-danger" role="alert">
+                    <div class="fw-semibold mb-1">No se pudo guardar el compromiso</div>
+                    {{ form.non_field_errors }}
+                </div>
+                {% endif %}
+
+                <section class="commitment-form-section" aria-labelledby="commitment-request-heading">
+                    <h2 class="commitment-section-title" id="commitment-request-heading">
+                        <i class="bi bi-inbox" aria-hidden="true"></i>Datos de la solicitud
+                    </h2>
+                    <div class="row g-3">
+                        <div class="col-12 col-md-6">
+                            <label class="form-label" for="{{ form.origin.id_for_label }}">{{ form.origin.label }}</label>
+                            {{ form.origin }}
+                            {% for error in form.origin.errors %}<div class="invalid-feedback">{{ error }}</div>{% endfor %}
+                        </div>
+                        <div class="col-12 col-md-6">
+                            <label class="form-label" for="{{ form.applic_name.id_for_label }}">{{ form.applic_name.label }}</label>
+                            {{ form.applic_name }}
+                            {% for error in form.applic_name.errors %}<div class="invalid-feedback">{{ error }}</div>{% endfor %}
+                        </div>
+                        <div class="col-12 col-md-6">
+                            <label class="form-label" for="{{ form.territory.id_for_label }}">{{ form.territory.label }}</label>
+                            {{ form.territory }}
+                            {% for error in form.territory.errors %}<div class="invalid-feedback">{{ error }}</div>{% endfor %}
+                        </div>
+                        <div class="col-12 col-md-6">
+                            <label class="form-label" for="{{ form.commitment_date.id_for_label }}">{{ form.commitment_date.label }}</label>
+                            {{ form.commitment_date }}
+                            {% for error in form.commitment_date.errors %}<div class="invalid-feedback">{{ error }}</div>{% endfor %}
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label" for="{{ form.support.id_for_label }}">{{ form.support.label }}</label>
+                            {{ form.support }}
+                            {% if form.support.help_text %}<div class="form-text">{{ form.support.help_text }}</div>{% endif %}
+                            {% for error in form.support.errors %}<div class="invalid-feedback">{{ error }}</div>{% endfor %}
+                        </div>
                     </div>
-                </form>
-            </div>
+                </section>
+
+                <section class="commitment-form-section" aria-labelledby="commitment-assignment-heading">
+                    <h2 class="commitment-section-title" id="commitment-assignment-heading">
+                        <i class="bi bi-person-check" aria-hidden="true"></i>Responsable y seguimiento
+                    </h2>
+                    <div class="row g-3">
+                        <div class="col-12">
+                            <div class="commitment-responsible-field">
+                                <label class="form-label" for="{{ form.functionary.id_for_label }}">{{ form.functionary.label }}</label>
+                                {{ form.functionary }}
+                                {% if form.functionary.help_text %}<div class="form-text">{{ form.functionary.help_text }}</div>{% endif %}
+                                {% for error in form.functionary.errors %}<div class="invalid-feedback">{{ error }}</div>{% endfor %}
+                            </div>
+                        </div>
+                        <div class="col-12 col-md-6">
+                            <label class="form-label" for="{{ form.measuring.id_for_label }}">{{ form.measuring.label }}</label>
+                            {{ form.measuring }}
+                            {% if form.measuring.help_text %}<div class="form-text">{{ form.measuring.help_text }}</div>{% endif %}
+                            {% for error in form.measuring.errors %}<div class="invalid-feedback">{{ error }}</div>{% endfor %}
+                        </div>
+                        <div class="col-12 col-md-6">
+                            <label class="form-label" for="{{ form.state.id_for_label }}">{{ form.state.label }}</label>
+                            {{ form.state }}
+                            {% for error in form.state.errors %}<div class="invalid-feedback">{{ error }}</div>{% endfor %}
+                        </div>
+                    </div>
+                </section>
+
+                <section class="commitment-form-section" aria-labelledby="commitment-observation-heading">
+                    <h2 class="commitment-section-title" id="commitment-observation-heading">
+                        <i class="bi bi-card-text" aria-hidden="true"></i>Detalle del compromiso
+                    </h2>
+                    <label class="form-label" for="{{ form.observation.id_for_label }}">{{ form.observation.label }}</label>
+                    {{ form.observation }}
+                    {% if form.observation.help_text %}<div class="form-text">{{ form.observation.help_text }}</div>{% endif %}
+                    {% for error in form.observation.errors %}<div class="invalid-feedback">{{ error }}</div>{% endfor %}
+                </section>
+
+                <div class="commitment-form-actions d-flex justify-content-end gap-2 mt-4 pt-3 border-top">
+                    <a href="{% url 'agenda:commitment_list' %}" class="btn btn-outline-secondary">Cancelar</a>
+                    <button type="submit" class="btn btn-primary px-4">
+                        <i class="bi bi-check-circle me-1" aria-hidden="true"></i>
+                        {% if object %}Guardar cambios{% else %}Guardar compromiso{% endif %}
+                    </button>
+                </div>
+            </form>
         </div>
-    </div>
-</div>
+    </article>
+</main>
 {% endblock %}

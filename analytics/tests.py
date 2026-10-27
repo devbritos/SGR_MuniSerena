@@ -5,7 +5,7 @@ from django.contrib.auth.models import User
 from django.urls import reverse
 from django.utils import timezone
 
-from activities.models import Activity
+from activities.models import Activity, Evidence
 from agenda.models import Commitment
 from configuration.models import Goal, Measuring, Period
 from personal.models import (
@@ -76,6 +76,17 @@ class DashboardTests(TestCase):
             functionary=self.functionary,
             measuring=self.measuring,
         )
+        Evidence.objects.create(
+            name='Respaldo de actividad validada',
+            author='Funcionario panel',
+            date_evidence=today,
+            metadata='Evidencia aprobada de prueba.',
+            file='evidences/dashboard-test.pdf',
+            validity_state=Evidence.Validity.APPROVED,
+            date_validity=today,
+            activity=self.validated_activity,
+            functionary=self.functionary,
+        )
         self.pending_activity = Activity.objects.create(
             date=today,
             application='Actividad por validar',
@@ -111,7 +122,7 @@ class DashboardTests(TestCase):
         self.assertContains(response, 'id="sidebarPinToggle"')
         self.assertContains(response, 'Actividad por validar')
         self.assertContains(response, 'Atención territorial')
-        self.assertContains(response, 'images/faro.png')
+        self.assertContains(response, 'images/serena.png')
 
     def test_site_root_redirects_functionary_to_dashboard(self):
         self.client.force_login(self.user)
@@ -138,7 +149,7 @@ class DashboardTests(TestCase):
         self.assertEqual(response.context['actividades_por_validar'], 1)
         self.assertContains(response, 'Actividad validada')
         self.assertContains(response, 'Solicitud vencida')
-        self.assertContains(response, 'images/faro.png')
+        self.assertContains(response, 'images/serena.png')
 
     def test_functionary_with_admin_role_can_open_admin_dashboard(self):
         admin_user = User.objects.create_user(

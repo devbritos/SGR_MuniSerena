@@ -6,19 +6,29 @@
 {% block extra_head %}
 <style>
     .dashboard-wrap { max-width: 1480px; }
-    .dashboard-welcome { position: relative; overflow: hidden; color: #fff; background: linear-gradient(120deg, #8e0000 0%, #ad0000 58%, #7a2021 100%); }
-    .dashboard-welcome-lighthouse { position: absolute; top: 50%; right: 5%; height: 175%; width: auto; max-width: 32%; object-fit: contain; opacity: .38; filter: drop-shadow(0 0 1.5rem rgba(255, 255, 255, .2)); transform: translateY(-50%); pointer-events: none; }
-    .dashboard-welcome-content { position: relative; z-index: 1; }
+    .dashboard-welcome { position: relative; min-height: 320px; overflow: hidden; color: #fff; background: linear-gradient(115deg, #d51f25 0%, #ad0000 48%, #7a2021 100%); }
+    .dashboard-welcome::after { position: absolute; inset: 0; z-index: 0; background: linear-gradient(90deg, rgba(0, 0, 0, .08) 0%, rgba(0, 0, 0, .03) 42%, transparent 72%); content: ""; pointer-events: none; }
+    .dashboard-welcome-lighthouse { position: absolute; top: 50%; right: 0; z-index: 1; width: 61.5%; height: auto; object-fit: contain; object-position: right center; opacity: .9; filter: drop-shadow(0 0 1.5rem rgba(255, 255, 255, .2)) brightness(1.08); transform: translateY(-50%); pointer-events: none; }
+    .dashboard-welcome-content { position: relative; z-index: 2; max-width: 37%; }
+    .dashboard-welcome-actions { margin-top: 1.5rem; }
     .dashboard-stat { border: 1px solid #ece8e6; border-radius: 1rem; height: 100%; transition: transform .18s ease, box-shadow .18s ease; }
     .dashboard-stat:hover { transform: translateY(-2px); box-shadow: 0 .75rem 1.7rem rgba(40, 25, 25, .08); }
     .dashboard-stat-icon { width: 2.65rem; height: 2.65rem; display: inline-flex; align-items: center; justify-content: center; border-radius: .8rem; font-size: 1.15rem; }
     .dashboard-section { border: 1px solid #ece8e6; border-radius: 1rem; }
     .dashboard-section .card-header { background: #fff; border-bottom: 1px solid #f0ecea; }
     .dashboard-table > :not(caption) > * > * { padding: .8rem .75rem; vertical-align: middle; }
+    .dashboard-table tbody tr:hover > * { background-color: #fff8f8; }
     .dashboard-quick-link { border: 1px solid #eee4e1; border-radius: .75rem; color: #343a40; text-decoration: none; transition: border-color .15s ease, background .15s ease; }
     .dashboard-quick-link:hover { border-color: #ad0000; background: #fff8f8; color: #7a2021; }
-    @media (max-width: 575.98px) {
-        .dashboard-welcome-lighthouse { right: 1%; height: 125%; max-width: 38%; opacity: .25; }
+    @media (min-width: 768px) and (max-width: 991.98px) {
+        .dashboard-welcome-lighthouse { width: 54%; }
+        .dashboard-welcome-content { max-width: 45%; }
+    }
+    @media (max-width: 767.98px) {
+        .dashboard-welcome { min-height: 0; }
+        .dashboard-welcome::after { background: linear-gradient(90deg, rgba(0, 0, 0, .12), rgba(0, 0, 0, .05) 62%, transparent); }
+        .dashboard-welcome-content { max-width: 100%; }
+        .dashboard-welcome-lighthouse { position: relative; display: block; top: auto; right: auto; bottom: auto; width: 112%; max-width: 112%; margin: 1.25rem -6% -0.5rem; opacity: .75; transform: none; }
     }
     @media (prefers-reduced-motion: reduce) { .dashboard-stat { transition: none; } }
 </style>
@@ -27,14 +37,18 @@
 {% block content %}
 <main class="container-fluid dashboard-wrap py-4 px-3 px-lg-4">
     <header class="dashboard-welcome rounded-4 p-4 p-lg-5 mb-4 shadow-sm">
-        <img class="dashboard-welcome-lighthouse" src="{% static 'images/faro.png' %}" alt="" aria-hidden="true">
-        <div class="dashboard-welcome-content d-flex flex-column flex-lg-row align-items-lg-center justify-content-between gap-3">
+        <div class="dashboard-welcome-content">
             <div>
-                <p class="small text-white-50 fw-semibold text-uppercase mb-2">Resumen de gestión</p>
+                <p class="small text-white-50 fw-semibold text-uppercase mb-2 d-flex flex-wrap align-items-center gap-2">
+                    <span>Resumen de gestión</span>
+                    <time class="badge rounded-pill bg-white bg-opacity-10 border border-white border-opacity-25 px-3 py-2" datetime="{% now 'Y-m-d' %}">
+                        <i class="bi bi-calendar3 me-1" aria-hidden="true"></i>Hoy, {% now "d/m/Y" %}
+                    </time>
+                </p>
                 <h1 class="h2 fw-bold mb-2">Panel de control</h1>
                 <p class="text-white-50 mb-0">Indicadores operativos y actividad reciente del sistema.</p>
             </div>
-            <div class="d-flex flex-wrap gap-2">
+            <div class="dashboard-welcome-actions d-flex flex-wrap gap-2">
                 <a class="btn btn-light text-danger fw-semibold px-3" href="{% url 'activities:activity_list' %}">
                     <i class="bi bi-clipboard-data me-2" aria-hidden="true"></i>Actividades
                 </a>
@@ -43,6 +57,7 @@
                 </a>
             </div>
         </div>
+        <img class="dashboard-welcome-lighthouse" src="{% static 'images/serena.png' %}" alt="" aria-hidden="true">
     </header>
 
     <section aria-label="Indicadores principales" class="row g-3 mb-4">

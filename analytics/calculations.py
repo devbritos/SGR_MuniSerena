@@ -5,16 +5,15 @@ from django.db.models import Sum
 
 def calcular_avance(functionary, measuring, period):
     """Suma la cantidad registrada en actividades validadas para el período."""
-    from activities.models import Activity
+    from activities.models import Activity, approved_activity_queryset
 
-    result = Activity.objects.filter(
+    result = approved_activity_queryset(Activity.objects.filter(
         functionary=functionary,
         measuring=measuring,
-        state_validity='VALIDATED',
         date__gte=period.start_date,
         date__lte=period.end_date,
         deleted_at__isnull=True,
-    ).aggregate(total=Sum('quantity'))
+    )).aggregate(total=Sum('quantity'))
     return result['total'] or 0
 
 

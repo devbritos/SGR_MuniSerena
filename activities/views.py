@@ -6,10 +6,9 @@ from django.urls import reverse_lazy, reverse
 from django.views.generic import ListView, CreateView, UpdateView, DeleteView
 from django.utils import timezone
 from configuration.models import Goal, Period
-from .models import Activity, Evidence
+from .models import Activity, Evidence, approved_activity_queryset
 from .forms import (
     ActivityForm,
-    ActivityValidationForm,
     EvidenceForm,
     EvidenceValidationForm,
 )
@@ -37,15 +36,6 @@ def get_activity_scope(user):
     if functionary.is_delegate or functionary.is_verifier:
         return activities.filter(functionary__delegation=functionary.delegation)
     return activities.filter(functionary=functionary)
-
-
-def can_validate_own_activity(user):
-    functionary = getattr(user, 'functionary', None)
-    return (
-        user.is_staff
-        or user.is_superuser
-        or (functionary is not None and functionary.is_admin)
-    )
 
 
 # ---------- Activity ----------
@@ -106,14 +96,6 @@ class ActivityListView(LoginRequiredMixin, FunctionaryOrStaffRequiredMixin, List
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         functionary = getattr(self.request.user, 'functionary', None)
-        context['can_validate_activities'] = (
-            self.request.user.is_staff
-            or self.request.user.is_superuser
-            or (functionary is not None and functionary.is_verifier)
-        )
-        context['can_validate_own_activities'] = can_validate_own_activity(
-            self.request.user
-        )
         context['current_functionary_id'] = (
             functionary.pk if functionary is not None else None
         )
@@ -155,7 +137,13 @@ class ActivityCreateView(LoginRequiredMixin, FunctionaryRequiredMixin, CreateVie
             return redirect(self.success_url)
         messages.success(self.request, 'Actividad registrada correctamente.')
 
-        # 3. Si la actividad ingresa al tubo de trabajo (RF-07), redirige a crear compromiso
+        if form.cleaned_data.get('upload_evidence'):
+            evidence_url = reverse('activities:evidence_create')
+            query = f'?activity_id={self.object.pk}'
+            if self.object.enters_pipe:
+                query += '&continue_commitment=1'
+            return redirect(f'{evidence_url}{query}')
+
         if getattr(self.object, 'enters_pipe', False):
             url_compromiso = reverse('agenda:commitment_create')
             return redirect(f'{url_compromiso}?activity_id={self.object.id}')
@@ -171,7 +159,28 @@ class ActivityUpdateView(LoginRequiredMixin, FunctionaryOrStaffRequiredMixin, Up
     def get_queryset(self):
         return get_activity_scope(self.request.user)
 
+    @transaction.atomic
     def form_valid(self, form):
+        latest_evidence = self.object.evidences.order_by(
+            '-created_at',
+            '-pk',
+        ).first()
+        if (
+            latest_evidence is not None
+            and latest_evidence.validity_state == Evidence.Validity.APPROVED
+        ):
+            latest_evidence.validity_state = Evidence.Validity.PENDING
+            latest_evidence.date_validity = None
+            latest_evidence.verificator = None
+            latest_evidence.observations_validity = ''
+            latest_evidence.save(update_fields=[
+                'validity_state',
+                'date_validity',
+                'verificator',
+                'observations_validity',
+                'updated_at',
+            ])
+            form.instance.state_validity = 'PENDING'
         response = super().form_valid(form)
         messages.success(self.request, 'Actividad actualizada correctamente.')
         return response
@@ -191,43 +200,6 @@ class ActivityDeleteView(LoginRequiredMixin, FunctionaryOrStaffRequiredMixin, De
         return response
 
 
-class ActivityValidateView(
-    LoginRequiredMixin,
-    VerifierRequiredMixin,
-    UpdateView,
-):
-    model = Activity
-    form_class = ActivityValidationForm
-    template_name = 'activities/activity_validate.html'
-    context_object_name = 'activity'
-    success_url = reverse_lazy('activities:activity_list')
-
-    def get_queryset(self):
-        queryset = get_activity_scope(self.request.user).filter(
-            state_validity='PENDING',
-        )
-        functionary = getattr(self.request.user, 'functionary', None)
-        if functionary is not None and not can_validate_own_activity(
-            self.request.user
-        ):
-            queryset = queryset.exclude(functionary=functionary)
-        return queryset
-
-    def form_valid(self, form):
-        response = super().form_valid(form)
-        if self.object.state_validity == 'VALIDATED':
-            messages.success(
-                self.request,
-                'Actividad validada; su avance se reflejará en el semáforo.',
-            )
-        else:
-            messages.warning(
-                self.request,
-                'Actividad rechazada; no se contabilizará en el semáforo.',
-            )
-        return response
-
-
 # ---------- Evidence ----------
 
 class EvidenceListView(LoginRequiredMixin, FunctionaryOrStaffRequiredMixin, ListView):
@@ -238,7 +210,12 @@ class EvidenceListView(LoginRequiredMixin, FunctionaryOrStaffRequiredMixin, List
     paginate_by = 20
 
     def get_queryset(self):
-        queryset = get_evidence_scope(self.request.user).select_related(
+        latest_evidence = Evidence.objects.filter(
+            activity_id=OuterRef('activity_id'),
+        ).order_by('-created_at', '-pk')
+        queryset = get_evidence_scope(self.request.user).annotate(
+            is_latest=Exists(latest_evidence.filter(pk=OuterRef('pk'))),
+        ).select_related(
             'activity',
             'functionary',
             'functionary__delegation',
@@ -288,14 +265,44 @@ class EvidenceCreateView(LoginRequiredMixin, FunctionaryRequiredMixin, CreateVie
         kwargs = super().get_form_kwargs()
         user = self.request.user
         functionary = user.functionary
-        kwargs['activities'] = get_activity_scope(user)
+        kwargs['activities'] = get_activity_scope(user).filter(
+            functionary=functionary,
+        )
         return kwargs
 
+    def get_initial(self):
+        initial = super().get_initial()
+        activity_id = self.request.GET.get('activity_id')
+        functionary = getattr(self.request.user, 'functionary', None)
+        if (
+            functionary is not None
+            and activity_id
+            and str(activity_id).isdigit()
+            and get_activity_scope(self.request.user).filter(
+                pk=activity_id,
+                functionary=functionary,
+            ).exists()
+        ):
+            initial['activity'] = activity_id
+        return initial
+
+    @transaction.atomic
     def form_valid(self, form):
         form.instance.functionary = self.request.user.functionary
-        response = super().form_valid(form)
+        evidence = form.save(commit=False)
+        self.object = evidence
+        activity = evidence.activity
+        evidence.save()
+        activity.state_validity = 'PENDING'
+        activity.save(update_fields=['state_validity', 'updated_at'])
         messages.success(self.request, 'Evidencia subida correctamente.')
-        return response
+        if (
+            self.request.GET.get('continue_commitment') == '1'
+            and activity.enters_pipe
+        ):
+            commitment_url = reverse('agenda:commitment_create')
+            return redirect(f'{commitment_url}?activity_id={activity.pk}')
+        return redirect(self.get_success_url())
 
 
 class EvidenceValidateView(
@@ -309,18 +316,52 @@ class EvidenceValidateView(
     success_url = reverse_lazy('activities:evidence_list')
 
     def get_queryset(self):
-        return get_evidence_scope(self.request.user)
+        latest_evidence = Evidence.objects.filter(
+            activity_id=OuterRef('activity_id'),
+        ).order_by('-created_at', '-pk')
+        queryset = get_evidence_scope(self.request.user)
+        functionary = getattr(self.request.user, 'functionary', None)
+        is_admin = (
+            self.request.user.is_staff
+            or self.request.user.is_superuser
+            or (functionary is not None and functionary.is_admin)
+        )
+        if functionary is not None and not is_admin:
+            queryset = queryset.exclude(functionary=functionary)
+        return queryset.annotate(
+            is_latest=Exists(latest_evidence.filter(pk=OuterRef('pk'))),
+        ).filter(
+            is_latest=True,
+            validity_state=Evidence.Validity.PENDING,
+        )
 
     def get_form_kwargs(self):
         kwargs = super().get_form_kwargs()
         kwargs['verificator'] = getattr(self.request.user, 'functionary', None)
         return kwargs
 
+    @transaction.atomic
     def form_valid(self, form):
         evidence = form.save(commit=False)
         evidence.date_validity = timezone.localdate()
         evidence.save()
-        messages.success(self.request, 'Validación registrada correctamente.')
+        activity = evidence.activity
+        activity.state_validity = (
+            'VALIDATED'
+            if evidence.validity_state == Evidence.Validity.APPROVED
+            else 'REJECTED'
+        )
+        activity.save(update_fields=['state_validity', 'updated_at'])
+        if evidence.validity_state == Evidence.Validity.APPROVED:
+            messages.success(
+                self.request,
+                'Evidencia aprobada; la actividad ahora suma a su avance.',
+            )
+        else:
+            messages.warning(
+                self.request,
+                'Evidencia rechazada; la actividad queda en pausa hasta que se cargue una corrección aprobada.',
+            )
         return redirect(self.get_success_url())
 
 # Create your views here.
@@ -376,12 +417,11 @@ class TrafficLightView(
             measuring__validity=True,
             measuring__deleted_at__isnull=True,
         )
-        validated_activities = Activity.objects.filter(
+        validated_activities = approved_activity_queryset(Activity.objects.filter(
             date__range=[period.start_date, period.end_date],
-            state_validity='VALIDATED',
             deleted_at__isnull=True,
             functionary__in=functionaries,
-        )
+        ))
         context['unmatched_validated_activity_count'] = (
             validated_activities.annotate(
                 has_active_goal=Exists(
@@ -400,6 +440,7 @@ class TrafficLightView(
             goals = active_goals.filter(
                 position=func.position,
             ).select_related('measuring')
+            has_active_goals = goals.exists()
 
             total_weighted_compliance = 0.0
             matched_activity_count = 0
@@ -407,13 +448,12 @@ class TrafficLightView(
             for goal in goals:
                 # Sumar actividades realizadas y validadas por el funcionario para esta meta/ítem
                 # Usas la suma acumulada de la cantidad:
-                achieved_query = Activity.objects.filter(
+                achieved_query = approved_activity_queryset(Activity.objects.filter(
                     functionary=func,
                     measuring=goal.measuring,
                     date__range=[period.start_date, period.end_date],
-                    state_validity='VALIDATED',
                     deleted_at__isnull=True,
-                ).aggregate(total=Sum('quantity'))
+                )).aggregate(total=Sum('quantity'))
 
                 achieved = achieved_query['total'] or 0
                 if achieved:
@@ -432,7 +472,10 @@ class TrafficLightView(
             # Diferencia entre lo logrado y lo esperado
             diff = total_weighted_compliance - expected_percentage
 
-            if diff >= -5:
+            if not has_active_goals:
+                status = 'no_goal'
+                label = 'Sin meta activa para este cargo'
+            elif diff >= -5:
                 status = 'green'    # En línea o superior
                 label = 'En línea con lo esperado'
             elif -15 <= diff < -5:
@@ -444,9 +487,13 @@ class TrafficLightView(
 
             traffic_light_data.append({
                 'functionary': func,
-                'achieved_percentage': round(total_weighted_compliance, 1),
+                'achieved_percentage': (
+                    round(total_weighted_compliance, 1)
+                    if has_active_goals
+                    else None
+                ),
                 'expected_percentage': round(expected_percentage, 1),
-                'has_active_goals': goals.exists(),
+                'has_active_goals': has_active_goals,
                 'has_matched_activities': matched_activity_count > 0,
                 'status': status,
                 'label': label,
@@ -472,7 +519,7 @@ def get_evidence_scope(user):
         return evidences
     if functionary is None:
         return evidences.none()
-    if functionary.is_delegate:
+    if functionary.is_delegate or functionary.is_verifier:
         return evidences.filter(functionary__delegation=functionary.delegation)
     return evidences.filter(functionary=functionary)
 

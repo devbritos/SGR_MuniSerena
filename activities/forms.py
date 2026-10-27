@@ -6,6 +6,16 @@ from .models import Activity, Evidence
 
 
 class ActivityForm(forms.ModelForm):
+    upload_evidence = forms.BooleanField(
+        required=False,
+        label='Subir evidencia ahora',
+        help_text=(
+            'Al guardar la actividad, continuarás al formulario de evidencias '
+            'con esta actividad ya seleccionada.'
+        ),
+        widget=forms.CheckboxInput(attrs={'class': 'form-check-input'}),
+    )
+
     class Meta:
         model = Activity
         fields = [
@@ -79,6 +89,7 @@ class ActivityForm(forms.ModelForm):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         if self.instance.pk:
+            self.fields.pop('upload_evidence')
             self.fields['date'].disabled = True
             self.fields['date'].help_text = (
                 'La fecha original del registro no se puede cambiar al editar.'
@@ -135,26 +146,6 @@ class ActivityForm(forms.ModelForm):
         if date_value and date_value > timezone.localdate():
             raise forms.ValidationError('La fecha no puede ser futura.')
         return date_value
-
-
-class ActivityValidationForm(forms.ModelForm):
-    class Meta:
-        model = Activity
-        fields = ['state_validity']
-        widgets = {
-            'state_validity': forms.Select(attrs={'class': 'form-select'}),
-        }
-        labels = {
-            'state_validity': 'Resultado de la validación',
-        }
-
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.fields['state_validity'].choices = [
-            choice
-            for choice in Activity.STATE_CHOICES
-            if choice[0] in {'VALIDATED', 'REJECTED'}
-        ]
 
 
 class EvidenceForm(forms.ModelForm):
@@ -267,6 +258,14 @@ class EvidenceValidationForm(forms.ModelForm):
 
     def __init__(self, *args, verificator=None, **kwargs):
         super().__init__(*args, **kwargs)
+        self.fields['validity_state'].choices = [
+            choice
+            for choice in Evidence.Validity.choices
+            if choice[0] in {
+                Evidence.Validity.APPROVED,
+                Evidence.Validity.REJECTED,
+            }
+        ]
         if self.instance:
             self.instance.verificator = verificator
 

@@ -1,6 +1,6 @@
 import uuid
 
-from django.core.exceptions import ValidationError
+from django.db.models import OuterRef, Subquery
 from django.db import models
 
 from core.models import BaseModel
@@ -92,12 +92,20 @@ class Evidence(BaseModel):
         related_name='evidences_uploaded',
     )
 
-    def clean(self):
-        super().clean()
-        if self.verificator_id and self.verificator_id == self.functionary_id:
-            raise ValidationError(
-                {'verificator': 'El verificador no puede ser quien subió la evidencia.'}
-            )
-
     def __str__(self):
         return self.name
+
+
+def approved_activity_queryset(queryset=None):
+    activities = queryset if queryset is not None else Activity.objects.all()
+    latest_evidence = Evidence.objects.filter(
+        activity_id=OuterRef('pk'),
+    ).order_by('-created_at', '-pk')
+    return activities.annotate(
+        latest_evidence_state=Subquery(
+            latest_evidence.values('validity_state')[:1],
+        ),
+    ).filter(
+        latest_evidence_state=Evidence.Validity.APPROVED,
+        state_validity='VALIDATED',
+    )

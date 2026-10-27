@@ -1,5 +1,22 @@
 {% extends 'base.html' %}
 
+{% block extra_head %}
+<style>
+    .traffic-light-indicator {
+        display: inline-block;
+        width: 1rem;
+        height: 1rem;
+        border-radius: 50%;
+        box-shadow: 0 .125rem .25rem rgba(0, 0, 0, .2);
+        vertical-align: middle;
+    }
+    .traffic-light-indicator--green { background-color: var(--bs-success); }
+    .traffic-light-indicator--yellow { background-color: var(--bs-warning); }
+    .traffic-light-indicator--red { background-color: var(--bs-danger); }
+    .traffic-light-indicator--unavailable { background-color: #adb5bd; }
+</style>
+{% endblock %}
+
 {% block content %}
 <div class="container-fluid mt-4 px-4">
     <h2 class="mb-4 text-dark fw-bold">
@@ -41,20 +58,26 @@
                                 <td>{{ item.functionary.names|default:"-" }} {{ item.functionary.lastnames|default:"" }}</td>
                                 <td class="text-center">{{ item.expected_percentage|floatformat:1 }}%</td>
                                 <td class="text-center fw-bold">
-                                    {{ item.achieved_percentage|floatformat:1 }}%
+                                    {% if item.has_active_goals %}
+                                        {{ item.achieved_percentage|floatformat:1 }}%
+                                    {% else %}
+                                        —
+                                    {% endif %}
                                     {% if not item.has_active_goals %}
-                                    <small class="d-block text-danger fw-normal">Sin meta activa para este cargo</small>
+                                    <small class="d-block text-muted fw-normal">Sin meta activa para este cargo</small>
                                     {% elif not item.has_matched_activities %}
                                     <small class="d-block text-muted fw-normal">Sin actividades validadas para sus metas</small>
                                     {% endif %}
                                 </td>
                                 <td class="text-center">
                                     {% if item.status == 'green' %}
-                                        <span class="badge bg-success rounded-circle shadow-sm" style="width: 22px; height: 22px;" title="{{ item.label }}"></span>
+                                        <span class="traffic-light-indicator traffic-light-indicator--green" role="img" aria-label="{{ item.label }}" title="{{ item.label }}"><span class="visually-hidden">{{ item.label }}</span></span>
                                     {% elif item.status == 'yellow' %}
-                                        <span class="badge bg-warning rounded-circle shadow-sm" style="width: 22px; height: 22px;" title="{{ item.label }}"></span>
+                                        <span class="traffic-light-indicator traffic-light-indicator--yellow" role="img" aria-label="{{ item.label }}" title="{{ item.label }}"><span class="visually-hidden">{{ item.label }}</span></span>
+                                    {% elif item.status == 'red' %}
+                                        <span class="traffic-light-indicator traffic-light-indicator--red" role="img" aria-label="{{ item.label }}" title="{{ item.label }}"><span class="visually-hidden">{{ item.label }}</span></span>
                                     {% else %}
-                                        <span class="badge bg-danger rounded-circle shadow-sm" style="width: 22px; height: 22px;" title="{{ item.label }}"></span>
+                                        <span class="traffic-light-indicator traffic-light-indicator--unavailable" role="img" aria-label="{{ item.label }}" title="{{ item.label }}"><span class="visually-hidden">{{ item.label }}</span></span>
                                     {% endif %}
                                 </td>
                             </tr>

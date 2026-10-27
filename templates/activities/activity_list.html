@@ -59,14 +59,13 @@
                         <td class="text-center fw-bold">
                             {{ a.quantity|default:1 }}
                         </td>
-                        <!-- Formato legible para state_validity -->
                         <td class="text-center">
                             {% if a.state_validity == 'VALIDATED' or a.state_validity == 'APPROVED' %}
-                                <span class="badge bg-success rounded-pill px-3 py-2">Validado</span>
+                                <span class="badge bg-success rounded-pill px-3 py-2">Validada</span>
                             {% elif a.state_validity == 'REJECTED' %}
-                                <span class="badge bg-danger rounded-pill px-3 py-2">Rechazado</span>
+                                <span class="badge bg-danger rounded-pill px-3 py-2">Evidencia rechazada</span>
                             {% else %}
-                                <span class="badge bg-warning text-dark rounded-pill px-3 py-2">Pendiente</span>
+                                <span class="badge bg-warning text-dark rounded-pill px-3 py-2">Pendiente de evidencia</span>
                             {% endif %}
                         </td>
                         <td class="text-center">
@@ -76,12 +75,10 @@
                                     <i class="bi bi-pencil-fill"></i>
                                 </a>
                                 {% endif %}
-                                {% if can_validate_activities and a.state_validity == 'PENDING' %}
-                                    {% if can_validate_own_activities or a.functionary_id != current_functionary_id %}
-                                    <a href="{% url 'activities:activity_validate' a.id %}" class="btn btn-outline-success" title="Validar actividad">
-                                        <i class="bi bi-patch-check-fill"></i>
-                                    </a>
-                                    {% endif %}
+                                {% if a.functionary_id == current_functionary_id %}
+                                <a href="{% url 'activities:evidence_create' %}?activity_id={{ a.id }}" class="btn btn-outline-success" title="Subir o corregir evidencia">
+                                    <i class="bi bi-file-earmark-arrow-up"></i>
+                                </a>
                                 {% endif %}
                             </div>
                         </td>

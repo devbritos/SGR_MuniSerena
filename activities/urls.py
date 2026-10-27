@@ -8,7 +8,6 @@ urlpatterns = [
     path('', views.ActivityListView.as_view(), name = "activity_list"),
     path('nueva/', views.ActivityCreateView.as_view(), name='activity_create'),
     path('<int:pk>/editar/', views.ActivityUpdateView.as_view(), name='activity_update'),
-    path('<int:pk>/validar/', views.ActivityValidateView.as_view(), name='activity_validate'),
     path('<int:pk>/eliminar/', views.ActivityDeleteView.as_view(), name='activity_delete'),
 
     path('evidencias/', views.EvidenceListView.as_view(), name='evidence_list'),

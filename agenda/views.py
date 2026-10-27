@@ -8,7 +8,11 @@ from django.views.generic import ListView, CreateView, UpdateView, DeleteView
 from .models import Commitment
 from .forms import CommitmentForm
 from personal.models import Functionary
-from core.mixins import FunctionaryOrStaffRequiredMixin, FunctionaryRequiredMixin
+from core.mixins import (
+    AdminRequiredMixin,
+    FunctionaryOrStaffRequiredMixin,
+    FunctionaryRequiredMixin,
+)
 from core.exports import excel_response
 from core.lists import search_queryset
 from activities.models import Activity
@@ -104,6 +108,10 @@ class CommitmentListView(LoginRequiredMixin, FunctionaryOrStaffRequiredMixin, Li
         context['states'] = Commitment.State.choices
         commitments = get_commitment_scope(self.request.user)
         functionary = getattr(self.request.user, 'functionary', None)
+        context['can_delete_commitments'] = (
+            self.request.user.is_superuser
+            or (functionary is not None and functionary.is_admin)
+        )
         if (
             self.request.user.is_staff
             or self.request.user.is_superuser
@@ -145,6 +153,9 @@ class CommitmentCreateView(LoginRequiredMixin, FunctionaryRequiredMixin, CreateV
 
     def get_initial(self):
         initial = super().get_initial()
+        functionary = getattr(self.request.user, 'functionary', None)
+        if functionary is not None:
+            initial['functionary'] = functionary.pk
         activity_id = self.request.GET.get('activity_id')
         if activity_id:
             initial['activity_id'] = activity_id
@@ -152,6 +163,13 @@ class CommitmentCreateView(LoginRequiredMixin, FunctionaryRequiredMixin, CreateV
             if activity is not None:
                 initial['measuring'] = activity.measuring_id
         return initial
+
+    def get_form_kwargs(self):
+        kwargs = super().get_form_kwargs()
+        functionary = getattr(self.request.user, 'functionary', None)
+        if functionary is not None:
+            kwargs['delegation'] = functionary.delegation
+        return kwargs
 
     def _get_linkable_activity(self, activity_id):
         functionary = getattr(self.request.user, 'functionary', None)
@@ -186,7 +204,6 @@ class CommitmentCreateView(LoginRequiredMixin, FunctionaryRequiredMixin, CreateV
                 return self.form_invalid(form)
             form.instance.measuring = activity.measuring
 
-        form.instance.functionary = functionary
         response = super().form_valid(form)
         if activity is not None:
             activity.commitment = self.object
@@ -204,13 +221,18 @@ class CommitmentUpdateView(LoginRequiredMixin, FunctionaryOrStaffRequiredMixin, 
     def get_queryset(self):
         return get_commitment_scope(self.request.user)
 
+    def get_form_kwargs(self):
+        kwargs = super().get_form_kwargs()
+        kwargs['delegation'] = self.object.functionary.delegation
+        return kwargs
+
     def form_valid(self, form):
         response = super().form_valid(form)
         messages.success(self.request, 'Compromiso actualizado.')
         return response
 
 
-class CommitmentDeleteView(LoginRequiredMixin, FunctionaryOrStaffRequiredMixin, DeleteView):
+class CommitmentDeleteView(LoginRequiredMixin, AdminRequiredMixin, DeleteView):
     model = Commitment
     template_name = 'agenda/commitment_confirm_delete.html'
     success_url = reverse_lazy('agenda:commitment_list')

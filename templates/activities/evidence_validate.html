@@ -14,11 +14,24 @@
                 <div class="rounded bg-light p-3 mb-4">
                     <h2 class="h6 fw-bold mb-1">{{ evidence.name }}</h2>
                     <p class="text-muted mb-2">Subida por {{ evidence.functionary }}</p>
+                    <div class="border-top pt-3 mt-3">
+                        <p class="small text-uppercase text-muted fw-semibold mb-1">Actividad vinculada</p>
+                        <p class="fw-semibold mb-1">{{ evidence.activity.application }}</p>
+                        <p class="small text-muted mb-2">
+                            #{{ evidence.activity_id }} · {{ evidence.activity.functionary.full_name }} ·
+                            {{ evidence.activity.measuring.service }} · {{ evidence.activity.quantity }} unidad(es)
+                        </p>
+                        <p class="small mb-0">{{ evidence.activity.taken_action|linebreaksbr }}</p>
+                    </div>
                     {% if evidence.file %}
                     <a href="{{ evidence.file.url }}" target="_blank" rel="noopener noreferrer" class="btn btn-sm btn-outline-primary">
                         <i class="bi bi-box-arrow-up-right me-1"></i>Ver archivo
                     </a>
                     {% endif %}
+                </div>
+                <div class="alert alert-info" role="note">
+                    Aprobar esta evidencia valida la actividad y suma su cantidad al avance.
+                    Rechazarla deja la actividad en pausa hasta que se cargue una evidencia corregida y sea aprobada.
                 </div>
                 <form method="post">
                     {% csrf_token %}
@@ -26,7 +39,7 @@
                     <div class="d-flex justify-content-end gap-2 mt-4 pt-3 border-top">
                         <a href="{% url 'activities:evidence_list' %}" class="btn btn-outline-secondary">Cancelar</a>
                         <button type="submit" class="btn btn-primary">
-                            <i class="bi bi-check-circle me-1"></i>Guardar validación
+                            <i class="bi bi-check-circle me-1"></i>Registrar decisión
                         </button>
                     </div>
                 </form>
