@@ -3,6 +3,7 @@ from django.contrib.auth.mixins import LoginRequiredMixin
 from django.http import JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse_lazy
+from django.utils import timezone
 from django.views.generic import CreateView, ListView, UpdateView, View
 
 from core.mixins import AdminRequiredMixin, FunctionaryRequiredMixin
@@ -205,20 +206,7 @@ class AttentionListView(LoginRequiredMixin, FunctionaryRequiredMixin, ListView):
     paginate_by = 20
 
     def get_queryset(self):
-        functionary = self.request.user.functionary
-        queryset = Attention.objects.select_related(
-            'attention_type',
-            'sub_attention',
-            'delegation',
-            'functionary',
-        ).filter(deleted_at__isnull=True)
-        if not self.request.user.is_staff and not self.request.user.is_superuser:
-            if functionary.is_admin or functionary.has_global_scope:
-                pass
-            elif functionary.is_delegate:
-                queryset = queryset.filter(delegation=functionary.delegation)
-            else:
-                queryset = queryset.filter(functionary=functionary)
+        queryset = visible_attentions(self.request.user)
         queryset = search_queryset(
             queryset,
             self.request.GET.get('q'),
@@ -265,28 +253,35 @@ class AttentionListView(LoginRequiredMixin, FunctionaryRequiredMixin, ListView):
         return add_list_context(self.request, context)
 
 
+class AttentionFormContextMixin:
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        functionary = _active_functionary(self.request.user)
+        has_active_attention_types = AttentionType.objects.filter(
+            is_active=True,
+            deleted_at__isnull=True,
+        ).exists()
+        context['has_active_attention_types'] = (
+            has_active_attention_types
+            or getattr(self, 'object', None) is not None
+        )
+        context['can_manage_attention_types'] = (
+            self.request.user.is_superuser
+            or (functionary is not None and functionary.is_admin)
+        )
+        return context
+
+
 class AttentionCreateView(
     LoginRequiredMixin,
     FunctionaryRequiredMixin,
+    AttentionFormContextMixin,
     CreateView,
 ):
     model = Attention
     form_class = AttentionForm
     template_name = 'atenciones/attention_form.html'
     success_url = reverse_lazy('atenciones:attention_list')
-
-    def get_context_data(self, **kwargs):
-        context = super().get_context_data(**kwargs)
-        functionary = _active_functionary(self.request.user)
-        context['has_active_attention_types'] = AttentionType.objects.filter(
-            is_active=True,
-            deleted_at__isnull=True,
-        ).exists()
-        context['can_manage_attention_types'] = (
-            self.request.user.is_superuser
-            or (functionary is not None and functionary.is_admin)
-        )
-        return context
 
     def form_valid(self, form):
         functionary = self.request.user.functionary
@@ -295,6 +290,68 @@ class AttentionCreateView(
         response = super().form_valid(form)
         messages.success(self.request, 'Atención ciudadana registrada correctamente.')
         return response
+
+
+class AttentionUpdateView(
+    LoginRequiredMixin,
+    FunctionaryRequiredMixin,
+    AttentionFormContextMixin,
+    UpdateView,
+):
+    model = Attention
+    form_class = AttentionForm
+    template_name = 'atenciones/attention_form.html'
+    success_url = reverse_lazy('atenciones:attention_list')
+
+    def get_queryset(self):
+        return visible_attentions(self.request.user)
+
+    def form_valid(self, form):
+        response = super().form_valid(form)
+        messages.success(self.request, 'Atención ciudadana actualizada correctamente.')
+        return response
+
+
+class AttentionDeleteView(
+    LoginRequiredMixin,
+    FunctionaryRequiredMixin,
+    View,
+):
+    def get_queryset(self):
+        return visible_attentions(self.request.user)
+
+    def get(self, request, pk):
+        attention = get_object_or_404(self.get_queryset(), pk=pk)
+        return render(
+            request,
+            'atenciones/attention_confirm_delete.html',
+            {'object': attention},
+        )
+
+    def post(self, request, pk):
+        attention = get_object_or_404(self.get_queryset(), pk=pk)
+        attention.deleted_at = timezone.now()
+        attention.save(update_fields=['deleted_at', 'updated_at'])
+        messages.success(request, 'Atención ciudadana eliminada correctamente.')
+        return redirect('atenciones:attention_list')
+
+
+def visible_attentions(user):
+    functionary = user.functionary
+    queryset = Attention.objects.select_related(
+        'attention_type',
+        'sub_attention',
+        'delegation',
+        'functionary',
+    ).filter(deleted_at__isnull=True)
+    if not user.is_staff and not user.is_superuser:
+        if functionary.is_admin or functionary.has_global_scope:
+            pass
+        elif functionary.is_delegate:
+            queryset = queryset.filter(delegation=functionary.delegation)
+        else:
+            queryset = queryset.filter(functionary=functionary)
+    return queryset
 
 
 def subattention_options(request, type_id):

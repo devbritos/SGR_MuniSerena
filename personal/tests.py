@@ -4,7 +4,7 @@ from django.contrib.auth.models import Permission, User
 from django.contrib.contenttypes.models import ContentType
 from django.urls import reverse
 
-from .forms import FunctionaryCustomForm, FunctionaryUpdateForm
+from .forms import DelegationForm, FunctionaryCustomForm, FunctionaryUpdateForm
 from .models import (
     Delegation,
     Functionary,
@@ -107,6 +107,18 @@ class FunctionaryNameValidationTests(TestCase):
         self.assertTrue(update_form.is_valid(), update_form.errors)
 
 
+class DelegationFormTests(TestCase):
+    def test_labels_are_in_spanish_and_validation_required_fields_are_required(self):
+        form = DelegationForm()
+
+        self.assertEqual(form.fields['state'].label, 'Estado')
+        self.assertEqual(form.fields['field'].label, 'Ámbito territorial')
+        self.assertEqual(form.fields['code'].label, 'Código de delegación')
+        self.assertTrue(form.fields['code'].required)
+        self.assertTrue(form.fields['address'].required)
+        self.assertTrue(form.fields['commune'].required)
+
+
 class FunctionaryFormViewTests(TestCase):
     def setUp(self):
         self.admin = User.objects.create_superuser(
@@ -157,6 +169,20 @@ class FunctionaryFormViewTests(TestCase):
             'role-badge--readonly',
         ):
             self.assertContains(response, role_class)
+
+    def test_delegation_form_has_spanish_labels_and_clear_sections(self):
+        response = self.client.get(reverse('personal:delegation_create'))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'Crear delegación')
+        self.assertContains(response, 'Código de delegación')
+        self.assertContains(response, 'Nombre de la delegación')
+        self.assertContains(response, 'Ámbito territorial')
+        self.assertContains(response, 'Identificación')
+        self.assertContains(response, 'Ubicación')
+        self.assertContains(response, 'Configuración')
+        self.assertNotContains(response, '>State<')
+        self.assertNotContains(response, '>Field<')
 
     def test_create_form_is_presented_in_spanish(self):
         response = self.client.get(reverse('personal:functionary_create'))

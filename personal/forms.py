@@ -18,14 +18,48 @@ class DelegationForm(forms.ModelForm):
     class Meta:
         model = Delegation
         fields = ['code', 'name', 'address', 'commune', 'state', 'field']
+        labels = {
+            'code': 'Código de delegación',
+            'name': 'Nombre de la delegación',
+            'address': 'Dirección',
+            'commune': 'Comuna',
+            'state': 'Estado',
+            'field': 'Ámbito territorial',
+        }
+        help_texts = {
+            'code': 'Identificador único para reconocer esta delegación.',
+            'name': 'Usa el nombre oficial con el que se identifica la delegación.',
+            'address': 'Ingresa la dirección donde funciona la delegación.',
+            'commune': 'Comuna en la que se encuentra ubicada.',
+            'state': 'Las delegaciones inactivas no estarán disponibles para nuevas asignaciones.',
+            'field': 'Selecciona si la delegación corresponde a un ámbito rural o urbano.',
+        }
         widgets = {
-            'code': forms.TextInput(attrs={'class': 'form-control'}),
-            'name': forms.TextInput(attrs={'class': 'form-control'}),
-            'address': forms.TextInput(attrs={'class': 'form-control'}),
-            'commune': forms.TextInput(attrs={'class': 'form-control'}),
+            'code': forms.TextInput(attrs={
+                'class': 'form-control',
+                'placeholder': 'Ej.: DEL-001',
+                'autocomplete': 'off',
+            }),
+            'name': forms.TextInput(attrs={
+                'class': 'form-control',
+                'placeholder': 'Ej.: Delegación Centro',
+            }),
+            'address': forms.TextInput(attrs={
+                'class': 'form-control',
+                'placeholder': 'Calle, número y referencia',
+            }),
+            'commune': forms.TextInput(attrs={
+                'class': 'form-control',
+                'placeholder': 'Nombre de la comuna',
+            }),
             'state': forms.Select(attrs={'class': 'form-select'}),
             'field': forms.Select(attrs={'class': 'form-select'}),
         }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        for field_name in ('code', 'address', 'commune'):
+            self.fields[field_name].required = True
 
     def clean_name(self):
         name = (self.cleaned_data.get('name') or '').strip()

@@ -1,4 +1,5 @@
 from django import forms
+from django.db.models import Q
 
 from .models import Attention, AttentionType, SubAttention
 
@@ -72,17 +73,29 @@ class AttentionForm(forms.ModelForm):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.fields['attention_type'].queryset = AttentionType.objects.filter(
+        attention_types = AttentionType.objects.filter(
             is_active=True,
             deleted_at__isnull=True,
         )
+        sub_attentions = SubAttention.objects.filter(
+            is_active=True,
+            deleted_at__isnull=True,
+        )
+        if self.instance.pk:
+            attention_types = AttentionType.objects.filter(
+                Q(is_active=True, deleted_at__isnull=True)
+                | Q(pk=self.instance.attention_type_id)
+            )
+            sub_attentions = SubAttention.objects.filter(
+                Q(is_active=True, deleted_at__isnull=True)
+                | Q(pk=self.instance.sub_attention_id)
+            )
+        self.fields['attention_type'].queryset = attention_types
         self.fields['sub_attention'].queryset = SubAttention.objects.none()
         type_id = self.data.get('attention_type') or self.initial.get('attention_type')
         if type_id and str(type_id).isdigit():
-            self.fields['sub_attention'].queryset = SubAttention.objects.filter(
+            self.fields['sub_attention'].queryset = sub_attentions.filter(
                 attention_type_id=type_id,
-                is_active=True,
-                deleted_at__isnull=True,
             )
 
     def clean(self):

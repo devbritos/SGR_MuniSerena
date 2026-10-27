@@ -8,6 +8,16 @@ urlpatterns = [
     path('', views.AttentionListView.as_view(), name='attention_list'),
     path('nueva/', views.AttentionCreateView.as_view(), name='attention_create'),
     path(
+        '<int:pk>/editar/',
+        views.AttentionUpdateView.as_view(),
+        name='attention_update',
+    ),
+    path(
+        '<int:pk>/eliminar/',
+        views.AttentionDeleteView.as_view(),
+        name='attention_delete',
+    ),
+    path(
         'tipos/',
         views.AttentionTypeListView.as_view(),
         name='attention_type_list',

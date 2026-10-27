@@ -63,6 +63,112 @@ class CitizenAttentionTests(TestCase):
         self.assertEqual(attention.delegation, self.delegation)
         self.assertIsNotNone(attention.created_at)
 
+    def test_attention_can_be_edited_by_its_responsible_functionary(self):
+        attention = Attention.objects.create(
+            requester_name='Solicitante anterior',
+            requester_contact='anterior@example.com',
+            attention_type=self.attention_type,
+            sub_attention=self.sub_attention,
+            description='Descripción anterior.',
+            delegation=self.delegation,
+            functionary=self.functionary,
+        )
+
+        edit_page = self.client.get(
+            reverse('atenciones:attention_update', args=[attention.pk])
+        )
+        self.assertEqual(edit_page.status_code, 200)
+        self.assertContains(edit_page, 'Editar atención ciudadana')
+        self.assertContains(edit_page, 'Datos de la persona')
+        self.assertContains(edit_page, 'Clasificación')
+        self.assertContains(edit_page, 'Detalle de la atención')
+        self.assertContains(edit_page, 'La delegación y el usuario responsable no se pueden modificar')
+        self.assertContains(edit_page, 'Delegación de prueba')
+        self.assertContains(edit_page, 'Funcionario Prueba')
+
+        response = self.client.post(
+            reverse('atenciones:attention_update', args=[attention.pk]),
+            {
+                'requester_name': 'Solicitante actualizado',
+                'requester_contact': 'actualizado@example.com',
+                'attention_type': self.attention_type.pk,
+                'sub_attention': self.sub_attention.pk,
+                'description': 'Descripción actualizada.',
+            },
+        )
+
+        self.assertRedirects(response, reverse('atenciones:attention_list'))
+        attention.refresh_from_db()
+        self.assertEqual(attention.requester_name, 'Solicitante actualizado')
+        self.assertEqual(attention.requester_contact, 'actualizado@example.com')
+        self.assertEqual(attention.description, 'Descripción actualizada.')
+        self.assertEqual(attention.delegation, self.delegation)
+        self.assertEqual(attention.functionary, self.functionary)
+
+    def test_attention_can_be_deleted_and_is_soft_deleted(self):
+        attention = Attention.objects.create(
+            requester_name='Solicitante por eliminar',
+            attention_type=self.attention_type,
+            sub_attention=self.sub_attention,
+            description='Descripción para eliminar.',
+            delegation=self.delegation,
+            functionary=self.functionary,
+        )
+
+        confirmation = self.client.get(
+            reverse('atenciones:attention_delete', args=[attention.pk])
+        )
+        self.assertEqual(confirmation.status_code, 200)
+        self.assertContains(confirmation, 'se conservará en el historial')
+
+        response = self.client.post(
+            reverse('atenciones:attention_delete', args=[attention.pk])
+        )
+
+        self.assertRedirects(response, reverse('atenciones:attention_list'))
+        attention.refresh_from_db()
+        self.assertIsNotNone(attention.deleted_at)
+        self.assertNotContains(
+            self.client.get(reverse('atenciones:attention_list')),
+            'Solicitante por eliminar',
+        )
+
+    def test_attention_edit_and_delete_are_limited_to_visible_records(self):
+        other_delegation = Delegation.objects.create(
+            code='D-OTHER-CRUD',
+            name='Otra delegación CRUD',
+            field='RURAL',
+        )
+        other_user = User.objects.create_user(
+            username='otro_funcionario_crud',
+            password='test-password',
+        )
+        other_functionary = Functionary.objects.create(
+            user=other_user,
+            delegation=other_delegation,
+            position=self.position,
+            names='Otro',
+            lastnames='Funcionario',
+        )
+        attention = Attention.objects.create(
+            requester_name='Atención de otra delegación',
+            attention_type=self.attention_type,
+            sub_attention=self.sub_attention,
+            description='No debe ser accesible.',
+            delegation=other_delegation,
+            functionary=other_functionary,
+        )
+
+        for action in ('attention_update', 'attention_delete'):
+            with self.subTest(action=action):
+                response = self.client.get(
+                    reverse(f'atenciones:{action}', args=[attention.pk])
+                )
+                self.assertEqual(response.status_code, 404)
+
+        attention.refresh_from_db()
+        self.assertIsNone(attention.deleted_at)
+
     def test_mismatched_subattention_is_rejected(self):
         other_type = AttentionType.objects.create(
             code='AT-02',
@@ -169,6 +275,7 @@ class CitizenAttentionTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, 'Registrar atención')
         self.assertContains(response, 'Vecino de mi delegación')
+        self.assertContains(response, 'Editar atención de Vecino de mi delegación')
         self.assertNotContains(response, 'Vecino de otra delegación')
 
         export = self.client.get(
