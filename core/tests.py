@@ -4,13 +4,97 @@ from django.test import TestCase
 from django.contrib.auth.models import User
 from django.contrib.auth import get_user_model
 from django.core import mail
-from django.test import override_settings
+from django.test import RequestFactory, SimpleTestCase, override_settings
+from django.core.paginator import Paginator
+from django.template.loader import render_to_string
 from django.urls import reverse
 from django.utils import timezone
 from datetime import timedelta
 from unittest.mock import patch
 
 from .models import PasswordRecoveryCode
+
+
+class PaginationTemplateTests(SimpleTestCase):
+    def test_paginator_shows_page_one_even_when_results_fit_on_one_page(self):
+        request = RequestFactory().get('/listado/')
+        page = Paginator(['único resultado'], 10).get_page(1)
+
+        rendered = render_to_string(
+            '_pagination.html',
+            {
+                'request': request,
+                'page_obj': page,
+                'is_paginated': page.has_other_pages(),
+                'query_params': '',
+            },
+        )
+
+        self.assertIn('Mostrando <strong>1–1</strong>', rendered)
+        self.assertIn('de <strong>1</strong> resultados', rendered)
+        self.assertIn('aria-current="page"', rendered)
+        self.assertIn('<span class="page-link">1', rendered)
+        self.assertIn('aria-disabled="true"', rendered)
+
+    def test_paginator_is_hidden_when_list_is_empty(self):
+        request = RequestFactory().get('/listado/')
+        page = Paginator([], 10).get_page(1)
+
+        rendered = render_to_string(
+            '_pagination.html',
+            {
+                'request': request,
+                'page_obj': page,
+                'is_paginated': page.has_other_pages(),
+                'query_params': '',
+            },
+        )
+
+        self.assertNotIn('<nav', rendered)
+
+    def test_paginator_shows_page_window_and_preserves_filters(self):
+        request = RequestFactory().get(
+            '/listado/',
+            {'q': 'solicitud', 'state': 'activo', 'page': '3'},
+        )
+        query_params = request.GET.copy()
+        query_params.pop('page', None)
+        page = Paginator(range(51), 10).get_page(request.GET.get('page'))
+
+        rendered = render_to_string(
+            '_pagination.html',
+            {
+                'request': request,
+                'page_obj': page,
+                'is_paginated': page.has_other_pages(),
+                'query_params': query_params.urlencode(),
+            },
+        )
+
+        self.assertIn('Mostrando <strong>21–30</strong>', rendered)
+        self.assertIn('de <strong>51</strong> resultados', rendered)
+        self.assertIn('aria-current="page"', rendered)
+        self.assertIn('page=1', rendered)
+        self.assertIn('page=2', rendered)
+        self.assertIn('page=4', rendered)
+        self.assertIn('page=6', rendered)
+        self.assertIn('q=solicitud&amp;state=activo&amp;page=', rendered)
+
+    def test_paginator_disables_previous_and_next_at_boundaries(self):
+        request = RequestFactory().get('/listado/')
+        for page_number, disabled_label in ((1, 'Anterior'), (2, 'Siguiente')):
+            with self.subTest(page_number=page_number):
+                page = Paginator(range(20), 10).get_page(page_number)
+                rendered = render_to_string(
+                    '_pagination.html',
+                    {
+                        'request': request,
+                        'page_obj': page,
+                        'is_paginated': page.has_other_pages(),
+                        'query_params': '',
+                    },
+                )
+                self.assertIn(f'>{disabled_label}</span>', rendered)
 
 
 @override_settings(DEBUG=False)
