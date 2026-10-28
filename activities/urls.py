@@ -17,5 +17,10 @@ urlpatterns = [
         views.EvidenceValidateView.as_view(),
         name='evidence_validate',
     ),
+    path(
+        'evidencias/<int:pk>/archivo/',
+        views.EvidenceFileView.as_view(),
+        name='evidence_file',
+    ),
     path('traffic_light/',views.TrafficLightView.as_view(),name = 'traffic_light'),
 ]

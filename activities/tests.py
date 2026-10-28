@@ -3,6 +3,7 @@ from datetime import timedelta
 from tempfile import TemporaryDirectory
 
 from django.contrib.auth.models import User
+from django.core.files.base import ContentFile
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import override_settings
 from django.urls import reverse
@@ -115,6 +116,46 @@ class StaffEvidenceAccessTests(TestCase):
         self.evidence.refresh_from_db()
         self.assertEqual(self.evidence.validity_state, Evidence.Validity.APPROVED)
         self.assertEqual(self.evidence.date_validity, timezone.localdate())
+
+    def test_staff_can_view_evidence_file_through_authenticated_route(self):
+        file_url = reverse('activities:evidence_file', args=[self.evidence.pk])
+        with TemporaryDirectory() as media_root:
+            with override_settings(MEDIA_ROOT=media_root):
+                self.evidence.file.save(
+                    'respaldo.pdf',
+                    ContentFile(b'%PDF-1.4 evidencia de prueba'),
+                )
+
+                response = self.client.get(file_url)
+
+                self.assertEqual(response.status_code, 200)
+                self.assertEqual(response['Content-Type'], 'application/pdf')
+                self.assertEqual(response['X-Content-Type-Options'], 'nosniff')
+                self.assertIn('inline', response['Content-Disposition'])
+                self.assertEqual(
+                    b''.join(response.streaming_content),
+                    b'%PDF-1.4 evidencia de prueba',
+                )
+                response.close()
+
+                self.evidence.file.delete(save=False)
+
+        self.evidence.file = 'evidences/no-existe.pdf'
+        self.evidence.save(update_fields=['file'])
+        self.assertEqual(self.client.get(file_url).status_code, 404)
+
+    def test_user_without_evidence_scope_cannot_view_evidence_file(self):
+        user_without_functionary = User.objects.create_user(
+            username='sin_funcionario',
+            password='test-password',
+        )
+        self.client.force_login(user_without_functionary)
+
+        response = self.client.get(
+            reverse('activities:evidence_file', args=[self.evidence.pk])
+        )
+
+        self.assertEqual(response.status_code, 404)
 
     def test_functionary_cannot_review_their_own_evidence(self):
         verifier_role = Role.objects.create(role_name=Role.VERIFIER)

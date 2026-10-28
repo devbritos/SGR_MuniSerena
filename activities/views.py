@@ -1,9 +1,12 @@
+import mimetypes
+
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.contrib import messages
 from django.db import IntegrityError, transaction
-from django.shortcuts import redirect
+from django.http import FileResponse, Http404
+from django.shortcuts import get_object_or_404, redirect
 from django.urls import reverse_lazy, reverse
-from django.views.generic import ListView, CreateView, UpdateView, DeleteView
+from django.views.generic import ListView, CreateView, UpdateView, DeleteView, View
 from django.utils import timezone
 from configuration.models import Goal, Period
 from .models import Activity, Evidence, approved_activity_queryset
@@ -363,6 +366,35 @@ class EvidenceValidateView(
                 'Evidencia rechazada; la actividad queda en pausa hasta que se cargue una corrección aprobada.',
             )
         return redirect(self.get_success_url())
+
+
+class EvidenceFileView(LoginRequiredMixin, View):
+    def get(self, request, pk):
+        evidence = get_object_or_404(
+            get_evidence_scope(request.user).filter(deleted_at__isnull=True),
+            pk=pk,
+        )
+        if not evidence.file or not evidence.file.storage.exists(evidence.file.name):
+            raise Http404('El archivo de evidencia no existe.')
+
+        content_type = mimetypes.guess_type(evidence.file.name)[0]
+        inline_types = {
+            'application/pdf',
+            'image/jpeg',
+            'image/png',
+            'image/gif',
+            'image/webp',
+        }
+        can_display_inline = content_type in inline_types
+        response = FileResponse(
+            evidence.file.open('rb'),
+            as_attachment=not can_display_inline,
+            filename=evidence.file.name.rsplit('/', 1)[-1],
+            content_type=content_type if can_display_inline else 'application/octet-stream',
+        )
+        response['X-Content-Type-Options'] = 'nosniff'
+        return response
+
 
 # Create your views here.
 
