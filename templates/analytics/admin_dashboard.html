@@ -8,7 +8,7 @@
     .dashboard-wrap { max-width: 1480px; }
     .dashboard-welcome { position: relative; min-height: 320px; overflow: hidden; color: #fff; background: linear-gradient(115deg, #d51f25 0%, #ad0000 48%, #7a2021 100%); }
     .dashboard-welcome::after { position: absolute; inset: 0; z-index: 0; background: linear-gradient(90deg, rgba(0, 0, 0, .08) 0%, rgba(0, 0, 0, .03) 42%, transparent 72%); content: ""; pointer-events: none; }
-    .dashboard-welcome-lighthouse { position: absolute; top: 50%; right: 0; z-index: 1; width: 61.5%; height: auto; object-fit: contain; object-position: right center; opacity: .9; filter: drop-shadow(0 0 1.5rem rgba(255, 255, 255, .2)) brightness(1.08); transform: translateY(-50%); pointer-events: none; }
+    .dashboard-welcome-lighthouse { position: absolute; inset: 0 0 0 auto; z-index: 1; width: 82%; height: 100%; object-fit: cover; object-position: right center; opacity: .9; mix-blend-mode: screen; -webkit-mask-image: linear-gradient(to right, transparent, #000 22%); mask-image: linear-gradient(to right, transparent, #000 22%); filter: drop-shadow(0 0 1.5rem rgba(255, 255, 255, .2)) brightness(1.08); pointer-events: none; }
     .dashboard-welcome-content { position: relative; z-index: 2; max-width: 37%; }
     .dashboard-welcome-actions { margin-top: 1.5rem; }
     .dashboard-stat { border: 1px solid #ece8e6; border-radius: 1rem; height: 100%; transition: transform .18s ease, box-shadow .18s ease; }
@@ -21,14 +21,14 @@
     .dashboard-quick-link { border: 1px solid #eee4e1; border-radius: .75rem; color: #343a40; text-decoration: none; transition: border-color .15s ease, background .15s ease; }
     .dashboard-quick-link:hover { border-color: #ad0000; background: #fff8f8; color: #7a2021; }
     @media (min-width: 768px) and (max-width: 991.98px) {
-        .dashboard-welcome-lighthouse { width: 54%; }
+        .dashboard-welcome-lighthouse { width: 75%; }
         .dashboard-welcome-content { max-width: 45%; }
     }
     @media (max-width: 767.98px) {
         .dashboard-welcome { min-height: 0; }
         .dashboard-welcome::after { background: linear-gradient(90deg, rgba(0, 0, 0, .12), rgba(0, 0, 0, .05) 62%, transparent); }
-        .dashboard-welcome-content { max-width: 100%; }
-        .dashboard-welcome-lighthouse { position: relative; display: block; top: auto; right: auto; bottom: auto; width: 112%; max-width: 112%; margin: 1.25rem -6% -0.5rem; opacity: .75; transform: none; }
+        .dashboard-welcome-content { position: relative; z-index: 2; max-width: 100%; }
+        .dashboard-welcome-lighthouse { position: static; display: block; inset: auto; width: 100%; max-width: 100%; height: auto; margin: 1.25rem 0 0; object-fit: contain; opacity: .75; -webkit-mask-image: none; mask-image: none; }
     }
     @media (prefers-reduced-motion: reduce) { .dashboard-stat { transition: none; } }
 </style>
@@ -46,7 +46,8 @@
                     </time>
                 </p>
                 <h1 class="h2 fw-bold mb-2">Panel de control</h1>
-                <p class="text-white-50 mb-0">Indicadores operativos y actividad reciente del sistema.</p>
+                <p class="text-white-50 mb-0">Indicadores operativos</p>
+                <p class="text-white-50 mb-0">y actividad reciente del sistema.</p>
             </div>
             <div class="dashboard-welcome-actions d-flex flex-wrap gap-2">
                 <a class="btn btn-light text-danger fw-semibold px-3" href="{% url 'activities:activity_list' %}">
@@ -57,7 +58,7 @@
                 </a>
             </div>
         </div>
-        <img class="dashboard-welcome-lighthouse" src="{% static 'images/serena.png' %}" alt="" aria-hidden="true">
+        <img class="dashboard-welcome-lighthouse" src="{% static 'images/laserena.png' %}" alt="" aria-hidden="true">
     </header>
 
     <section aria-label="Indicadores principales" class="row g-3 mb-4">
