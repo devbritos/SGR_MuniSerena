@@ -6,21 +6,46 @@
     <a href="{% url 'activities:evidence_create' %}" class="btn btn-primary">+ Subir evidencia</a>
     {% endif %}
 </div>
+<div class="d-flex gap-2 mb-3">
+    <form method="get" class="d-flex gap-2 flex-grow-1">
+        <input class="form-control" type="search" name="q" value="{{ search_query }}" placeholder="Buscar evidencia, actividad o funcionario">
+        <button class="btn btn-outline-secondary" type="submit"><i class="bi bi-search"></i> Buscar</button>
+    </form>
+    <a class="btn btn-outline-success text-nowrap" href="{{ request.path }}?{{ query_params }}{% if query_params %}&{% endif %}export=xlsx"><i class="bi bi-file-earmark-excel"></i> Exportar a Excel</a>
+</div>
 <table class="table table-striped">
     <thead>
-        <tr><th>Nombre</th><th>Actividad</th><th>Subida por</th><th>Estado</th><th></th></tr>
+        <tr><th>Evidencia</th><th>Actividad vinculada</th><th>Subida por</th><th>Estado</th><th></th></tr>
     </thead>
     <tbody>
         {% for e in evidences %}
         <tr>
-            <td>{{ e.name }}</td>
-            <td>{{ e.activity }}</td>
-            <td>{{ e.functionary }}</td>
-            <td>{{ e.validity_state }}</td>
             <td>
-                {% if e.validity_state == 'PENDING' %}
+                <span class="fw-semibold">{{ e.name }}</span>
+                {% if e.metadata %}<br><small class="text-muted">{{ e.metadata }}</small>{% endif %}
+            </td>
+            <td>
+                <span class="fw-semibold">{{ e.activity.application }}</span>
+                <br><small class="text-muted">Actividad #{{ e.activity_id }} · {{ e.activity.functionary.full_name }}</small>
+            </td>
+            <td>{{ e.functionary }}</td>
+            <td>
+                {% if e.is_latest %}
+                    {% if e.validity_state == 'APPROVED' %}<span class="badge text-bg-success">Aprobada · actividad validada</span>
+                    {% elif e.validity_state == 'REJECTED' %}<span class="badge text-bg-danger">Rechazada · actividad en pausa</span>
+                    {% else %}<span class="badge text-bg-warning">Pendiente de revisión</span>{% endif %}
+                {% else %}
+                    <span class="badge text-bg-secondary">Reemplazada</span>
+                {% endif %}
+            </td>
+            <td>
+                {% if e.validity_state == 'PENDING' and e.is_latest %}
                 {% if user.is_staff or user.is_superuser or user.functionary.is_verifier %}
+                    {% if user.is_staff or user.is_superuser or user.functionary.is_admin or user.functionary != e.functionary %}
                 <a href="{% url 'activities:evidence_validate' e.pk %}" class="btn btn-sm btn-outline-primary">Validar</a>
+                    {% else %}
+                <span class="small text-muted">No puedes validar tu propia evidencia</span>
+                    {% endif %}
                 {% endif %}
                 {% endif %}
             </td>
@@ -30,4 +55,5 @@
         {% endfor %}
     </tbody>
 </table>
+{% include "_pagination.html" %}
 {% endblock %}

@@ -6,7 +6,11 @@ def _active_functionary(user):
     if not user.is_authenticated or not user.is_active:
         return None
     functionary = getattr(user, 'functionary', None)
-    if functionary is None or functionary.deleted_at is not None:
+    if (
+        functionary is None
+        or functionary.deleted_at is not None
+        or not functionary.is_active
+    ):
         return None
     return functionary
 

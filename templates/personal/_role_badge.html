@@ -1,0 +1,15 @@
+{% if role.badge_style == 'admin' %}
+    <span class="role-badge role-badge--admin"><i class="bi bi-shield-lock-fill" aria-hidden="true"></i>{{ role.get_role_name_display|default:role.role_name }}</span>
+{% elif role.badge_style == 'coordinator' %}
+    <span class="role-badge role-badge--coordinator"><i class="bi bi-diagram-3-fill" aria-hidden="true"></i>{{ role.get_role_name_display|default:role.role_name }}</span>
+{% elif role.badge_style == 'delegate' %}
+    <span class="role-badge role-badge--delegate"><i class="bi bi-geo-alt-fill" aria-hidden="true"></i>{{ role.get_role_name_display|default:role.role_name }}</span>
+{% elif role.badge_style == 'functionary' %}
+    <span class="role-badge role-badge--functionary"><i class="bi bi-person-workspace" aria-hidden="true"></i>{{ role.get_role_name_display|default:role.role_name }}</span>
+{% elif role.badge_style == 'verifier' %}
+    <span class="role-badge role-badge--verifier"><i class="bi bi-patch-check-fill" aria-hidden="true"></i>{{ role.get_role_name_display|default:role.role_name }}</span>
+{% elif role.badge_style == 'readonly' %}
+    <span class="role-badge role-badge--readonly"><i class="bi bi-eye-fill" aria-hidden="true"></i>{{ role.get_role_name_display|default:role.role_name }}</span>
+{% else %}
+    <span class="role-badge role-badge--custom"><i class="bi bi-person-badge-fill" aria-hidden="true"></i>{{ role.get_role_name_display|default:role.role_name }}</span>
+{% endif %}

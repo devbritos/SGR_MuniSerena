@@ -16,6 +16,13 @@
     {% endif %}
 </div>
 
+<form method="get" class="row g-2 mb-3">
+    {% if showing_all %}<input type="hidden" name="all" value="1">{% endif %}
+    <div class="col-md-5"><input class="form-control" type="search" name="q" value="{{ search_query }}" placeholder="Buscar por código, nombre, dirección o comuna"></div>
+    <div class="col-auto"><button class="btn btn-outline-secondary" type="submit"><i class="bi bi-search"></i> Buscar</button></div>
+    <div class="col-auto"><a class="btn btn-outline-success" href="{{ request.path }}?{{ query_params }}{% if query_params %}&{% endif %}export=xlsx"><i class="bi bi-file-earmark-excel"></i> Exportar a Excel</a></div>
+</form>
+
 <div class="d-flex justify-content-end mb-3">
     {% if showing_all %}
     <a href="{% url 'personal:delegation_list' %}" class="btn btn-sm btn-outline-secondary">Ver solo activas</a>
@@ -28,13 +35,16 @@
     <div class="card-body p-0 table-responsive">
         <table class="table table-hover align-middle mb-0">
             <thead class="table-dark">
-                <tr><th class="ps-3">Nombre</th><th>Estado</th><th>Ámbito</th><th class="text-end pe-3">Acciones</th></tr>
+                <tr><th class="ps-3">Código</th><th>Nombre</th><th>Dirección</th><th>Comuna</th><th>Estado</th><th>Ámbito</th><th class="text-end pe-3">Acciones</th></tr>
             </thead>
             <tbody>
                 {% for delegation in object_list %}
                 <tr>
-                    <td class="ps-3 fw-semibold">{{ delegation.name }}</td>
-                    <td>{{ delegation.get_state_display }}</td>
+                    <td class="ps-3">{{ delegation.code|default:"—" }}</td>
+                    <td class="fw-semibold">{{ delegation.name }}</td>
+                    <td>{{ delegation.address|default:"—" }}</td>
+                    <td>{{ delegation.commune|default:"—" }}</td>
+                    <td><span class="badge {% if delegation.state == 'ACTIVO' %}bg-success{% else %}bg-secondary{% endif %}">{{ delegation.get_state_display }}</span></td>
                     <td>{{ delegation.get_field_display }}</td>
                     <td class="text-end pe-3">
                         {% if perms.personal.change_delegation or user.is_superuser or user.functionary.is_admin %}
@@ -52,10 +62,11 @@
                     </td>
                 </tr>
                 {% empty %}
-                <tr><td colspan="4" class="text-center text-muted py-4">No hay delegaciones registradas.</td></tr>
+                <tr><td colspan="7" class="text-center text-muted py-4">No hay delegaciones registradas.</td></tr>
                 {% endfor %}
             </tbody>
         </table>
     </div>
 </div>
+{% include "_pagination.html" %}
 {% endblock %}

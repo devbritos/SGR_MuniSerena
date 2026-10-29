@@ -10,6 +10,7 @@ Este proyecto fue desarrollado para la asignatura Programación Back End (TI3041
 - Registro y seguimiento de actividades y sus evidencias, con un flujo de validación.
 - Gestión de compromisos y sus fechas.
 - Configuración de períodos, mediciones y metas.
+- Registro e historial de atención ciudadana con tipo y subatención dependiente.
 - Paneles de seguimiento con indicadores para administración y funcionarios.
 - Inicio de sesión y permisos según la cuenta y el rol.
 - Páginas personalizadas para errores 403 y 404.
@@ -81,7 +82,7 @@ Abre `http://127.0.0.1:8000/` para entrar al sistema o `http://127.0.0.1:8000/ad
 
 ## Recuperación de contraseña por correo
 
-La pantalla `¿Olvidaste tu contraseña?` usa las vistas incluidas en Django. El correo solo se envía si existe una cuenta activa con esa dirección registrada.
+La pantalla `¿Olvidaste tu contraseña?` mantiene la recuperación estándar de Django mediante enlace seguro. También está disponible el flujo de código temporal de seis dígitos desde el inicio de sesión. El código vence según `PASSWORD_RESET_CODE_TIMEOUT` (600 segundos por defecto), es de un solo uso y se bloquea después de cinco intentos. La respuesta de solicitud es genérica para no revelar si una dirección está registrada.
 
 - Sin `EMAIL_HOST`, Django usa el backend de consola y muestra el mensaje/enlace en la terminal; no llega a una bandeja de entrada.
 - Para enviar correo real, configura en `.env` `EMAIL_HOST`, `EMAIL_PORT`, `EMAIL_HOST_USER`, `EMAIL_HOST_PASSWORD`, `EMAIL_USE_TLS`, `EMAIL_USE_SSL` y `DEFAULT_FROM_EMAIL`. El backend SMTP se selecciona automáticamente al configurar `EMAIL_HOST`.
@@ -95,7 +96,8 @@ La pantalla `¿Olvidaste tu contraseña?` usa las vistas incluidas en Django. El
 | Personal | `/personal/` | Funcionarios, delegaciones, cargos y roles |
 | Actividades | `/activities/` | Actividades, evidencias y validación |
 | Agenda | `/agenda/` | Compromisos |
-| Configuración | `/configuration/` | Metas y períodos |
+| Configuración | `/configuration/` | Ítems de medición, metas y períodos |
+| Atención ciudadana | `/atenciones/` | Registro y consulta de atenciones y catálogos |
 | Paneles | `/dashboard/` | Redirección al panel correspondiente al usuario |
 | Administración Django | `/admin/` | Administración interna de Django |
 
@@ -109,6 +111,7 @@ La pantalla `¿Olvidaste tu contraseña?` usa las vistas incluidas en Django. El
 | `agenda` | Compromisos |
 | `configuration` | Períodos, mediciones y metas |
 | `analytics` | Paneles e indicadores de seguimiento |
+| `atenciones` | Tipos, subatenciones y transacciones de atención ciudadana |
 
 ## Pruebas
 
@@ -135,7 +138,7 @@ python manage.py collectstatic --noinput
 gunicorn config.wsgi:application --bind 0.0.0.0:8000
 ```
 
-Ejecuta Gunicorn como servicio detrás de un proxy web (por ejemplo, Nginx) y permite en el grupo de seguridad solo el tráfico necesario. Las evidencias subidas se guardan en `MEDIA_ROOT`; en AWS configura almacenamiento persistente o un servicio de objetos como S3 y sirve esos archivos de forma segura. `collectstatic` prepara los recursos estáticos, pero estos deben ser servidos por el proxy o un servicio de almacenamiento.
+Ejecuta Gunicorn como servicio detrás de un proxy web (por ejemplo, Nginx) y permite en el grupo de seguridad solo el tráfico necesario. WhiteNoise sirve los archivos estáticos recopilados por `collectstatic`, incluidos los logos y recursos de la interfaz. Las evidencias subidas se guardan en `MEDIA_ROOT`; en AWS configura almacenamiento persistente o un servicio de objetos como S3 y sirve esos archivos de forma segura.
 
 No actives `SECURE_SSL_REDIRECT`, `SESSION_COOKIE_SECURE`, `CSRF_COOKIE_SECURE` ni HSTS mientras el sitio solo use HTTP. Una vez configurado y probado HTTPS, habilita esas opciones en el `.env` y aumenta `SECURE_HSTS_SECONDS` gradualmente.
 
@@ -149,6 +152,7 @@ activities/      Actividades y evidencias
 agenda/          Compromisos
 configuration/   Períodos, mediciones y metas
 analytics/       Paneles e indicadores
+atenciones/      Atención ciudadana y sus catálogos
 templates/       Plantillas HTML compartidas y páginas de error
 static/          Archivos estáticos
 ```

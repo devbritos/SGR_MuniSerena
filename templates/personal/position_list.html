@@ -12,6 +12,12 @@
     <a href="{% url 'personal:position_create' %}" class="btn btn-primary"><i class="bi bi-plus-lg me-1"></i>Nuevo cargo</a>
     {% endif %}
 </div>
+<form method="get" class="row g-2 mb-3">
+    {% if showing_all %}<input type="hidden" name="all" value="1">{% endif %}
+    <div class="col-md-5"><input class="form-control" name="q" type="search" value="{{ search_query }}" placeholder="Buscar cargo"></div>
+    <div class="col-auto"><button class="btn btn-outline-secondary" type="submit"><i class="bi bi-search"></i> Buscar</button></div>
+    <div class="col-auto"><a class="btn btn-outline-success" href="{{ request.path }}?{{ query_params }}{% if query_params %}&{% endif %}export=xlsx"><i class="bi bi-file-earmark-excel"></i> Exportar a Excel</a></div>
+</form>
 <div class="card border-0 shadow-sm">
     <div class="card-header bg-white d-flex justify-content-end">
         {% if showing_all %}
@@ -45,4 +51,5 @@
         </table>
     </div>
 </div>
+{% include "_pagination.html" %}
 {% endblock %}

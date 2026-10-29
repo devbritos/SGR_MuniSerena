@@ -7,17 +7,17 @@
     <div class="col-md-8 col-lg-6">
         <div class="card border-danger shadow-sm">
             <div class="card-header text-bg-danger">
-                <h1 class="h5 mb-0">Eliminar funcionario</h1>
+                <h1 class="h5 mb-0">Desactivar funcionario</h1>
             </div>
             <div class="card-body">
-                <p class="mb-2">¿Seguro que quieres eliminar a <strong>{{ object.names }} {{ object.lastnames }}</strong>?</p>
+                <p class="mb-2">¿Seguro que quieres desactivar a <strong>{{ object.names }} {{ object.lastnames }}</strong>?</p>
                 <div class="alert alert-warning">
-                    Se quitarán también los roles que tenga asignados. Esta acción no se puede deshacer.
+                    Se conservará su historial y se bloqueará el acceso a su cuenta.
                 </div>
                 <form method="post" class="d-flex gap-2">
                     {% csrf_token %}
-                    <button type="submit" class="btn btn-danger" data-confirm-delete="Se eliminará el funcionario y su cuenta de acceso.">
-                        Sí, eliminar
+                    <button type="submit" class="btn btn-danger" data-confirm-delete="Se desactivará el funcionario y se bloqueará su cuenta.">
+                        Sí, desactivar
                     </button>
                     <a href="{% url 'personal:functionary_list' %}" class="btn btn-outline-secondary">Cancelar</a>
                 </form>

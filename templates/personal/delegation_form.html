@@ -1,26 +1,203 @@
 {% extends "base.html" %}
 {% load crispy_forms_tags %}
 
-{% block title %}{% if object %}Editar{% else %}Nueva{% endif %} delegación — SGR{% endblock %}
+{% block title %}{% if object %}Editar delegación{% else %}Nueva delegación{% endif %} — SGR{% endblock %}
+
+{% block extra_head %}
+<style>
+    .delegation-form-page {
+        max-width: 860px;
+        margin: 0 auto;
+    }
+    .delegation-form-heading {
+        display: flex;
+        align-items: flex-start;
+        gap: 1rem;
+        margin-bottom: 1.5rem;
+    }
+    .delegation-form-icon {
+        display: grid;
+        width: 3.25rem;
+        height: 3.25rem;
+        flex: 0 0 auto;
+        place-items: center;
+        border-radius: 1rem;
+        background: rgba(173, 0, 0, 0.08);
+        color: var(--municipal-red);
+        font-size: 1.4rem;
+    }
+    .delegation-form-heading h1 {
+        margin-bottom: 0.35rem;
+        color: #252a30;
+        font-size: clamp(1.45rem, 3vw, 1.9rem);
+        font-weight: 700;
+        letter-spacing: -0.025em;
+    }
+    .delegation-form-heading p {
+        max-width: 42rem;
+        margin-bottom: 0;
+        color: #68717a;
+    }
+    .delegation-form-card {
+        overflow: hidden;
+        border: 1px solid #e5e7eb;
+        border-radius: 1rem;
+        background: #fff;
+        box-shadow: 0 0.8rem 2.2rem rgba(35, 25, 25, 0.07);
+    }
+    .delegation-form-section {
+        padding: clamp(1.15rem, 3vw, 1.75rem);
+    }
+    .delegation-form-section + .delegation-form-section {
+        border-top: 1px solid #edf0f2;
+    }
+    .delegation-section-heading {
+        display: flex;
+        align-items: flex-start;
+        gap: 0.8rem;
+        margin-bottom: 1.25rem;
+    }
+    .delegation-section-heading i {
+        margin-top: 0.1rem;
+        color: var(--municipal-red);
+        font-size: 1.1rem;
+    }
+    .delegation-section-heading h2 {
+        margin: 0 0 0.2rem;
+        color: #343a40;
+        font-size: 1rem;
+        font-weight: 700;
+    }
+    .delegation-section-heading p {
+        margin: 0;
+        color: #747d86;
+        font-size: 0.875rem;
+    }
+    .delegation-form-page .form-label {
+        font-size: 0.9rem;
+    }
+    .delegation-form-actions {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 1rem;
+        padding: 1rem clamp(1.15rem, 3vw, 1.75rem);
+        border-top: 1px solid #edf0f2;
+        background: #fafbfc;
+    }
+    .delegation-form-actions .btn {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.45rem;
+    }
+    .delegation-required-note {
+        margin: 0;
+        color: #68717a;
+        font-size: 0.825rem;
+    }
+    @media (max-width: 575.98px) {
+        .delegation-form-heading {
+            gap: 0.75rem;
+        }
+        .delegation-form-icon {
+            width: 2.8rem;
+            height: 2.8rem;
+            border-radius: 0.85rem;
+        }
+        .delegation-form-actions {
+            align-items: stretch;
+            flex-direction: column-reverse;
+        }
+        .delegation-form-action-buttons {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+        }
+    }
+</style>
+{% endblock %}
 
 {% block content %}
-<div class="row justify-content-center">
-    <div class="col-md-8 col-lg-6">
-        <div class="card border-0 shadow-sm">
-            <div class="card-header bg-municipal text-white py-3">
-                <h1 class="h5 mb-0">{% if object %}Editar{% else %}Nueva{% endif %} delegación</h1>
-            </div>
-            <div class="card-body p-4">
-                <form method="post">
-                    {% csrf_token %}
-                    {{ form|crispy }}
-                    <div class="d-flex justify-content-end gap-2 mt-4 pt-3 border-top">
-                        <a href="{% url 'personal:delegation_list' %}" class="btn btn-outline-secondary">Cancelar</a>
-                        <button type="submit" class="btn btn-primary">Guardar delegación</button>
-                    </div>
-                </form>
-            </div>
+<main class="delegation-form-page">
+    <div class="delegation-form-heading">
+        <div class="delegation-form-icon" aria-hidden="true">
+            <i class="bi bi-geo-alt"></i>
+        </div>
+        <div>
+            <h1>{% if object %}Editar delegación{% else %}Crear delegación{% endif %}</h1>
+            <p>
+                {% if object %}
+                Actualiza los datos de <strong>{{ object.name }}</strong>. Los cambios se guardarán al confirmar.
+                {% else %}
+                Completa la información para incorporar una delegación al registro municipal.
+                {% endif %}
+            </p>
         </div>
     </div>
-</div>
+
+    <div class="delegation-form-card">
+        <form method="post">
+            {% csrf_token %}
+            {% if form.non_field_errors %}
+            <div class="alert alert-danger m-3 mb-0" role="alert">
+                {{ form.non_field_errors }}
+            </div>
+            {% endif %}
+
+            <section class="delegation-form-section" aria-labelledby="delegation-identity-heading">
+                <div class="delegation-section-heading">
+                    <i class="bi bi-card-text" aria-hidden="true"></i>
+                    <div>
+                        <h2 id="delegation-identity-heading">Identificación</h2>
+                        <p>Define el código y el nombre con que se reconocerá la delegación.</p>
+                    </div>
+                </div>
+                <div class="row g-3">
+                    <div class="col-md-5">{{ form.code|as_crispy_field }}</div>
+                    <div class="col-md-7">{{ form.name|as_crispy_field }}</div>
+                </div>
+            </section>
+
+            <section class="delegation-form-section" aria-labelledby="delegation-location-heading">
+                <div class="delegation-section-heading">
+                    <i class="bi bi-pin-map" aria-hidden="true"></i>
+                    <div>
+                        <h2 id="delegation-location-heading">Ubicación</h2>
+                        <p>Agrega los datos necesarios para ubicar la delegación.</p>
+                    </div>
+                </div>
+                <div class="row g-3">
+                    <div class="col-md-7">{{ form.address|as_crispy_field }}</div>
+                    <div class="col-md-5">{{ form.commune|as_crispy_field }}</div>
+                </div>
+            </section>
+
+            <section class="delegation-form-section" aria-labelledby="delegation-status-heading">
+                <div class="delegation-section-heading">
+                    <i class="bi bi-sliders" aria-hidden="true"></i>
+                    <div>
+                        <h2 id="delegation-status-heading">Configuración</h2>
+                        <p>Indica la disponibilidad y el ámbito territorial.</p>
+                    </div>
+                </div>
+                <div class="row g-3">
+                    <div class="col-md-6">{{ form.state|as_crispy_field }}</div>
+                    <div class="col-md-6">{{ form.field|as_crispy_field }}</div>
+                </div>
+            </section>
+
+            <div class="delegation-form-actions">
+                <p class="delegation-required-note"><span class="text-danger" aria-hidden="true">*</span> Todos los campos son obligatorios.</p>
+                <div class="delegation-form-action-buttons d-flex gap-2">
+                    <a href="{% url 'personal:delegation_list' %}" class="btn btn-outline-secondary">
+                        <i class="bi bi-arrow-left" aria-hidden="true"></i>Cancelar
+                    </a>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="bi bi-check2" aria-hidden="true"></i>{% if object %}Guardar cambios{% else %}Crear delegación{% endif %}
+                    </button>
+                </div>
+            </div>
+        </form>
+    </div>
+</main>
 {% endblock %}

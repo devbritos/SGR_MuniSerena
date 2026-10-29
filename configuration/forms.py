@@ -1,13 +1,85 @@
 from django import forms
 
-from .models import Goal, Period
+from personal.models import Position
+
+from .models import Goal, Measuring, Period
+
+
+class MeasuringForm(forms.ModelForm):
+    class Meta:
+        model = Measuring
+        fields = ['code', 'service', 'measurable_item', 'validity']
+        widgets = {
+            'code': forms.TextInput(
+                attrs={
+                    'class': 'form-control',
+                    'placeholder': 'Ej.: MED-001',
+                    'autocomplete': 'off',
+                }
+            ),
+            'service': forms.TextInput(
+                attrs={
+                    'class': 'form-control',
+                    'placeholder': 'Ej.: Atención de solicitudes vecinales',
+                }
+            ),
+            'measurable_item': forms.Textarea(
+                attrs={
+                    'class': 'form-control',
+                    'rows': 4,
+                    'placeholder': 'Describe qué se contará o evaluará con este ítem.',
+                }
+            ),
+            'validity': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
+        }
+        labels = {
+            'code': 'Código del ítem',
+            'service': 'Nombre del ítem de medición',
+            'measurable_item': 'Descripción',
+            'validity': 'Ítem activo',
+        }
+        help_texts = {
+            'code': 'Identificador único para reconocer este ítem en reportes y metas.',
+            'service': 'Nombre breve que verán los funcionarios al registrar actividades.',
+            'measurable_item': 'Indica qué resultado o actividad se medirá.',
+            'validity': 'Solo los ítems activos estarán disponibles para nuevos registros.',
+        }
+
+    def clean_code(self):
+        code = (self.cleaned_data.get('code') or '').strip()
+        if not code:
+            raise forms.ValidationError('Debe ingresar el código del ítem.')
+        return code
+
+    def clean_service(self):
+        service = (self.cleaned_data.get('service') or '').strip()
+        if not service:
+            raise forms.ValidationError('Debe ingresar el nombre del ítem.')
+        return service
 
 
 class GoalForm(forms.ModelForm):
+    positions = forms.ModelMultipleChoiceField(
+        queryset=Position.objects.none(),
+        label='Cargos responsables',
+        help_text=(
+            'Selecciona uno o más cargos. Se creará una meta independiente '
+            'para cada cargo seleccionado.'
+        ),
+        widget=forms.CheckboxSelectMultiple(
+            attrs={
+                'class': 'form-check-input',
+                'aria-describedby': 'id_positions_helptext',
+            }
+        ),
+        error_messages={
+            'required': 'Selecciona al menos un cargo responsable.',
+        },
+    )
+
     class Meta:
         model = Goal
         fields = [
-            'position',
             'measuring',
             'period',
             'weight',
@@ -16,20 +88,124 @@ class GoalForm(forms.ModelForm):
             'unity',
         ]
         widgets = {
-            'position': forms.Select(attrs={'class': 'form-select'}),
-            'measuring': forms.Select(attrs={'class': 'form-select'}),
-            'period': forms.Select(attrs={'class': 'form-select'}),
+            'measuring': forms.Select(
+                attrs={
+                    'class': 'form-select',
+                    'aria-describedby': 'id_measuring_helptext',
+                }
+            ),
+            'period': forms.Select(
+                attrs={
+                    'class': 'form-select',
+                    'aria-describedby': 'id_period_helptext',
+                }
+            ),
             'weight': forms.NumberInput(
-                attrs={'class': 'form-control', 'min': '0', 'max': '100', 'step': '0.01'}
+                attrs={
+                    'class': 'form-control',
+                    'min': '0',
+                    'max': '100',
+                    'step': '0.01',
+                    'placeholder': 'Ej.: 25',
+                }
             ),
             'validity': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
             'target_value': forms.NumberInput(
-                attrs={'class': 'form-control', 'min': '0.01', 'step': '0.01'}
+                attrs={
+                    'class': 'form-control',
+                    'min': '0.01',
+                    'step': '0.01',
+                    'placeholder': 'Ej.: 120',
+                }
             ),
             'unity': forms.TextInput(
-                attrs={'class': 'form-control', 'placeholder': 'Ej: atenciones'}
+                attrs={
+                    'class': 'form-control',
+                    'placeholder': 'Ej.: atenciones',
+                }
             ),
         }
+        labels = {
+            'measuring': 'Ítem de medición',
+            'period': 'Período de medición',
+            'weight': 'Ponderación (%)',
+            'validity': 'Meta activa',
+            'target_value': 'Valor de la meta',
+            'unity': 'Unidad de medida',
+        }
+        help_texts = {
+            'measuring': 'Ítem cuyo avance se calculará para cada cargo seleccionado.',
+            'period': 'Período en el que se evaluará el cumplimiento.',
+            'weight': 'Importancia de esta meta en el resultado total. La suma por cargo y período no puede superar 100%.',
+            'validity': 'Las metas inactivas se conservan en el historial, pero no se consideran en el cálculo.',
+            'target_value': 'Cantidad que se espera alcanzar durante el período.',
+            'unity': 'Unidad usada para interpretar el valor objetivo, por ejemplo: atenciones o actividades.',
+        }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        positions = Position.objects.filter(
+            validity=True,
+            deleted_at__isnull=True,
+        ).order_by('name')
+        self.fields['positions'].queryset = positions
+        if self.instance.pk:
+            self.fields['positions'].initial = [self.instance.position_id]
+        active_measuring = Measuring.objects.filter(
+            validity=True,
+            deleted_at__isnull=True,
+        )
+        if self.instance.pk:
+            active_measuring = active_measuring | Measuring.objects.filter(
+                pk=self.instance.measuring_id
+            )
+        self.fields['measuring'].queryset = active_measuring.distinct()
+        self.fields['period'].queryset = self.fields['period'].queryset.filter(
+            deleted_at__isnull=True,
+        )
+
+    def clean(self):
+        cleaned_data = super().clean()
+        positions = cleaned_data.get('positions')
+        measuring = cleaned_data.get('measuring')
+        period = cleaned_data.get('period')
+        weight = cleaned_data.get('weight')
+
+        if not positions or not measuring or not period or weight is None:
+            return cleaned_data
+
+        for position in positions:
+            existing_goals = Goal.objects.filter(
+                position=position,
+                measuring=measuring,
+                period=period,
+            ).exclude(pk=self.instance.pk)
+            if existing_goals.exists():
+                self.add_error(
+                    'positions',
+                    (
+                        f'El cargo "{position.name}" ya tiene una meta para '
+                        'este ítem y período.'
+                    ),
+                )
+                continue
+
+            existing_weight = sum(
+                Goal.objects.filter(
+                    position=position,
+                    period=period,
+                ).exclude(pk=self.instance.pk).values_list('weight', flat=True)
+            )
+            if existing_weight + weight > 100:
+                self.add_error(
+                    'weight',
+                    (
+                        f'La ponderación total del cargo "{position.name}" '
+                        'superaría el 100% en este período.'
+                    ),
+                )
+
+        return cleaned_data
 
     def clean_weight(self):
         weight = self.cleaned_data.get('weight')
@@ -64,20 +240,56 @@ class PeriodForm(forms.ModelForm):
         ]
         widgets = {
             'start_date': forms.DateInput(
-                attrs={'type': 'date', 'class': 'form-control'}
+                attrs={
+                    'type': 'date',
+                    'class': 'form-control',
+                    'autocomplete': 'off',
+                }
             ),
             'end_date': forms.DateInput(
-                attrs={'type': 'date', 'class': 'form-control'}
+                attrs={
+                    'type': 'date',
+                    'class': 'form-control',
+                    'autocomplete': 'off',
+                }
             ),
             'status': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
             'minimum_threshold': forms.NumberInput(
-                attrs={'class': 'form-control', 'min': 0}
+                attrs={'class': 'form-control', 'min': 0, 'step': 1}
             ),
             'maximum_computable_days': forms.NumberInput(
                 attrs={'class': 'form-control', 'min': 1}
             ),
-            'version_parameter': forms.TextInput(attrs={'class': 'form-control'}),
-            'semaphore': forms.TextInput(attrs={'class': 'form-control'}),
+            'version_parameter': forms.TextInput(
+                attrs={
+                    'class': 'form-control',
+                    'placeholder': 'Ej.: 2026',
+                }
+            ),
+            'semaphore': forms.TextInput(
+                attrs={
+                    'class': 'form-control',
+                    'placeholder': 'Ej.: SGR',
+                }
+            ),
+        }
+        labels = {
+            'start_date': 'Fecha de inicio',
+            'end_date': 'Fecha de término',
+            'status': 'Período activo',
+            'minimum_threshold': 'Umbral mínimo',
+            'maximum_computable_days': 'Máximo de días computables',
+            'version_parameter': 'Versión del parámetro',
+            'semaphore': 'Parámetro del semáforo',
+        }
+        help_texts = {
+            'start_date': 'Primer día incluido en el período de medición.',
+            'end_date': 'Último día incluido. No puede ser anterior a la fecha de inicio.',
+            'status': 'El período activo se usa para calcular el avance y el semáforo.',
+            'minimum_threshold': 'Valor mínimo usado por la configuración del período.',
+            'maximum_computable_days': 'No puede superar la duración total del período.',
+            'version_parameter': 'Etiqueta para identificar la versión de esta configuración.',
+            'semaphore': 'Referencia de configuración del semáforo para este período.',
         }
 
     def clean(self):

@@ -1,26 +1,318 @@
 {% extends "base.html" %}
 {% load crispy_forms_tags %}
 
-{% block title %}{% if object %}Editar{% else %}Nuevo{% endif %} rol — SGR{% endblock %}
+{% block title %}{% if object %}Editar rol{% else %}Nuevo rol{% endif %} — SGR{% endblock %}
+
+{% block extra_head %}
+<style>
+    .role-form-page {
+        max-width: 980px;
+        margin: 0 auto;
+    }
+    .role-form-card {
+        overflow: hidden;
+        border: 1px solid #d9dde2;
+        border-radius: 0.6rem;
+        background: #fff;
+        box-shadow: 0 0.35rem 1.1rem rgba(33, 37, 41, 0.08);
+    }
+    .role-form-header {
+        padding: 1.15rem 1.4rem;
+        border-bottom: 1px solid #7f0000;
+        background: #ad0000;
+        color: #fff;
+    }
+    .role-form-header h1 {
+        margin: 0 0 0.25rem;
+        font-size: 1.3rem;
+        font-weight: 600;
+    }
+    .role-form-header p {
+        margin: 0;
+        color: rgba(255, 255, 255, 0.84);
+        font-size: 0.9rem;
+    }
+    .role-form-body {
+        padding: 1.25rem;
+    }
+    .role-permissions {
+        margin-top: 1.25rem;
+        padding: 1rem;
+        border: 1px solid #dee2e6;
+        border-radius: 0.45rem;
+    }
+    .role-permissions-heading {
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        gap: 1rem;
+        margin-bottom: 0.85rem;
+    }
+    .role-permissions-heading h2 {
+        margin: 0 0 0.2rem;
+        font-size: 1rem;
+        font-weight: 600;
+    }
+    .role-permissions-heading p {
+        margin: 0;
+        color: #6c757d;
+        font-size: 0.875rem;
+    }
+    .role-permission-tools {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 0.6rem;
+        margin-bottom: 0.8rem;
+    }
+    .role-permission-tools .form-control {
+        flex: 1 1 250px;
+        min-width: 0;
+    }
+    .role-permission-count {
+        color: #495057;
+        font-size: 0.875rem;
+        white-space: nowrap;
+    }
+    .role-permission-groups {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 0.75rem;
+        max-height: 470px;
+        overflow-y: auto;
+        padding: 0.15rem;
+    }
+    .role-permission-group {
+        min-width: 0;
+        border: 1px solid #dee2e6;
+        border-radius: 0.4rem;
+        background: #fff;
+    }
+    .role-permission-group[hidden],
+    .role-permission-item[hidden] {
+        display: none !important;
+    }
+    .role-permission-group-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 0.7rem;
+        padding: 0.65rem 0.75rem;
+        border-bottom: 1px solid #e9ecef;
+        background: #f8f9fa;
+    }
+    .role-permission-group-header h3 {
+        margin: 0;
+        font-size: 0.9rem;
+        font-weight: 600;
+    }
+    .role-permission-group-header .form-check {
+        margin: 0;
+        white-space: nowrap;
+    }
+    .role-permission-list {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 0.25rem 0.5rem;
+        padding: 0.65rem 0.75rem;
+    }
+    .role-permission-item {
+        min-width: 0;
+        margin: 0;
+        overflow-wrap: anywhere;
+    }
+    .role-permission-item .form-check-label {
+        font-size: 0.85rem;
+    }
+    .role-form-actions {
+        display: flex;
+        justify-content: flex-end;
+        gap: 0.6rem;
+        margin-top: 1.25rem;
+        padding-top: 1rem;
+        border-top: 1px solid #e9ecef;
+    }
+    @media (max-width: 700px) {
+        .role-permission-groups,
+        .role-permission-list {
+            grid-template-columns: 1fr;
+        }
+        .role-permissions-heading {
+            display: block;
+        }
+        .role-permission-count {
+            display: block;
+            margin-top: 0.4rem;
+        }
+    }
+</style>
+{% endblock %}
 
 {% block content %}
-<div class="row justify-content-center">
-    <div class="col-md-8 col-lg-6">
-        <div class="card border-0 shadow-sm">
-            <div class="card-header bg-municipal text-white py-3">
-                <h1 class="h5 mb-0">{% if object %}Editar{% else %}Nuevo{% endif %} rol</h1>
-            </div>
-            <div class="card-body p-4">
-                <form method="post">
-                    {% csrf_token %}
-                    {{ form|crispy }}
-                    <div class="d-flex justify-content-end gap-2 mt-4 pt-3 border-top">
-                        <a href="{% url 'personal:role_list' %}" class="btn btn-outline-secondary">Cancelar</a>
-                        <button type="submit" class="btn btn-primary">Guardar rol</button>
+<main class="role-form-page">
+    <section class="role-form-card">
+        <header class="role-form-header">
+            <h1>{% if object %}Editar rol{% else %}Crear rol{% endif %}</h1>
+            <p>Define el nombre, el alcance y los permisos que tendrá este rol.</p>
+        </header>
+        <form method="post" class="role-form-body">
+            {% csrf_token %}
+            {{ form.non_field_errors }}
+            {{ form.role_name|as_crispy_field }}
+            {{ form.description|as_crispy_field }}
+            {{ form.authorized_scope|as_crispy_field }}
+
+            <section class="role-permissions" aria-labelledby="role-permissions-title">
+                <div class="role-permissions-heading">
+                    <div>
+                        <h2 id="role-permissions-title">Permisos del rol</h2>
+                        <p>Busca por módulo o acción y marca solo lo que necesites.</p>
                     </div>
-                </form>
+                    <span class="role-permission-count" aria-live="polite">
+                        Seleccionados: <strong data-selected-count>0</strong>
+                    </span>
+                </div>
+                <div class="role-permission-tools">
+                    <input
+                        type="search"
+                        class="form-control"
+                        id="permission-search"
+                        placeholder="Buscar permiso o módulo..."
+                        aria-label="Buscar permisos"
+                    >
+                    <button type="button" class="btn btn-outline-secondary btn-sm" data-select-visible>
+                        Marcar visibles
+                    </button>
+                    <button type="button" class="btn btn-outline-secondary btn-sm" data-clear-visible>
+                        Limpiar visibles
+                    </button>
+                </div>
+                {% if form.permissions.errors %}
+                    <div class="invalid-feedback d-block mb-2">
+                        {% for error in form.permissions.errors %}{{ error }}{% endfor %}
+                    </div>
+                {% endif %}
+                <div class="role-permission-groups" data-permission-groups>
+                    {% for group in form.permission_groups %}
+                        <section class="role-permission-group" data-permission-group>
+                            <header class="role-permission-group-header">
+                                <h3>{{ group.name }}</h3>
+                                <label class="form-check">
+                                    <input class="form-check-input" type="checkbox" data-select-group>
+                                    <span class="form-check-label">Marcar módulo</span>
+                                </label>
+                            </header>
+                            <div class="role-permission-list">
+                                {% for permission in group.permissions %}
+                                    <label class="form-check role-permission-item"
+                                           data-permission-item
+                                           data-search-text="{{ group.name }} {{ permission.label }} {{ permission.description }}">
+                                        <input
+                                            class="form-check-input"
+                                            type="checkbox"
+                                            name="permissions"
+                                            value="{{ permission.id }}"
+                                            id="permission-{{ permission.id }}"
+                                            {% if permission.selected %}checked{% endif %}
+                                        >
+                                        <span class="form-check-label" title="{{ permission.description }}">
+                                            {{ permission.label }}
+                                        </span>
+                                    </label>
+                                {% endfor %}
+                            </div>
+                        </section>
+                    {% empty %}
+                        <p class="text-muted mb-0">No hay permisos disponibles para asignar.</p>
+                    {% endfor %}
+                </div>
+            </section>
+
+            <div class="form-check mt-3">
+                {{ form.is_active }}
+                <label class="form-check-label" for="{{ form.is_active.id_for_label }}">
+                    {{ form.is_active.label }}
+                </label>
+                {% for error in form.is_active.errors %}
+                    <div class="invalid-feedback d-block">{{ error }}</div>
+                {% endfor %}
             </div>
-        </div>
-    </div>
-</div>
+            <div class="role-form-actions">
+                <a href="{% url 'personal:role_list' %}" class="btn btn-outline-secondary">Cancelar</a>
+                <button type="submit" class="btn btn-danger">
+                    {% if object %}Guardar cambios{% else %}Crear rol{% endif %}
+                </button>
+            </div>
+        </form>
+    </section>
+</main>
+<script>
+    (() => {
+        const groupsContainer = document.querySelector('[data-permission-groups]');
+        if (!groupsContainer) return;
+
+        const searchInput = document.getElementById('permission-search');
+        const countElement = document.querySelector('[data-selected-count]');
+        const items = Array.from(groupsContainer.querySelectorAll('[data-permission-item]'));
+        const groups = Array.from(groupsContainer.querySelectorAll('[data-permission-group]'));
+
+        const updateCount = () => {
+            countElement.textContent = groupsContainer.querySelectorAll(
+                'input[name="permissions"]:checked'
+            ).length;
+        };
+
+        const updateVisibility = () => {
+            const query = searchInput.value.trim().toLocaleLowerCase();
+            groups.forEach((group) => {
+                const groupItems = Array.from(group.querySelectorAll('[data-permission-item]'));
+                let visibleItems = 0;
+                groupItems.forEach((item) => {
+                    const matches = item.dataset.searchText.toLocaleLowerCase().includes(query);
+                    item.hidden = !matches;
+                    if (matches) visibleItems += 1;
+                });
+                group.hidden = visibleItems === 0;
+                const groupCheckbox = group.querySelector('[data-select-group]');
+                const visibleCheckboxes = groupItems
+                    .filter((item) => !item.hidden)
+                    .map((item) => item.querySelector('input[name="permissions"]'));
+                groupCheckbox.checked = visibleCheckboxes.length > 0
+                    && visibleCheckboxes.every((checkbox) => checkbox.checked);
+                groupCheckbox.indeterminate = visibleCheckboxes.some((checkbox) => checkbox.checked)
+                    && !groupCheckbox.checked;
+            });
+        };
+
+        searchInput.addEventListener('input', updateVisibility);
+        groupsContainer.addEventListener('change', (event) => {
+            if (event.target.matches('input[name="permissions"]')) {
+                updateCount();
+                updateVisibility();
+            }
+            if (event.target.matches('[data-select-group]')) {
+                const group = event.target.closest('[data-permission-group]');
+                group.querySelectorAll('[data-permission-item]:not([hidden]) input[name="permissions"]')
+                    .forEach((checkbox) => { checkbox.checked = event.target.checked; });
+                updateCount();
+                updateVisibility();
+            }
+        });
+        document.querySelector('[data-select-visible]').addEventListener('click', () => {
+            items.filter((item) => !item.hidden)
+                .forEach((item) => { item.querySelector('input[name="permissions"]').checked = true; });
+            updateCount();
+            updateVisibility();
+        });
+        document.querySelector('[data-clear-visible]').addEventListener('click', () => {
+            items.filter((item) => !item.hidden)
+                .forEach((item) => { item.querySelector('input[name="permissions"]').checked = false; });
+            updateCount();
+            updateVisibility();
+        });
+
+        updateCount();
+        updateVisibility();
+    })();
+</script>
 {% endblock %}

@@ -1,10 +1,21 @@
 import re
+import uuid
 from django import forms
 from django.utils import timezone
 from .models import Activity, Evidence
 
 
 class ActivityForm(forms.ModelForm):
+    upload_evidence = forms.BooleanField(
+        required=False,
+        label='Subir evidencia ahora',
+        help_text=(
+            'Al guardar la actividad, continuarás al formulario de evidencias '
+            'con esta actividad ya seleccionada.'
+        ),
+        widget=forms.CheckboxInput(attrs={'class': 'form-check-input'}),
+    )
+
     class Meta:
         model = Activity
         fields = [
@@ -75,6 +86,29 @@ class ActivityForm(forms.ModelForm):
             'quantity': 'Indica cuántas personas o atenciones representa este registro (mínimo 1).'
         }
 
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        if self.instance.pk:
+            self.fields.pop('upload_evidence')
+            self.fields['date'].disabled = True
+            self.fields['date'].help_text = (
+                'La fecha original del registro no se puede cambiar al editar.'
+            )
+        else:
+            self.fields['submission_key'] = forms.UUIDField(
+                initial=uuid.uuid4,
+                widget=forms.HiddenInput,
+            )
+        active_measurings = self.fields['measuring'].queryset.filter(
+            validity=True,
+            deleted_at__isnull=True,
+        )
+        if self.instance.pk:
+            active_measurings = active_measurings | self.fields[
+                'measuring'
+            ].queryset.filter(pk=self.instance.measuring_id)
+        self.fields['measuring'].queryset = active_measurings.distinct()
+
     def clean_application(self):
         application = (self.cleaned_data.get('application') or '').strip()
         if not application:
@@ -118,22 +152,68 @@ class EvidenceForm(forms.ModelForm):
     class Meta:
         model = Evidence
         fields = [
+            'activity',
             'name',
             'author',
             'date_evidence',
             'file',
             'metadata',
-            'activity',
         ]
         widgets = {
-            'name': forms.TextInput(attrs={'class': 'form-control'}),
-            'author': forms.TextInput(attrs={'class': 'form-control'}),
+            'activity': forms.Select(
+                attrs={'class': 'form-select'}
+            ),
+            'name': forms.TextInput(
+                attrs={
+                    'class': 'form-control',
+                    'placeholder': 'Ej.: Registro fotográfico de la actividad',
+                }
+            ),
+            'author': forms.TextInput(
+                attrs={
+                    'class': 'form-control',
+                    'placeholder': 'Nombre de quien elaboró el documento',
+                }
+            ),
             'date_evidence': forms.DateInput(
                 attrs={'type': 'date', 'class': 'form-control'}
             ),
-            'file': forms.ClearableFileInput(attrs={'class': 'form-control'}),
-            'metadata': forms.Textarea(attrs={'class': 'form-control', 'rows': 3}),
-            'activity': forms.Select(attrs={'class': 'form-select'}),
+            'file': forms.ClearableFileInput(
+                attrs={'class': 'form-control'}
+            ),
+            'metadata': forms.Textarea(
+                attrs={
+                    'class': 'form-control',
+                    'rows': 3,
+                    'placeholder': 'Describe brevemente qué muestra o acredita el archivo.',
+                }
+            ),
+        }
+        labels = {
+            'activity': 'Actividad relacionada',
+            'name': 'Nombre de la evidencia',
+            'author': 'Autor de la evidencia',
+            'date_evidence': 'Fecha de la evidencia',
+            'file': 'Archivo de respaldo',
+            'metadata': 'Descripción o información adicional',
+        }
+        help_texts = {
+            'activity': 'Selecciona la actividad que respalda este archivo.',
+            'name': 'Usa un nombre breve que permita reconocer la evidencia.',
+            'author': 'Indica quién elaboró o emitió la evidencia.',
+            'date_evidence': 'No puede ser una fecha futura.',
+            'file': 'Selecciona el archivo que quieres adjuntar como respaldo.',
+            'metadata': 'Agrega contexto para facilitar la revisión de la evidencia.',
+        }
+        error_messages = {
+            'activity': {'required': 'Selecciona la actividad relacionada.'},
+            'name': {'required': 'Ingresa el nombre de la evidencia.'},
+            'author': {'required': 'Ingresa el autor de la evidencia.'},
+            'date_evidence': {'required': 'Indica la fecha de la evidencia.'},
+            'file': {'required': 'Selecciona un archivo de respaldo.'},
+            'metadata': {
+                'required': 'Agrega una descripción o información adicional.'
+            },
         }
 
     def __init__(self, *args, activities=None, **kwargs):
@@ -178,6 +258,14 @@ class EvidenceValidationForm(forms.ModelForm):
 
     def __init__(self, *args, verificator=None, **kwargs):
         super().__init__(*args, **kwargs)
+        self.fields['validity_state'].choices = [
+            choice
+            for choice in Evidence.Validity.choices
+            if choice[0] in {
+                Evidence.Validity.APPROVED,
+                Evidence.Validity.REJECTED,
+            }
+        ]
         if self.instance:
             self.instance.verificator = verificator
 

@@ -1,33 +1,188 @@
 {% extends "base.html" %}
-{% block content %}
-<div class="container mt-4">
-    <h2>Panel de Control</h2>
+{% load static %}
 
-    <div class="row mt-4">
-        <div class="col-md-3">
-            <div class="card text-center p-3">
-                <h3>{{ total_funcionarios }}</h3>
-                <p class="text-muted">Funcionarios</p>
+{% block title %}Panel de gestión — SGR{% endblock %}
+
+{% block extra_head %}
+<style>
+    .dashboard-wrap { max-width: 1480px; }
+    .dashboard-welcome { position: relative; min-height: 320px; overflow: hidden; color: #fff; background: linear-gradient(115deg, #d51f25 0%, #ad0000 48%, #7a2021 100%); }
+    .dashboard-welcome::after { position: absolute; inset: 0; z-index: 0; background: linear-gradient(90deg, rgba(0, 0, 0, .08) 0%, rgba(0, 0, 0, .03) 42%, transparent 72%); content: ""; pointer-events: none; }
+    .dashboard-welcome-lighthouse { position: absolute; inset: 0 0 0 auto; z-index: 1; width: 82%; height: 100%; object-fit: cover; object-position: right center; opacity: .9; mix-blend-mode: screen; -webkit-mask-image: linear-gradient(to right, transparent, #000 22%); mask-image: linear-gradient(to right, transparent, #000 22%); filter: drop-shadow(0 0 1.5rem rgba(255, 255, 255, .2)) brightness(1.08); pointer-events: none; }
+    .dashboard-welcome-content { position: relative; z-index: 2; max-width: 37%; }
+    .dashboard-welcome-actions { margin-top: 1.5rem; }
+    .dashboard-stat { border: 1px solid #ece8e6; border-radius: 1rem; height: 100%; transition: transform .18s ease, box-shadow .18s ease; }
+    .dashboard-stat:hover { transform: translateY(-2px); box-shadow: 0 .75rem 1.7rem rgba(40, 25, 25, .08); }
+    .dashboard-stat-icon { width: 2.65rem; height: 2.65rem; display: inline-flex; align-items: center; justify-content: center; border-radius: .8rem; font-size: 1.15rem; }
+    .dashboard-section { border: 1px solid #ece8e6; border-radius: 1rem; }
+    .dashboard-section .card-header { background: #fff; border-bottom: 1px solid #f0ecea; }
+    .dashboard-table > :not(caption) > * > * { padding: .8rem .75rem; vertical-align: middle; }
+    .dashboard-table tbody tr:hover > * { background-color: #fff8f8; }
+    .dashboard-quick-link { border: 1px solid #eee4e1; border-radius: .75rem; color: #343a40; text-decoration: none; transition: border-color .15s ease, background .15s ease; }
+    .dashboard-quick-link:hover { border-color: #ad0000; background: #fff8f8; color: #7a2021; }
+    @media (min-width: 768px) and (max-width: 991.98px) {
+        .dashboard-welcome-lighthouse { width: 75%; }
+        .dashboard-welcome-content { max-width: 45%; }
+    }
+    @media (max-width: 767.98px) {
+        .dashboard-welcome { min-height: 0; }
+        .dashboard-welcome::after { background: linear-gradient(90deg, rgba(0, 0, 0, .12), rgba(0, 0, 0, .05) 62%, transparent); }
+        .dashboard-welcome-content { position: relative; z-index: 2; max-width: 100%; }
+        .dashboard-welcome-lighthouse { position: static; display: block; inset: auto; width: 100%; max-width: 100%; height: auto; margin: 1.25rem 0 0; object-fit: contain; opacity: .75; -webkit-mask-image: none; mask-image: none; }
+    }
+    @media (prefers-reduced-motion: reduce) { .dashboard-stat { transition: none; } }
+</style>
+{% endblock %}
+
+{% block content %}
+<main class="container-fluid dashboard-wrap py-4 px-3 px-lg-4">
+    <header class="dashboard-welcome rounded-4 p-4 p-lg-5 mb-4 shadow-sm">
+        <div class="dashboard-welcome-content">
+            <div>
+                <p class="small text-white-50 fw-semibold text-uppercase mb-2 d-flex flex-wrap align-items-center gap-2">
+                    <span>Resumen de gestión</span>
+                    <time class="badge rounded-pill bg-white bg-opacity-10 border border-white border-opacity-25 px-3 py-2" datetime="{% now 'Y-m-d' %}">
+                        <i class="bi bi-calendar3 me-1" aria-hidden="true"></i>Hoy, {% now "d/m/Y" %}
+                    </time>
+                </p>
+                <h1 class="h2 fw-bold mb-2">Panel de control</h1>
+                <p class="text-white-50 mb-0">Indicadores operativos</p>
+                <p class="text-white-50 mb-0">y actividad reciente del sistema.</p>
+            </div>
+            <div class="dashboard-welcome-actions d-flex flex-wrap gap-2">
+                <a class="btn btn-light text-danger fw-semibold px-3" href="{% url 'activities:activity_list' %}">
+                    <i class="bi bi-clipboard-data me-2" aria-hidden="true"></i>Actividades
+                </a>
+                <a class="btn btn-outline-light px-3" href="{% url 'atenciones:attention_list' %}">
+                    <i class="bi bi-chat-left-text me-2" aria-hidden="true"></i>Atenciones
+                </a>
             </div>
         </div>
-        <div class="col-md-3">
-            <div class="card text-center p-3">
-                <h3>{{ total_delegaciones }}</h3>
-                <p class="text-muted">Delegaciones</p>
-            </div>
+        <img class="dashboard-welcome-lighthouse" src="{% static 'images/laserena.png' %}" alt="" aria-hidden="true">
+    </header>
+
+    <section aria-label="Indicadores principales" class="row g-3 mb-4">
+        <div class="col-6 col-xl-3">
+            <article class="dashboard-stat card p-3 p-lg-4">
+                <div class="d-flex justify-content-between align-items-start">
+                    <div><p class="text-muted small fw-semibold mb-2">Funcionarios activos</p><p class="h2 fw-bold mb-0">{{ total_funcionarios }}</p></div>
+                    <span class="dashboard-stat-icon bg-primary-subtle text-primary"><i class="bi bi-people" aria-hidden="true"></i></span>
+                </div>
+                <a href="{% url 'personal:functionary_list' %}" class="small text-decoration-none mt-3">Ver funcionarios <i class="bi bi-arrow-right" aria-hidden="true"></i></a>
+            </article>
         </div>
-        <div class="col-md-3">
-            <div class="card text-center p-3">
-                <h3>{{ compromisos_pendientes }}</h3>
-                <p class="text-muted">Compromisos pendientes</p>
-            </div>
+        <div class="col-6 col-xl-3">
+            <article class="dashboard-stat card p-3 p-lg-4">
+                <div class="d-flex justify-content-between align-items-start">
+                    <div><p class="text-muted small fw-semibold mb-2">Delegaciones activas</p><p class="h2 fw-bold mb-0">{{ total_delegaciones }}</p></div>
+                    <span class="dashboard-stat-icon bg-info-subtle text-info-emphasis"><i class="bi bi-geo-alt" aria-hidden="true"></i></span>
+                </div>
+                <a href="{% url 'personal:delegation_list' %}" class="small text-decoration-none mt-3">Ver delegaciones <i class="bi bi-arrow-right" aria-hidden="true"></i></a>
+            </article>
         </div>
-        <div class="col-md-3">
-            <div class="card text-center p-3 border-danger">
-                <h3 class="text-danger">{{ compromisos_vencidos }}</h3>
-                <p class="text-muted">Vencidos</p>
-            </div>
+        <div class="col-6 col-xl-3">
+            <article class="dashboard-stat card p-3 p-lg-4">
+                <div class="d-flex justify-content-between align-items-start">
+                    <div><p class="text-muted small fw-semibold mb-2">Compromisos abiertos</p><p class="h2 fw-bold mb-0">{{ compromisos_pendientes }}</p></div>
+                    <span class="dashboard-stat-icon bg-warning-subtle text-warning-emphasis"><i class="bi bi-calendar2-check" aria-hidden="true"></i></span>
+                </div>
+                <a href="{% url 'agenda:commitment_list' %}" class="small text-decoration-none mt-3">Revisar compromisos <i class="bi bi-arrow-right" aria-hidden="true"></i></a>
+            </article>
         </div>
-    </div>
-</div>
+        <div class="col-6 col-xl-3">
+            <article class="dashboard-stat card p-3 p-lg-4">
+                <div class="d-flex justify-content-between align-items-start">
+                    <div><p class="text-muted small fw-semibold mb-2">Compromisos vencidos</p><p class="h2 fw-bold mb-0 {% if compromisos_vencidos %}text-danger{% endif %}">{{ compromisos_vencidos }}</p></div>
+                    <span class="dashboard-stat-icon {% if compromisos_vencidos %}bg-danger-subtle text-danger{% else %}bg-success-subtle text-success{% endif %}"><i class="bi bi-alarm" aria-hidden="true"></i></span>
+                </div>
+                <span class="small text-muted mt-3">Requieren seguimiento</span>
+            </article>
+        </div>
+        <div class="col-6 col-xl-3">
+            <article class="dashboard-stat card p-3 p-lg-4">
+                <div class="d-flex justify-content-between align-items-start">
+                    <div><p class="text-muted small fw-semibold mb-2">Actividades este mes</p><p class="h2 fw-bold mb-0">{{ actividades_mes }}</p></div>
+                    <span class="dashboard-stat-icon bg-success-subtle text-success"><i class="bi bi-list-check" aria-hidden="true"></i></span>
+                </div>
+                <span class="small text-muted mt-3">{{ actividades_por_validar }} por validar</span>
+            </article>
+        </div>
+        <div class="col-6 col-xl-3">
+            <article class="dashboard-stat card p-3 p-lg-4">
+                <div class="d-flex justify-content-between align-items-start">
+                    <div><p class="text-muted small fw-semibold mb-2">Atenciones este mes</p><p class="h2 fw-bold mb-0">{{ atenciones_mes }}</p></div>
+                    <span class="dashboard-stat-icon bg-secondary-subtle text-secondary"><i class="bi bi-chat-square-text" aria-hidden="true"></i></span>
+                </div>
+                <a href="{% url 'atenciones:attention_list' %}" class="small text-decoration-none mt-3">Ver atenciones <i class="bi bi-arrow-right" aria-hidden="true"></i></a>
+            </article>
+        </div>
+    </section>
+
+    <section class="row g-4">
+        <div class="col-12 col-xl-7">
+            <article class="dashboard-section card h-100">
+                <div class="card-header d-flex align-items-center justify-content-between p-3 p-lg-4">
+                    <div><h2 class="h5 fw-bold mb-1">Actividad reciente</h2><p class="small text-muted mb-0">Últimos registros ingresados</p></div>
+                    <a href="{% url 'activities:activity_list' %}" class="btn btn-sm btn-outline-secondary">Ver todas</a>
+                </div>
+                <div class="table-responsive">
+                    <table class="table dashboard-table mb-0">
+                        <thead class="table-light"><tr><th>Actividad</th><th>Responsable</th><th>Fecha</th><th>Estado</th></tr></thead>
+                        <tbody>
+                            {% for activity in actividades_recientes %}
+                            <tr>
+                                <td><div class="fw-semibold">{{ activity.application|truncatechars:45 }}</div><small class="text-muted">{{ activity.measuring.service|default:"Sin ítem" }}</small></td>
+                                <td>{{ activity.functionary.full_name }}</td>
+                                <td class="text-nowrap">{{ activity.date|date:"d/m/Y" }}</td>
+                                <td>
+                                    {% if activity.state_validity == 'VALIDATED' %}<span class="badge text-bg-success">Validada</span>
+                                    {% elif activity.state_validity == 'REJECTED' %}<span class="badge text-bg-danger">Rechazada</span>
+                                    {% else %}<span class="badge text-bg-warning">Pendiente</span>{% endif %}
+                                </td>
+                            </tr>
+                            {% empty %}<tr><td colspan="4" class="text-center text-muted py-5">Aún no hay actividades registradas.</td></tr>{% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </article>
+        </div>
+        <div class="col-12 col-xl-5">
+            <article class="dashboard-section card h-100">
+                <div class="card-header p-3 p-lg-4">
+                    <h2 class="h5 fw-bold mb-1">Compromisos vencidos</h2>
+                    <p class="small text-muted mb-0">Pendientes o en curso con fecha superada</p>
+                </div>
+                <div class="list-group list-group-flush">
+                    {% for commitment in compromisos_vencidos_lista %}
+                    <div class="list-group-item px-3 px-lg-4 py-3">
+                        <div class="d-flex justify-content-between gap-3">
+                            <div><div class="fw-semibold">{{ commitment.origin|truncatechars:52 }}</div><small class="text-muted">{{ commitment.functionary.full_name }} · {{ commitment.applic_name }}</small></div>
+                            <span class="badge text-bg-danger align-self-start text-nowrap">{{ commitment.commitment_date|date:"d/m/Y" }}</span>
+                        </div>
+                    </div>
+                    {% empty %}<div class="text-center text-muted py-5"><i class="bi bi-check-circle fs-3 d-block mb-2 text-success" aria-hidden="true"></i>No hay compromisos vencidos.</div>{% endfor %}
+                </div>
+                <div class="card-footer bg-white border-0 p-3 p-lg-4"><a href="{% url 'agenda:commitment_list' %}" class="small text-decoration-none">Ir a compromisos <i class="bi bi-arrow-right" aria-hidden="true"></i></a></div>
+            </article>
+        </div>
+        <div class="col-12">
+            <article class="dashboard-section card">
+                <div class="card-header d-flex align-items-center justify-content-between p-3 p-lg-4">
+                    <div><h2 class="h5 fw-bold mb-1">Atenciones ciudadanas recientes</h2><p class="small text-muted mb-0">Seguimiento de solicitudes por delegación</p></div>
+                    <a href="{% url 'atenciones:attention_list' %}" class="btn btn-sm btn-outline-secondary">Ver todas</a>
+                </div>
+                <div class="row g-0">
+                    {% for attention in atenciones_recientes %}
+                    <div class="col-12 col-md-6 col-xl-4 p-3 p-lg-4 border-bottom">
+                        <div class="d-flex gap-3">
+                            <span class="dashboard-stat-icon bg-primary-subtle text-primary flex-shrink-0"><i class="bi bi-chat-left-text" aria-hidden="true"></i></span>
+                            <div class="min-w-0"><div class="fw-semibold">{{ attention.requester_name }}</div><div class="small text-muted">{{ attention.attention_type.name }} · {{ attention.delegation.name }}</div><div class="small text-muted mt-1">{{ attention.created_at|date:"d/m/Y H:i" }}</div></div>
+                        </div>
+                    </div>
+                    {% empty %}<div class="col-12 text-center text-muted py-5">Aún no hay atenciones registradas.</div>{% endfor %}
+                </div>
+            </article>
+        </div>
+    </section>
+</main>
 {% endblock %}
