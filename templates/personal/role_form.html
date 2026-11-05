@@ -162,7 +162,7 @@
             {{ form.description|as_crispy_field }}
             {{ form.authorized_scope|as_crispy_field }}
 
-            <section class="role-permissions" aria-labelledby="role-permissions-title">
+            <section class="role-permissions" aria-labelledby="role-permissions-title" {% if form.permissions.errors %}aria-describedby="id_permissions_error"{% endif %}>
                 <div class="role-permissions-heading">
                     <div>
                         <h2 id="role-permissions-title">Permisos del rol</h2>
@@ -173,6 +173,7 @@
                     </span>
                 </div>
                 <div class="role-permission-tools">
+                    <label class="form-label mb-0" for="permission-search">Buscar permisos del rol</label>
                     <input
                         type="search"
                         class="form-control"
@@ -188,7 +189,7 @@
                     </button>
                 </div>
                 {% if form.permissions.errors %}
-                    <div class="invalid-feedback d-block mb-2">
+                    <div id="id_permissions_error" class="invalid-feedback d-block mb-2" role="alert">
                         {% for error in form.permissions.errors %}{{ error }}{% endfor %}
                     </div>
                 {% endif %}

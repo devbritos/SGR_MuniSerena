@@ -10,13 +10,13 @@
                 <h1 class="h5 mb-0"><i class="bi bi-exclamation-triangle me-2"></i>Desactivar delegación</h1>
             </div>
             <div class="card-body p-4">
-                <p>¿Deseas desactivar la delegación <strong>{{ object.name }}</strong>?</p>
-                <p class="text-muted">El registro se conservará, pero dejará de aparecer entre las delegaciones activas.</p>
+                <p>¿Deseas archivar la delegación <strong>{{ object.name }}</strong>?</p>
+                <p class="text-muted">El registro se conservará y dejará de aparecer en listados y selectores habituales. No se puede archivar mientras tenga funcionarios activos.</p>
                 <form method="post" class="d-flex justify-content-end gap-2 pt-3 border-top">
                     {% csrf_token %}
                     <a href="{% url 'personal:delegation_list' %}" class="btn btn-outline-secondary">Cancelar</a>
-                    <button type="submit" class="btn btn-warning" data-confirm-delete="La delegación quedará inactiva.">
-                        Desactivar
+                    <button type="submit" class="btn btn-warning" data-confirm-delete="La delegación se archivará y dejará de aparecer en los listados habituales.">
+                        Archivar
                     </button>
                 </form>
             </div>

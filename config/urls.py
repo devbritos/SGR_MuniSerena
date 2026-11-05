@@ -49,3 +49,8 @@ urlpatterns = [
     path("configuration/", include("configuration.urls")),
     path("atenciones/", include("atenciones.urls")),
 ]
+
+handler400 = "core.error_views.handler400"
+handler403 = "core.error_views.handler403"
+handler404 = "core.error_views.handler404"
+handler500 = "core.error_views.handler500"

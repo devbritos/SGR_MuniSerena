@@ -2,6 +2,17 @@
 
 {% block title %}Funcionarios — SGR{% endblock %}
 
+{% block extra_head %}
+<style>
+    .functionary-avatar {
+        width: 40px;
+        height: 40px;
+        flex: 0 0 40px;
+        object-fit: cover;
+    }
+</style>
+{% endblock %}
+
 {% block content %}
 <div class="container-fluid px-0 pb-5">
     <!-- Cabecera de Sección -->
@@ -50,11 +61,21 @@
                         {% endfor %}
                     </select>
                 </div>
+                <div class="col-md-2">
+                    <label class="form-label fw-semibold small mb-1" for="f-status">Estado</label>
+                    <select id="f-status" name="status" class="form-select form-select-sm">
+                        <option value="">Activos</option>
+                        <option value="active" {% if selected_status == 'active' %}selected{% endif %}>Activos</option>
+                        <option value="inactive" {% if selected_status == 'inactive' %}selected{% endif %}>Inactivos</option>
+                    </select>
+                </div>
+                {% if request.GET.sort %}<input type="hidden" name="sort" value="{{ request.GET.sort }}">{% endif %}
+                {% if request.GET.per_page %}<input type="hidden" name="per_page" value="{{ request.GET.per_page }}">{% endif %}
                 <div class="col-md-3 d-flex gap-2 flex-wrap">
                     <button type="submit" class="btn btn-sm btn-secondary fw-semibold px-3">
                         <i class="bi bi-funnel-fill me-1"></i> Filtrar
                     </button>
-                    <a href="{% url 'personal:functionary_list' %}" class="btn btn-sm btn-outline-secondary px-3">
+                    <a href="{% url 'personal:functionary_list' %}?clear=1" class="btn btn-sm btn-outline-secondary px-3">
                         <i class="bi bi-x-circle me-1"></i> Limpiar
                     </a>
                     <a class="btn btn-sm btn-outline-success px-3" href="{{ request.path }}?{{ query_params }}{% if query_params %}&{% endif %}export=xlsx">
@@ -64,11 +85,19 @@
             </form>
         </div>
     </div>
+    <div class="d-flex justify-content-end mb-3">
+        {% if showing_all %}
+        <a href="{{ request.path }}?{{ toggle_all_query }}" class="btn btn-sm btn-outline-secondary">Ocultar archivados</a>
+        {% else %}
+        <a href="{{ request.path }}?{{ toggle_all_query }}" class="btn btn-sm btn-outline-secondary">Ver también archivados</a>
+        {% endif %}
+    </div>
+    {% include "_list_sort_controls.html" %}
 
     <!-- Tabla de Funcionarios -->
     <div class="card border-0 shadow-sm overflow-hidden">
         <div class="card-body p-0 table-responsive">
-            <table class="table table-hover align-middle mb-0">
+            <table class="table table-hover align-middle mb-0" data-list-modal-table>
                 <thead class="table-dark">
                     <tr>
                         <th class="ps-4 py-3">Funcionario</th>
@@ -84,10 +113,25 @@
                     {% for f in object_list %}
                     <tr>
                         <td class="ps-4">
-                            <span class="fw-bold text-dark">{{ f.names }} {{ f.lastnames }}</span>
-                            {% if f.user %}
-                                <br><small class="text-muted"><i class="bi bi-person-badge me-1"></i>@{{ f.user.username }}</small>
-                            {% endif %}
+                            <div class="d-flex align-items-center gap-2">
+                                {% if f.user.profile.photo %}
+                                    <img
+                                        class="functionary-avatar rounded-circle border"
+                                        src="{% url 'personal:functionary_photo' f.pk %}"
+                                        alt="Foto de {{ f.full_name }}"
+                                    >
+                                {% else %}
+                                    <span class="functionary-avatar rounded-circle border bg-light d-inline-flex align-items-center justify-content-center text-secondary" aria-hidden="true">
+                                        <i class="bi bi-person-fill"></i>
+                                    </span>
+                                {% endif %}
+                                <span>
+                                    <a class="fw-bold text-dark text-decoration-none" href="{% url 'personal:functionary_detail' f.pk %}">{{ f.names }} {{ f.lastnames }}</a>
+                                    {% if f.user %}
+                                        <br><small class="text-muted"><i class="bi bi-person-badge me-1" aria-hidden="true"></i>@{{ f.user.username }}</small>
+                                    {% endif %}
+                                </span>
+                            </div>
                         </td>
                         <td>{{ f.user.email|default:"—" }}</td>
                         <td>
@@ -103,21 +147,31 @@
                                 <span class="badge bg-light text-muted border">Sin rol asignado</span>
                             {% endfor %}
                         </td>
-                        <td><span class="badge {% if f.is_active %}bg-success{% else %}bg-secondary{% endif %}">{% if f.is_active %}Activo{% else %}Inactivo{% endif %}</span></td>
+                        <td>
+                            {% if f.deleted_at %}
+                                <span class="badge bg-dark">Archivado</span>
+                            {% elif f.is_active %}
+                                <span class="badge bg-success">Activo</span>
+                            {% else %}
+                                <span class="badge bg-secondary">Inactivo</span>
+                            {% endif %}
+                        </td>
                         <td class="text-center">
                             <div class="btn-group btn-group-sm" role="group">
+                                {% if not f.deleted_at and f.is_active %}
                                 {% if perms.personal.add_functionaryrole or user.is_superuser or user.functionary.is_admin %}
                                 <a href="{% url 'personal:functionary_role_create' %}?functionary={{ f.pk }}" class="btn btn-outline-secondary" title="Asignar o agregar rol">
                                     <i class="bi bi-shield-plus me-1"></i> Asignar rol
                                 </a>
                                 {% endif %}
+                                {% endif %}
                                 {% if perms.personal.change_functionary or user.is_superuser or user.functionary.is_admin %}
-                                <a href="{% url 'personal:functionary_update' f.pk %}" class="btn btn-outline-primary" title="Editar funcionario">
+                                <a href="{% url 'personal:functionary_update' f.pk %}" class="btn btn-outline-primary" title="Editar funcionario" aria-label="Editar {{ f.full_name }}">
                                     <i class="bi bi-pencil-fill"></i>
                                 </a>
                                 {% endif %}
-                                {% if perms.personal.delete_functionary or user.is_superuser or user.functionary.is_admin %}
-                                <a href="{% url 'personal:functionary_delete' f.pk %}" class="btn btn-outline-danger" title="Eliminar funcionario">
+                                {% if not f.deleted_at and perms.personal.delete_functionary or not f.deleted_at and user.is_superuser or not f.deleted_at and user.functionary.is_admin %}
+                                <a href="{% url 'personal:functionary_delete' f.pk %}" class="btn btn-outline-danger" title="Archivar funcionario" aria-label="Archivar {{ f.full_name }}">
                                     <i class="bi bi-trash-fill"></i>
                                 </a>
                                 {% endif %}
@@ -128,7 +182,7 @@
                     <tr>
                         <td colspan="7" class="text-center text-muted py-5">
                             <i class="bi bi-people fs-2 d-block mb-2 text-secondary"></i>
-                            No hay funcionarios registrados con los criterios seleccionados.
+                            {% include "_list_empty_state.html" with empty_message="No hay funcionarios registrados todavía." %}
                         </td>
                     </tr>
                     {% endfor %}

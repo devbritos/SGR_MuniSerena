@@ -30,13 +30,17 @@
 </div>
 <div class="d-flex gap-2 mb-3">
     <form method="get" class="d-flex gap-2 flex-grow-1">
-        <input class="form-control" type="search" name="q" value="{{ search_query }}" placeholder="Buscar solicitante, categoría, descripción o delegación">
-        <button class="btn btn-outline-secondary" type="submit"><i class="bi bi-search"></i> Buscar</button>
+        <div class="col-md-5">
+            <label class="form-label small fw-semibold" for="attention-search">Buscar atenciones</label>
+            <input id="attention-search" class="form-control" type="search" name="q" value="{{ search_query }}" placeholder="Solicitante, categoría, descripción o delegación">
+        </div>
+        <button class="btn btn-outline-secondary" type="submit"><i class="bi bi-search" aria-hidden="true"></i> Buscar</button>
     </form>
     <a class="btn btn-outline-success text-nowrap" href="{{ request.path }}?{{ query_params }}{% if query_params %}&{% endif %}export=xlsx"><i class="bi bi-file-earmark-excel"></i> Exportar a Excel</a>
 </div>
+{% include "_list_sort_controls.html" %}
 <div class="table-responsive card shadow-sm">
-    <table class="table table-hover align-middle mb-0">
+    <table class="table table-hover align-middle mb-0" data-list-modal-table>
         <thead class="table-dark"><tr><th>Fecha y hora</th><th>Solicitante</th><th>Tipo</th><th>Subatención</th><th>Descripción</th><th>Delegación</th><th>Responsable</th><th class="text-end">Acciones</th></tr></thead>
         <tbody>
             {% for attention in object_list %}
@@ -44,7 +48,7 @@
                 <td class="text-nowrap">{{ attention.created_at|date:"d/m/Y H:i" }}</td>
                 <td>{{ attention.requester_name }}{% if attention.requester_contact %}<br><small class="text-muted">{{ attention.requester_contact }}</small>{% endif %}</td>
                 <td>{{ attention.attention_type.name }}</td><td>{{ attention.sub_attention.name }}</td>
-                <td>{{ attention.description|truncatechars:100 }}</td><td>{{ attention.delegation.name }}</td><td>{{ attention.functionary.full_name }}</td>
+                <td data-modal-value="{{ attention.description }}">{{ attention.description|truncatechars:100 }}</td><td>{{ attention.delegation.name }}</td><td>{{ attention.functionary.full_name }}</td>
                 <td class="text-end text-nowrap">
                     <a class="btn btn-sm btn-outline-primary" href="{% url 'atenciones:attention_update' attention.pk %}" aria-label="Editar atención de {{ attention.requester_name }}" title="Editar">
                         <i class="bi bi-pencil" aria-hidden="true"></i>
@@ -54,7 +58,7 @@
                     </a>
                 </td>
             </tr>
-            {% empty %}<tr><td colspan="8" class="text-center text-muted py-4">No hay atenciones registradas.</td></tr>{% endfor %}
+            {% empty %}<tr><td colspan="8" class="text-center text-muted py-4">{% include "_list_empty_state.html" with empty_message="No hay atenciones registradas." %}</td></tr>{% endfor %}
         </tbody>
     </table>
 </div>

@@ -24,9 +24,14 @@
                         <p class="small mb-0">{{ evidence.activity.taken_action|linebreaksbr }}</p>
                     </div>
                     {% if evidence.file %}
-                    <a href="{% url 'activities:evidence_file' evidence.pk %}" target="_blank" rel="noopener noreferrer" class="btn btn-sm btn-outline-primary">
-                        <i class="bi bi-box-arrow-up-right me-1"></i>Ver archivo
-                    </a>
+                    <div class="d-flex flex-wrap gap-2 mt-3">
+                        <a href="{% url 'activities:evidence_file' evidence.pk %}" target="_blank" rel="noopener noreferrer" class="btn btn-sm btn-outline-primary">
+                            <i class="bi bi-box-arrow-up-right me-1"></i>Ver archivo
+                        </a>
+                        <a href="{% url 'activities:evidence_file' evidence.pk %}?download=1" class="btn btn-sm btn-primary">
+                            <i class="bi bi-download me-1"></i>Descargar archivo
+                        </a>
+                    </div>
                     {% endif %}
                 </div>
                 <div class="alert alert-info" role="note">

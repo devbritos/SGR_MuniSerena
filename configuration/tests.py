@@ -42,6 +42,30 @@ class MeasuringCatalogViewTests(TestCase):
             'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
         )
 
+    def test_measuring_list_sorts_and_supports_requested_page_size(self):
+        alpha = Measuring.objects.create(
+            code='IT-ALPHA',
+            service='Alfa',
+            measurable_item='Primero',
+        )
+        zulu = Measuring.objects.create(
+            code='IT-ZULU',
+            service='Zulu',
+            measurable_item='Último',
+        )
+
+        response = self.client.get(
+            reverse('configuration:measuring_list'),
+            {'sort': 'za', 'per_page': '50'},
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.context['selected_page_size'], 50)
+        self.assertEqual(response.context['page_obj'].paginator.per_page, 50)
+        results = list(response.context['items'])
+        self.assertEqual(results[0].pk, zulu.pk)
+        self.assertEqual(results[-1].pk, alpha.pk)
+
     def test_measuring_create_reports_success_only_after_save(self):
         response = self.client.post(
             reverse('configuration:measuring_create'),

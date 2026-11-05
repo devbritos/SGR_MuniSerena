@@ -1,7 +1,12 @@
+import base64
+import binascii
+import re
+
 from django import forms
 from django.apps import apps
 from django.contrib.auth.password_validation import validate_password
 from django.contrib.auth.models import User
+from django.core.files.base import ContentFile
 from django.core.exceptions import ValidationError
 from django.db import transaction
 from django.db import models
@@ -11,7 +16,116 @@ from .models import (
     FunctionaryRole,
     Position,
     Role,
+    UserProfile,
 )
+from .validators import MAX_PROFILE_PHOTO_BYTES, validate_profile_photo
+
+
+class CroppedImageInput(forms.HiddenInput):
+    def format_value(self, value):
+        return ''
+
+
+class ProfilePhotoForm(forms.ModelForm):
+    photo_upload = forms.ImageField(
+        required=False,
+        label='Nueva foto',
+        widget=forms.ClearableFileInput(attrs={
+            'class': 'form-control',
+            'accept': 'image/jpeg,image/png',
+        }),
+    )
+    cropped_image = forms.CharField(
+        required=False,
+        widget=CroppedImageInput,
+    )
+
+    class Meta:
+        model = UserProfile
+        fields = []
+
+    def clean_cropped_image(self):
+        value = self.cleaned_data.get('cropped_image', '')
+        if not value:
+            return None
+        if len(value) > (1536 * 1024 * 4 // 3) + 128:
+            raise forms.ValidationError(
+                'El recorte final supera el límite permitido de 1,5 MiB.'
+            )
+
+        match = re.fullmatch(
+            r'data:image/(jpeg|png);base64,([A-Za-z0-9+/]+={0,2})',
+            value,
+        )
+        if not match:
+            raise forms.ValidationError(
+                'La imagen recortada debe estar en formato JPG o PNG.'
+            )
+
+        try:
+            image_data = base64.b64decode(match.group(2), validate=True)
+            expected_format = {
+                'jpeg': 'JPEG',
+                'png': 'PNG',
+            }[match.group(1)]
+            image_data = validate_profile_photo(image_data, expected_format)
+        except (binascii.Error, ValueError, ValidationError) as exc:
+            if isinstance(exc, ValidationError):
+                raise forms.ValidationError(exc.messages) from exc
+            raise forms.ValidationError(
+                'No se pudo leer la imagen recortada. Inténtalo nuevamente.'
+            ) from exc
+        return image_data
+
+    def clean_photo_upload(self):
+        uploaded_file = self.cleaned_data.get('photo_upload')
+        if uploaded_file is None:
+            return None
+        if uploaded_file.size > MAX_PROFILE_PHOTO_BYTES:
+            raise forms.ValidationError(
+                'La imagen de origen no puede superar 2 MiB.'
+            )
+        expected_format = {
+            'image/jpeg': 'JPEG',
+            'image/png': 'PNG',
+        }.get(uploaded_file.content_type)
+        if expected_format is None:
+            raise forms.ValidationError('La imagen debe ser JPG o PNG.')
+        try:
+            validate_profile_photo(
+                uploaded_file.read(),
+                expected_format=expected_format,
+                require_square=False,
+            )
+        except ValidationError as exc:
+            raise forms.ValidationError(exc.messages) from exc
+        return uploaded_file
+
+    def clean(self):
+        cleaned_data = super().clean()
+        if cleaned_data.get('photo_upload') and not cleaned_data.get('cropped_image'):
+            self.add_error(
+                'cropped_image',
+                'Selecciona y confirma el recorte antes de guardar la foto.',
+            )
+        return cleaned_data
+
+    def save(self, commit=True):
+        profile = super().save(commit=False)
+        image_data = self.cleaned_data.get('cropped_image')
+        previous_photo_name = profile.photo.name
+        previous_photo_storage = profile.photo.storage
+        if image_data:
+            profile.photo.save('profile.jpg', ContentFile(image_data), save=False)
+        if commit:
+            profile.save()
+            self.save_m2m()
+            if (
+                previous_photo_name
+                and previous_photo_name != profile.photo.name
+            ):
+                previous_photo_storage.delete(previous_photo_name)
+        return profile
 
 
 class DelegationForm(forms.ModelForm):
@@ -65,12 +179,26 @@ class DelegationForm(forms.ModelForm):
         name = (self.cleaned_data.get('name') or '').strip()
         if not name:
             raise forms.ValidationError('Debe ingresar el nombre de la delegación.')
+        duplicates = Delegation.objects.filter(name__iexact=name)
+        if self.instance.pk:
+            duplicates = duplicates.exclude(pk=self.instance.pk)
+        if duplicates.exists():
+            raise forms.ValidationError(
+                'Ya existe una delegación con ese nombre.'
+            )
         return name
 
     def clean_code(self):
         code = (self.cleaned_data.get('code') or '').strip()
         if not code:
             raise forms.ValidationError('Debe ingresar el código de la delegación.')
+        duplicates = Delegation.objects.filter(code__iexact=code)
+        if self.instance.pk:
+            duplicates = duplicates.exclude(pk=self.instance.pk)
+        if duplicates.exists():
+            raise forms.ValidationError(
+                'Ya existe una delegación con ese código.'
+            )
         return code
 
     def clean_address(self):
@@ -84,6 +212,15 @@ class DelegationForm(forms.ModelForm):
         if not commune:
             raise forms.ValidationError('Debe ingresar la comuna de la delegación.')
         return commune
+
+    def save(self, commit=True):
+        delegation = super().save(commit=False)
+        if self.cleaned_data.get('state') == 'ACTIVO':
+            delegation.deleted_at = None
+        if commit:
+            delegation.save()
+            self.save_m2m()
+        return delegation
 
 
 class PositionForm(forms.ModelForm):
@@ -256,19 +393,29 @@ class FunctionaryUpdateForm(forms.ModelForm):
             'is_active': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
         }
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args, authorized_delegations=None, **kwargs):
         super().__init__(*args, **kwargs)
-        delegations = Delegation.objects.filter(
-            state='ACTIVO',
-            deleted_at__isnull=True,
-        )
-        positions = Position.objects.filter(validity=True, deleted_at__isnull=True)
-        if self.instance.pk:
-            delegations = Delegation.objects.filter(
-                models.Q(state='ACTIVO') | models.Q(pk=self.instance.delegation_id)
+        delegations = (
+            authorized_delegations
+            if authorized_delegations is not None
+            else Delegation.objects.filter(
+                state='ACTIVO',
+                deleted_at__isnull=True,
             )
-            positions = Position.objects.filter(
-                models.Q(validity=True) | models.Q(pk=self.instance.position_id)
+        )
+        positions = Position.objects.filter(deleted_at__isnull=True)
+        positions = positions.filter(validity=True)
+        if self.instance.pk:
+            delegations = delegations.filter(
+                models.Q(state='ACTIVO', deleted_at__isnull=True)
+                | models.Q(
+                    pk=self.instance.delegation_id,
+                    deleted_at__isnull=True,
+                )
+            )
+            positions = Position.objects.filter(deleted_at__isnull=True).filter(
+                models.Q(validity=True)
+                | models.Q(pk=self.instance.position_id)
             )
         self.fields['delegation'].queryset = delegations
         self.fields['position'].queryset = positions
@@ -295,6 +442,27 @@ class FunctionaryUpdateForm(forms.ModelForm):
         if not lastnames:
             raise forms.ValidationError('Debe ingresar los apellidos del funcionario.')
         return lastnames
+
+    def clean(self):
+        cleaned_data = super().clean()
+        names = cleaned_data.get('names')
+        lastnames = cleaned_data.get('lastnames')
+        delegation = cleaned_data.get('delegation')
+        if names and lastnames and delegation:
+            duplicates = Functionary.objects.filter(
+                names__iexact=names,
+                lastnames__iexact=lastnames,
+                delegation=delegation,
+                deleted_at__isnull=True,
+            )
+            if self.instance.pk:
+                duplicates = duplicates.exclude(pk=self.instance.pk)
+            if duplicates.exists():
+                self.add_error(
+                    'lastnames',
+                    'Ya existe un funcionario con ese nombre en la delegación.',
+                )
+        return cleaned_data
 
     def clean_email(self):
         email = (self.cleaned_data.get('email') or '').strip()
@@ -448,11 +616,15 @@ class FunctionaryCustomForm(forms.ModelForm):
             "position": forms.Select(attrs={"class": "form-select"}),
         }
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args, authorized_delegations=None, **kwargs):
         super().__init__(*args, **kwargs)
-        self.fields['delegation'].queryset = Delegation.objects.filter(
-            state='ACTIVO',
-            deleted_at__isnull=True,
+        self.fields['delegation'].queryset = (
+            authorized_delegations
+            if authorized_delegations is not None
+            else Delegation.objects.filter(
+                state='ACTIVO',
+                deleted_at__isnull=True,
+            )
         )
         self.fields['position'].queryset = Position.objects.filter(
             validity=True,
@@ -465,7 +637,7 @@ class FunctionaryCustomForm(forms.ModelForm):
 
     def clean_username(self):
         username = (self.cleaned_data.get("username") or "").strip()
-        if User.objects.filter(username=username).exists():
+        if User.objects.filter(username__iexact=username).exists():
             raise forms.ValidationError("El nombre de usuario ya está registrado.")
         return username
 
@@ -480,6 +652,23 @@ class FunctionaryCustomForm(forms.ModelForm):
         if not lastnames:
             raise forms.ValidationError("Debe ingresar los apellidos del funcionario.")
         return lastnames
+
+    def clean(self):
+        cleaned_data = super().clean()
+        names = cleaned_data.get('names')
+        lastnames = cleaned_data.get('lastnames')
+        delegation = cleaned_data.get('delegation')
+        if names and lastnames and delegation and Functionary.objects.filter(
+            names__iexact=names,
+            lastnames__iexact=lastnames,
+            delegation=delegation,
+            deleted_at__isnull=True,
+        ).exists():
+            self.add_error(
+                'lastnames',
+                'Ya existe un funcionario con ese nombre en la delegación.',
+            )
+        return cleaned_data
 
     def clean_password(self):
         password = self.cleaned_data.get("password")

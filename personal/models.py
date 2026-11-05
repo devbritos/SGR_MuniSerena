@@ -1,7 +1,8 @@
 from django.contrib.auth.models import User
+from django.conf import settings
 from django.db import models
 from core.models import BaseModel
-from .validators import validate_person_name
+from .validators import validate_person_name, validate_profile_photo
 
 
 class Delegation(BaseModel):
@@ -247,3 +248,19 @@ class FunctionaryRole(BaseModel):
 
     def __str__(self):
         return f'{self.functionary.full_name} -> {self.role}'
+
+
+class UserProfile(models.Model):
+    user = models.OneToOneField(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name='profile',
+    )
+    photo = models.ImageField(
+        upload_to='profile_photos/',
+        blank=True,
+        validators=[validate_profile_photo],
+    )
+
+    def __str__(self):
+        return f'Perfil de {self.user}'

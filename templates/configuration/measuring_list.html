@@ -7,13 +7,17 @@
 </div>
 <form method="get" class="row g-2 mb-3">
     {% if showing_all %}<input type="hidden" name="all" value="1">{% endif %}
-    <div class="col-md-5"><input class="form-control" name="q" type="search" value="{{ search_query }}" placeholder="Buscar por código, nombre o descripción"></div>
+    <div class="col-md-5">
+        <label class="form-label small fw-semibold" for="measuring-search">Buscar ítems de medición</label>
+        <input id="measuring-search" class="form-control" name="q" type="search" value="{{ search_query }}" placeholder="Código, nombre o descripción">
+    </div>
     <div class="col-auto"><button class="btn btn-outline-secondary"><i class="bi bi-search"></i> Buscar</button></div>
     <div class="col-auto"><a class="btn btn-outline-success" href="{{ request.path }}?{{ query_params }}{% if query_params %}&{% endif %}export=xlsx"><i class="bi bi-file-earmark-excel"></i> Exportar a Excel</a></div>
     <div class="col-auto">{% if showing_all %}<a class="btn btn-outline-secondary" href="{% url 'configuration:measuring_list' %}">Ver activos</a>{% else %}<a class="btn btn-outline-secondary" href="?all=1">Ver todos</a>{% endif %}</div>
 </form>
+{% include "_list_sort_controls.html" %}
 <div class="table-responsive card shadow-sm">
-    <table class="table table-hover align-middle mb-0">
+    <table class="table table-hover align-middle mb-0" data-list-modal-table>
         <thead class="table-dark"><tr><th>Código</th><th>Nombre</th><th>Descripción</th><th>Estado</th><th>Acciones</th></tr></thead>
         <tbody>
             {% for item in items %}
@@ -24,7 +28,7 @@
                     {% if item.validity %}<a class="btn btn-sm btn-outline-danger" href="{% url 'configuration:measuring_deactivate' item.pk %}"><i class="bi bi-trash"></i></a>{% endif %}
                 </td>
             </tr>
-            {% empty %}<tr><td colspan="5" class="text-center text-muted py-4">No hay ítems registrados.</td></tr>{% endfor %}
+            {% empty %}<tr><td colspan="5" class="text-center text-muted py-4">{% include "_list_empty_state.html" with empty_message="No hay ítems de medición registrados." %}</td></tr>{% endfor %}
         </tbody>
     </table>
 </div>

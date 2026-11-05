@@ -8,27 +8,37 @@ from django.views.generic import CreateView, ListView, UpdateView, View
 
 from core.mixins import AdminRequiredMixin, FunctionaryRequiredMixin
 from core.exports import excel_response
-from core.lists import search_queryset
+from core.lists import (
+    ListControlsMixin,
+    apply_list_sort,
+    list_controls_context,
+    search_queryset,
+)
 from core.mixins import _active_functionary
 
 from .forms import AttentionForm, AttentionTypeForm, SubAttentionForm
 from .models import Attention, AttentionType, SubAttention
 
 
-class AttentionTypeListView(LoginRequiredMixin, AdminRequiredMixin, ListView):
+class AttentionTypeListView(ListControlsMixin, LoginRequiredMixin, AdminRequiredMixin, ListView):
     model = AttentionType
     template_name = 'atenciones/type_list.html'
     context_object_name = 'object_list'
     paginate_by = 20
+    sort_fields = {
+        'recent': ('-created_at', '-pk'),
+        'oldest': ('created_at', 'pk'),
+        'az': ('name', 'pk'),
+        'za': ('-name', '-pk'),
+    }
 
     def get_queryset(self):
         queryset = AttentionType.objects.filter(deleted_at__isnull=True)
         queryset = search_queryset(
             queryset, self.request.GET.get('q'), 'code', 'name', 'description'
         )
-        if self.request.GET.get('export') == 'xlsx':
-            return queryset
-        return queryset.order_by('name')
+        queryset = queryset.order_by('name')
+        return apply_list_sort(queryset, self.request, self.sort_fields)
 
     def render_to_response(self, context, **response_kwargs):
         if self.request.GET.get('export') == 'xlsx':
@@ -103,11 +113,17 @@ class AttentionTypeDeactivateView(LoginRequiredMixin, AdminRequiredMixin, View):
         return redirect('atenciones:attention_type_list')
 
 
-class SubAttentionListView(LoginRequiredMixin, AdminRequiredMixin, ListView):
+class SubAttentionListView(ListControlsMixin, LoginRequiredMixin, AdminRequiredMixin, ListView):
     model = SubAttention
     template_name = 'atenciones/subattention_list.html'
     context_object_name = 'object_list'
     paginate_by = 20
+    sort_fields = {
+        'recent': ('-created_at', '-pk'),
+        'oldest': ('created_at', 'pk'),
+        'az': ('name', 'pk'),
+        'za': ('-name', '-pk'),
+    }
 
     def get_queryset(self):
         queryset = SubAttention.objects.filter(
@@ -120,9 +136,7 @@ class SubAttentionListView(LoginRequiredMixin, AdminRequiredMixin, ListView):
         type_id = self.request.GET.get('type')
         if type_id and type_id.isdigit():
             queryset = queryset.filter(attention_type_id=type_id)
-        if self.request.GET.get('export') == 'xlsx':
-            return queryset
-        return queryset
+        return apply_list_sort(queryset, self.request, self.sort_fields)
 
     def render_to_response(self, context, **response_kwargs):
         if self.request.GET.get('export') == 'xlsx':
@@ -199,11 +213,17 @@ class SubAttentionDeactivateView(LoginRequiredMixin, AdminRequiredMixin, View):
         return redirect('atenciones:subattention_list')
 
 
-class AttentionListView(LoginRequiredMixin, FunctionaryRequiredMixin, ListView):
+class AttentionListView(ListControlsMixin, LoginRequiredMixin, FunctionaryRequiredMixin, ListView):
     model = Attention
     template_name = 'atenciones/attention_list.html'
     context_object_name = 'object_list'
     paginate_by = 20
+    sort_fields = {
+        'recent': ('-created_at', '-pk'),
+        'oldest': ('created_at', 'pk'),
+        'az': ('requester_name', 'pk'),
+        'za': ('-requester_name', '-pk'),
+    }
 
     def get_queryset(self):
         queryset = visible_attentions(self.request.user)
@@ -219,9 +239,7 @@ class AttentionListView(LoginRequiredMixin, FunctionaryRequiredMixin, ListView):
             'functionary__names',
             'functionary__lastnames',
         )
-        if self.request.GET.get('export') == 'xlsx':
-            return queryset
-        return queryset
+        return apply_list_sort(queryset, self.request, self.sort_fields)
 
     def render_to_response(self, context, **response_kwargs):
         if self.request.GET.get('export') == 'xlsx':
@@ -375,6 +393,7 @@ def add_list_context(request, context):
     query_params.pop('export', None)
     context['query_params'] = query_params.urlencode()
     context['search_query'] = request.GET.get('q', '')
+    context.update(list_controls_context(request))
     return context
 
 

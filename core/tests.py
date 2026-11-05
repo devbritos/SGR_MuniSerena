@@ -1,11 +1,12 @@
 import re
 
 from django.test import TestCase
-from django.contrib.auth.models import User
+from django.contrib.auth.models import AnonymousUser, User
 from django.contrib.auth import get_user_model
 from django.core import mail
-from django.test import RequestFactory, SimpleTestCase, override_settings
+from django.test import Client, RequestFactory, SimpleTestCase, override_settings
 from django.core.paginator import Paginator
+from django.template import Context, Template
 from django.template.loader import render_to_string
 from django.urls import reverse
 from django.utils import timezone
@@ -13,6 +14,7 @@ from datetime import timedelta
 from unittest.mock import patch
 
 from .models import PasswordRecoveryCode
+from .forms import UsernameOrEmailAuthenticationForm
 
 
 class PaginationTemplateTests(SimpleTestCase):
@@ -97,6 +99,50 @@ class PaginationTemplateTests(SimpleTestCase):
                 self.assertIn(f'>{disabled_label}</span>', rendered)
 
 
+class ListEmptyStateTests(SimpleTestCase):
+    def test_filtered_empty_state_suggests_adjusting_filters(self):
+        rendered = render_to_string(
+            '_list_empty_state.html',
+            {
+                'has_list_filters': True,
+                'empty_message': 'No hay registros.',
+            },
+        )
+
+        self.assertIn('No se encontraron registros con los filtros aplicados.', rendered)
+        self.assertIn('Cambia o limpia los filtros', rendered)
+        self.assertNotIn('No hay registros.', rendered)
+
+    def test_unfiltered_empty_state_explains_that_the_list_is_empty(self):
+        rendered = render_to_string(
+            '_list_empty_state.html',
+            {
+                'has_list_filters': False,
+                'empty_message': 'No hay registros todavía.',
+            },
+        )
+
+        self.assertIn('No hay registros todavía.', rendered)
+        self.assertNotIn('No se encontraron registros', rendered)
+
+
+class FormAccessibilityTests(SimpleTestCase):
+    def test_crispy_field_error_is_linked_to_visible_labelled_control(self):
+        form = UsernameOrEmailAuthenticationForm(
+            data={'username': '', 'password': ''}
+        )
+        self.assertFalse(form.is_valid())
+
+        rendered = Template(
+            '{% load crispy_forms_tags %}{{ form|crispy }}'
+        ).render(Context({'form': form}))
+
+        self.assertIn('for="id_username"', rendered)
+        self.assertIn('aria-invalid="true"', rendered)
+        self.assertIn('aria-describedby="id_username_error"', rendered)
+        self.assertIn('id="id_username_error"', rendered)
+
+
 @override_settings(DEBUG=False)
 class ErrorPageTests(TestCase):
     def test_not_found_uses_custom_page_and_back_button(self):
@@ -106,7 +152,7 @@ class ErrorPageTests(TestCase):
         self.assertTemplateUsed(response, '404.html')
         self.assertContains(response, 'Página no encontrada', status_code=404)
         self.assertContains(response, 'Volver a la página anterior', status_code=404)
-        self.assertContains(response, 'sweetalert2', status_code=404)
+        self.assertContains(response, 'Volver al inicio', status_code=404)
 
     def test_forbidden_uses_custom_page_and_back_button(self):
         user = User.objects.create_user(username='unauthorized_user')
@@ -118,7 +164,39 @@ class ErrorPageTests(TestCase):
         self.assertTemplateUsed(response, '403.html')
         self.assertContains(response, 'Acceso denegado', status_code=403)
         self.assertContains(response, 'Volver a la página anterior', status_code=403)
-        self.assertContains(response, 'sweetalert2', status_code=403)
+        self.assertContains(response, 'Ir a mi perfil', status_code=403)
+
+    def test_csrf_failure_uses_the_custom_forbidden_page(self):
+        client = Client(enforce_csrf_checks=True)
+
+        response = client.post(reverse('login'), {})
+
+        self.assertEqual(response.status_code, 403)
+        self.assertContains(response, 'Acceso denegado', status_code=403)
+
+    def test_bad_request_uses_custom_page_and_preserves_http_status(self):
+        from .error_views import handler400
+
+        request = RequestFactory().get('/solicitud-invalida/')
+        request.user = AnonymousUser()
+        response = handler400(request, Exception('detalle técnico privado'))
+
+        self.assertEqual(response.status_code, 400)
+        self.assertContains(response, 'Solicitud inválida', status_code=400)
+        self.assertContains(response, 'Volver a corregir la acción', status_code=400)
+        self.assertNotContains(response, 'detalle técnico privado', status_code=400)
+
+    def test_internal_error_uses_generic_page_without_exception_details(self):
+        from .error_views import handler500
+
+        request = RequestFactory().get('/fallo-interno/')
+        request.user = AnonymousUser()
+        response = handler500(request)
+
+        self.assertEqual(response.status_code, 500)
+        self.assertContains(response, 'problema temporal', status_code=500)
+        self.assertContains(response, 'Inténtalo más tarde', status_code=500)
+        self.assertNotContains(response, 'Traceback', status_code=500)
 
 
 @override_settings(

@@ -20,10 +20,14 @@
 
 <form method="get" class="row g-2 mb-4">
     <div class="col-md-5">
-        <input class="form-control" name="q" type="search" value="{{ search_query }}" placeholder="Buscar cargo, ítem o unidad">
+        <div class="col-md-5">
+            <label class="form-label small fw-semibold" for="goal-search">Buscar metas</label>
+            <input id="goal-search" class="form-control" name="q" type="search" value="{{ search_query }}" placeholder="Cargo, ítem o unidad">
+        </div>
     </div>
     <div class="col-md-3">
-        <select name="period" class="form-select">
+        <label class="form-label small fw-semibold" for="goal-period-filter">Período</label>
+        <select id="goal-period-filter" name="period" class="form-select">
             <option value="">Todos los períodos</option>
             {% for p in periods %}
             <option value="{{ p.id }}" {% if selected_period == p.id|stringformat:"s" %}selected{% endif %}>
@@ -43,6 +47,7 @@
         {% endif %}
     </div>
 </form>
+{% include "_list_sort_controls.html" %}
 
 {% for grupo in resumen %}
 <div class="card mb-3">
@@ -54,7 +59,7 @@
             </span>
         </div>
         <p class="text-muted small mb-2">Período: {{ grupo.period }}</p>
-        <table class="table table-sm mb-0">
+        <table class="table table-sm mb-0" data-list-modal-table>
             <thead>
                 <tr><th>Ítem de medición</th><th>Valor objetivo</th><th>Unidad</th><th>Ponderación</th><th>Estado</th><th>Acciones</th></tr>
             </thead>
@@ -85,7 +90,9 @@
     </div>
 </div>
 {% empty %}
-<p class="text-muted text-center">No hay metas registradas todavía.</p>
+<div class="card card-body text-center my-3" role="status">
+    {% include "_list_empty_state.html" with empty_message="No hay metas registradas todavía." %}
+</div>
 {% endfor %}
 {% include "_pagination.html" %}
 {% endblock %}

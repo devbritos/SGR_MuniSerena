@@ -13,11 +13,11 @@
     {% endif %}
 </div>
 <form method="get" class="card card-body border-0 shadow-sm mb-3">
-    <label for="search-roles" class="form-label">Buscar asignaciones</label>
+    <label for="search-roles" class="form-label">Buscar asignaciones de roles</label>
     <div class="d-flex gap-2 mb-3">
         <input id="search-roles" class="form-control" type="search" name="q" value="{{ search_query }}" placeholder="Funcionario o rol">
-        <button class="btn btn-outline-secondary" type="submit"><i class="bi bi-search"></i> Buscar</button>
-        <a class="btn btn-outline-success text-nowrap" href="{{ request.path }}?{{ query_params }}{% if query_params %}&{% endif %}export=xlsx"><i class="bi bi-file-earmark-excel"></i> Excel</a>
+        <button class="btn btn-outline-secondary" type="submit"><i class="bi bi-search" aria-hidden="true"></i> Buscar</button>
+        <a class="btn btn-outline-success text-nowrap" href="{{ request.path }}?{{ query_params }}{% if query_params %}&{% endif %}export=xlsx"><i class="bi bi-file-earmark-excel" aria-hidden="true"></i> Exportar a Excel</a>
     </div>
     <label for="filter-functionary" class="form-label">Funcionario</label>
     <div class="d-flex gap-2">
@@ -31,10 +31,11 @@
         <a href="{% url 'personal:functionary_role_list' %}" class="btn btn-outline-secondary">Limpiar</a>
     </div>
 </form>
+{% include "_list_sort_controls.html" %}
 <div class="card border-0 shadow-sm">
     <div class="table-responsive">
-        <table class="table table-hover align-middle mb-0">
-            <thead class="table-dark"><tr><th class="ps-3">Funcionario</th><th>Rol</th><th class="text-end pe-3">Acciones</th></tr></thead>
+        <table class="table table-hover align-middle mb-0" data-list-modal-table>
+            <thead class="table-dark"><tr><th scope="col" class="ps-3">Funcionario</th><th scope="col">Rol</th><th scope="col" class="text-end pe-3">Acciones</th></tr></thead>
             <tbody>
                 {% for assignment in object_list %}
                 <tr>
@@ -47,7 +48,7 @@
                     </td>
                 </tr>
                 {% empty %}
-                <tr><td colspan="3" class="text-center text-muted py-4">No hay roles asignados.</td></tr>
+                <tr><td colspan="3" class="text-center text-muted py-4">{% include "_list_empty_state.html" with empty_message="No hay roles asignados." %}</td></tr>
                 {% endfor %}
             </tbody>
         </table>

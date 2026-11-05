@@ -41,6 +41,7 @@ CSRF_TRUSTED_ORIGINS = config(
     default='http://3.82.124.141',
     cast=Csv(),
 )
+CSRF_FAILURE_VIEW = 'core.error_views.csrf_failure'
 
 # Enable these only after HTTPS is configured on the AWS endpoint.
 SECURE_SSL_REDIRECT = config('SECURE_SSL_REDIRECT', default=False, cast=bool)
@@ -122,15 +123,29 @@ DEFAULT_FROM_EMAIL = config(
 # Database
 # https://docs.djangoproject.com/en/5.2/ref/settings/#databases
 
-    # Producción (AWS con MariaDB)
-DATABASES = {
+DB_HOST = config('DB_HOST', default='')
+DB_PORT = config('DB_PORT', default='3306', cast=int)
+DB_NAME = config('DB_NAME', default='')
+DB_USER = config('DB_USER', default='')
+MYSQL_CONFIGURED = bool(DB_HOST and DB_NAME and DB_USER and DB_PORT not in (80, 8000, 8080))
+USE_SQLITE = config('USE_SQLITE', default=not MYSQL_CONFIGURED, cast=bool)
+
+if USE_SQLITE:
+    DATABASES = {
+        'default': {
+            'ENGINE': 'django.db.backends.sqlite3',
+            'NAME': BASE_DIR / 'db.sqlite3',
+        }
+    }
+else:
+    DATABASES = {
         'default': {
             'ENGINE': 'django.db.backends.mysql',
-            'NAME': config('DB_NAME', 'dbsgr'),
-            'USER': config('DB_USER', 'admin_sgr'),
+            'NAME': DB_NAME,
+            'USER': DB_USER,
             'PASSWORD': config('DB_PASSWORD', default=''),
-            'HOST': config('DB_HOST'),
-            'PORT': config('DB_PORT', default='3306'),
+            'HOST': DB_HOST,
+            'PORT': DB_PORT,
             'OPTIONS': {
                 'init_command': "SET sql_mode='STRICT_TRANS_TABLES'",
             },

@@ -1,4 +1,5 @@
-from django.contrib.auth.decorators import login_required, user_passes_test
+from django.contrib.auth.decorators import login_required
+from django.core.exceptions import PermissionDenied
 from django.shortcuts import redirect, render
 from personal.models import Functionary, Delegation
 from agenda.models import Commitment
@@ -9,20 +10,29 @@ from .calculations import obtener_indicador_funcionario
 from configuration.models import Period
 
 
+def _active_functionary_admin(user):
+    functionary = getattr(user, 'functionary', None)
+    return bool(
+        functionary
+        and functionary.is_admin
+        and functionary.is_active
+        and functionary.deleted_at is None
+    )
+
+
 def _month_start():
     return timezone.localdate().replace(day=1)
 
 
 @login_required
-@user_passes_test(
-    lambda user: user.is_staff
-    or user.is_superuser
-    or (
-        hasattr(user, 'functionary')
-        and user.functionary.is_admin
-    )
-)
 def admin_dashboard(request):
+    if not (
+        request.user.is_staff
+        or request.user.is_superuser
+        or _active_functionary_admin(request.user)
+    ):
+        raise PermissionDenied
+
     today = timezone.localdate()
     month_start = _month_start()
     active_functionaries = Functionary.objects.filter(
@@ -39,6 +49,12 @@ def admin_dashboard(request):
     active_attentions = Attention.objects.filter(deleted_at__isnull=True)
 
     context = {
+        'can_manage_catalogs': (
+            request.user.is_superuser or _active_functionary_admin(request.user)
+        ),
+        'can_view_attentions': (
+            _active_functionary(request.user) is not None
+        ),
         'total_funcionarios': active_functionaries.count(),
         'total_delegaciones': active_delegations.count(),
         'compromisos_pendientes': open_commitments.count(),
@@ -130,7 +146,21 @@ def user_dashboard(request):
 def dashboard_redirect(request):
     functionary = getattr(request.user, 'functionary', None)
     if request.user.is_staff or request.user.is_superuser or (
-        functionary and functionary.is_admin
+        functionary
+        and functionary.is_admin
+        and functionary.is_active
+        and functionary.deleted_at is None
     ):
         return redirect('admin_dashboard')
     return redirect('user_dashboard')
+
+
+def _active_functionary(user):
+    functionary = getattr(user, 'functionary', None)
+    if (
+        functionary is None
+        or not functionary.is_active
+        or functionary.deleted_at is not None
+    ):
+        return None
+    return functionary

@@ -123,7 +123,9 @@ python manage.py test
 
 ## Configuración y despliegue
 
-La aplicación carga sus variables desde `.env`. `SECRET_KEY` es obligatoria; por compatibilidad, también se reconoce el nombre antiguo `SECRETKEY`. Usa una clave aleatoria larga y secreta, y cámbiala manualmente antes de desplegar porque la clave configurada actualmente no pasa la comprobación de seguridad de Django. Cambiarla invalida las sesiones y firmas existentes. La conexión requiere `DB_NAME`, `DB_USER` y `DB_HOST`; `DB_PASSWORD` puede quedar vacío si el servidor local no usa contraseña y `DB_PORT` usa `3306` por defecto.
+La aplicación carga sus variables desde `.env`. `SECRET_KEY` es obligatoria; por compatibilidad, también se reconoce el nombre antiguo `SECRETKEY`. Usa una clave aleatoria larga y secreta, y cámbiala manualmente antes de desplegar porque la clave configurada actualmente no pasa la comprobación de seguridad de Django. Cambiarla invalida las sesiones y firmas existentes.
+
+Para desarrollo local, si no se configura un host de base de datos real o si el puerto apunta a un servicio web (por ejemplo, 8000), el proyecto usa SQLite por defecto (`db.sqlite3`). Si se define una configuración válida de MySQL/MariaDB con `DB_HOST`, `DB_NAME`, `DB_USER`, `DB_PASSWORD` y `DB_PORT` (3306 por defecto), entonces se usará esa conexión.
 
 `DEBUG` está desactivado por defecto. `ALLOWED_HOSTS` acepta una lista separada por comas y por defecto contempla la IP usada actualmente y las direcciones locales. Si el servidor usa un dominio, configura ese dominio en `ALLOWED_HOSTS` y su origen completo (incluyendo `https://`) en `CSRF_TRUSTED_ORIGINS`.
 

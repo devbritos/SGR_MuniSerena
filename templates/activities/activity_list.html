@@ -18,17 +18,21 @@
     </div>
 
     <div class="d-flex gap-2 mb-3">
-        <form method="get" class="d-flex gap-2 flex-grow-1">
-            <input class="form-control" type="search" name="q" value="{{ search_query }}" placeholder="Buscar solicitud, contacto, ítem o responsable">
-            <button class="btn btn-outline-secondary" type="submit"><i class="bi bi-search"></i> Buscar</button>
+        <form method="get" class="d-flex gap-2 flex-grow-1 align-items-end">
+            <div class="flex-grow-1">
+                <label class="form-label small fw-semibold" for="activity-search">Buscar actividades</label>
+                <input id="activity-search" class="form-control" type="search" name="q" value="{{ search_query }}" placeholder="Solicitud, contacto, ítem o responsable">
+            </div>
+            <button class="btn btn-outline-secondary" type="submit"><i class="bi bi-search" aria-hidden="true"></i> Buscar</button>
         </form>
         <a class="btn btn-outline-success text-nowrap" href="{{ request.path }}?{{ query_params }}{% if query_params %}&{% endif %}export=xlsx"><i class="bi bi-file-earmark-excel"></i> Exportar a Excel</a>
     </div>
+    {% include "_list_sort_controls.html" %}
 
     <!-- Tabla de actividades ajustada al wireframe WF-01 del informe -->
     <div class="card border-0 shadow-sm overflow-hidden">
         <div class="card-body p-0 table-responsive">
-            <table class="table table-hover align-middle mb-0">
+            <table class="table table-hover align-middle mb-0" data-list-modal-table>
                 <thead class="table-dark">
                     <tr>
                         <th class="ps-4 py-3">ID / Fecha</th>
@@ -75,6 +79,11 @@
                                     <i class="bi bi-pencil-fill"></i>
                                 </a>
                                 {% endif %}
+                                {% if user.is_staff or user.is_superuser or user.functionary.is_admin or user.functionary.is_delegate or a.functionary_id == user.functionary.id %}
+                                <a href="{% url 'activities:activity_delete' a.id %}" class="btn btn-outline-danger" title="Eliminar">
+                                    <i class="bi bi-trash-fill"></i>
+                                </a>
+                                {% endif %}
                                 {% if a.functionary_id == current_functionary_id %}
                                 <a href="{% url 'activities:evidence_create' %}?activity_id={{ a.id }}" class="btn btn-outline-success" title="Subir o corregir evidencia">
                                     <i class="bi bi-file-earmark-arrow-up"></i>
@@ -86,7 +95,7 @@
                     {% empty %}
                     <tr>
                         <td colspan="6" class="text-center text-muted py-5">
-                            No has registrado actividades en este período.
+                            {% include "_list_empty_state.html" with empty_message="No has registrado actividades en este período." %}
                         </td>
                     </tr>
                     {% endfor %}

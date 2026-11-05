@@ -1,0 +1,243 @@
+{% extends "base.html" %}
+
+{% block title %}Editar mi perfil — SGR{% endblock %}
+
+{% block extra_head %}
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/croppr@2.3.1/dist/croppr.min.css">
+<style>
+    .profile-photo-editor {
+        max-width: 640px;
+        margin: 0 auto;
+    }
+    .profile-photo-preview {
+        width: 180px;
+        height: 180px;
+        border-radius: 50%;
+        object-fit: cover;
+        background: #f1f3f5;
+    }
+    #cropImage {
+        display: block;
+        max-width: 100%;
+        max-height: 480px;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <div class="card shadow-sm profile-photo-editor">
+        <div class="card-body p-4">
+            <h1 class="h3 mb-2">Editar mi perfil</h1>
+            <p class="text-muted mb-4">Selecciona y recorta una foto cuadrada para tu perfil.</p>
+
+            {% if messages %}
+                {% for message in messages %}
+                    <div class="alert alert-{{ message.tags|default:'info' }}" role="status">{{ message }}</div>
+                {% endfor %}
+            {% endif %}
+
+            <form method="post" enctype="multipart/form-data" id="profilePhotoForm">
+                {% csrf_token %}
+                {{ form.cropped_image }}
+                {% if form.cropped_image.errors %}
+                    <div class="alert alert-danger" role="alert">{{ form.cropped_image.errors }}</div>
+                {% endif %}
+                {% if form.photo_upload.errors %}
+                    <div class="alert alert-danger" role="alert">{{ form.photo_upload.errors }}</div>
+                {% endif %}
+                <div class="text-center mb-4">
+                    {% if profile.photo %}
+                        <img id="savedPhoto" class="profile-photo-preview" src="{% url 'personal:profile_photo' %}" alt="Foto de perfil actual">
+                    {% else %}
+                        <div id="savedPhotoPlaceholder" class="profile-photo-preview d-inline-flex align-items-center justify-content-center text-secondary" aria-label="Sin foto de perfil">
+                            <i class="bi bi-person-fill fs-1" aria-hidden="true"></i>
+                        </div>
+                        <img id="savedPhoto" class="profile-photo-preview d-none" src="" alt="Foto de perfil actual">
+                    {% endif %}
+                    <p class="small text-muted mt-2 mb-0">Vista previa guardada</p>
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label fw-semibold" for="photoFile">Nueva foto</label>
+                    <input class="form-control" type="file" id="photoFile" name="photo_upload" accept="image/jpeg,image/png" aria-describedby="photo-upload-help{% if form.photo_upload.errors %} id_photo_upload_error{% endif %}" {% if form.photo_upload.errors %}aria-invalid="true"{% endif %}>
+                    <div id="photo-upload-help" class="form-text">JPG o PNG; archivo de origen máximo 2 MiB y recorte final máximo 1,5 MiB. La imagen final será cuadrada.</div>
+                    {% if form.photo_upload.errors %}
+                    <div id="id_photo_upload_error" class="invalid-feedback d-block">{{ form.photo_upload.errors }}</div>
+                    {% endif %}
+                </div>
+
+                <div id="cropContainer" class="d-none mb-3">
+                    <p class="form-label fw-semibold">Ajusta el recorte</p>
+                    <img id="cropImage" src="" alt="Imagen para recortar">
+                </div>
+
+                <div id="cropError" class="alert alert-danger d-none" role="alert"></div>
+                <div class="text-center mb-4">
+                    <img id="cropPreview" class="profile-photo-preview d-none" src="" alt="Vista previa del recorte que se guardará">
+                    <p id="cropPreviewLabel" class="small text-muted mt-2 mb-0 d-none">Vista previa del recorte</p>
+                </div>
+
+                <div class="d-flex flex-wrap gap-2 justify-content-end">
+                    <a class="btn btn-outline-secondary" href="{% url 'personal:profile_update' %}">Cancelar</a>
+                    <button class="btn btn-primary" type="submit" id="savePhotoButton" disabled>Guardar foto</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script src="https://cdn.jsdelivr.net/npm/croppr@2.3.1/dist/croppr.min.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    const form = document.getElementById('profilePhotoForm');
+    const fileInput = document.getElementById('photoFile');
+    const cropImage = document.getElementById('cropImage');
+    const cropContainer = document.getElementById('cropContainer');
+    const cropPreview = document.getElementById('cropPreview');
+    const previewLabel = document.getElementById('cropPreviewLabel');
+    const croppedField = document.getElementById('id_cropped_image');
+    const saveButton = document.getElementById('savePhotoButton');
+    const cropError = document.getElementById('cropError');
+    let cropper = null;
+    let sourceUrl = null;
+    let renderSequence = 0;
+    const maxSourceBytes = 2 * 1024 * 1024;
+    const maxCroppedBytes = 1536 * 1024;
+    const allowedTypes = ['image/jpeg', 'image/png'];
+
+    function showError(message) {
+        cropError.textContent = message;
+        cropError.classList.remove('d-none');
+    }
+
+    function clearError() {
+        cropError.textContent = '';
+        cropError.classList.add('d-none');
+    }
+
+    function destroyCropper() {
+        if (cropper) {
+            cropper.destroy();
+            cropper = null;
+        }
+        if (sourceUrl) {
+            URL.revokeObjectURL(sourceUrl);
+            sourceUrl = null;
+        }
+    }
+
+    function renderCrop() {
+        if (!cropper || !cropImage.naturalWidth) {
+            return;
+        }
+        const sequence = ++renderSequence;
+        croppedField.value = '';
+        saveButton.disabled = true;
+        const selection = cropper.getValue();
+        const canvas = document.createElement('canvas');
+        canvas.width = 512;
+        canvas.height = 512;
+        const context = canvas.getContext('2d');
+        if (!context || selection.width < 1 || selection.height < 1) {
+            showError('No se pudo procesar el recorte. Inténtalo nuevamente.');
+            return;
+        }
+        context.drawImage(
+            cropImage,
+            selection.x,
+            selection.y,
+            selection.width,
+            selection.height,
+            0,
+            0,
+            canvas.width,
+            canvas.height
+        );
+        canvas.toBlob(function (blob) {
+            if (sequence !== renderSequence) {
+                return;
+            }
+            if (!blob || blob.size > maxCroppedBytes) {
+                croppedField.value = '';
+                saveButton.disabled = true;
+                showError('El recorte supera 1,5 MB. Selecciona otra imagen.');
+                return;
+            }
+            const reader = new FileReader();
+            reader.onload = function () {
+                if (sequence !== renderSequence) {
+                    return;
+                }
+                croppedField.value = reader.result;
+                cropPreview.src = reader.result;
+                cropPreview.classList.remove('d-none');
+                previewLabel.classList.remove('d-none');
+                saveButton.disabled = false;
+                clearError();
+            };
+            reader.onerror = function () {
+                croppedField.value = '';
+                saveButton.disabled = true;
+                showError('No se pudo preparar la vista previa del recorte.');
+            };
+            reader.readAsDataURL(blob);
+        }, 'image/jpeg', 0.9);
+    }
+
+    fileInput.addEventListener('change', function () {
+        clearError();
+        const file = fileInput.files[0];
+        destroyCropper();
+        cropContainer.classList.add('d-none');
+        cropImage.removeAttribute('src');
+        croppedField.value = '';
+        cropPreview.classList.add('d-none');
+        previewLabel.classList.add('d-none');
+        saveButton.disabled = true;
+        if (!file) {
+            cropContainer.classList.add('d-none');
+            return;
+        }
+        if (!allowedTypes.includes(file.type)) {
+            fileInput.value = '';
+            showError('Selecciona una imagen JPG o PNG.');
+            return;
+        }
+        if (file.size > maxSourceBytes) {
+            fileInput.value = '';
+            showError('La imagen seleccionada no puede superar 2 MiB.');
+            return;
+        }
+
+        sourceUrl = URL.createObjectURL(file);
+        cropImage.onload = function () {
+            cropContainer.classList.remove('d-none');
+            window.requestAnimationFrame(function () {
+                cropper = new Croppr(cropImage, {
+                    aspectRatio: 1,
+                    returnMode: 'real',
+                    onCropEnd: renderCrop
+                });
+                renderCrop();
+            });
+        };
+        cropImage.onerror = function () {
+            showError('No se pudo abrir la imagen seleccionada.');
+            destroyCropper();
+            cropContainer.classList.add('d-none');
+        };
+        cropImage.src = sourceUrl;
+    });
+
+    form.addEventListener('submit', function (event) {
+        if (!croppedField.value) {
+            event.preventDefault();
+            showError('Selecciona y confirma un recorte antes de guardar.');
+        }
+    });
+});
+</script>
+{% endblock %}

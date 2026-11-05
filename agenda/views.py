@@ -14,7 +14,7 @@ from core.mixins import (
     FunctionaryRequiredMixin,
 )
 from core.exports import excel_response
-from core.lists import search_queryset
+from core.lists import ListControlsMixin, apply_list_sort, search_queryset
 from activities.models import Activity
 
 
@@ -36,12 +36,18 @@ def get_commitment_scope(user):
     return commitments.filter(functionary=functionary)
 
 
-class CommitmentListView(LoginRequiredMixin, FunctionaryOrStaffRequiredMixin, ListView):
+class CommitmentListView(ListControlsMixin, LoginRequiredMixin, FunctionaryOrStaffRequiredMixin, ListView):
     model = Commitment
     template_name = 'agenda/commitment_list.html'
     context_object_name = 'commitments'
     ordering = ['commitment_date']
     paginate_by = 20
+    sort_fields = {
+        'recent': ('-commitment_date', '-pk'),
+        'oldest': ('commitment_date', 'pk'),
+        'az': ('origin', 'pk'),
+        'za': ('-origin', '-pk'),
+    }
 
     def get_queryset(self):
         queryset = get_commitment_scope(self.request.user)
@@ -73,7 +79,7 @@ class CommitmentListView(LoginRequiredMixin, FunctionaryOrStaffRequiredMixin, Li
             'functionary__lastnames',
         )
 
-        return queryset
+        return apply_list_sort(queryset, self.request, self.sort_fields)
 
     def render_to_response(self, context, **response_kwargs):
         if self.request.GET.get('export') == 'xlsx':

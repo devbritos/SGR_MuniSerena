@@ -5,8 +5,12 @@ from . import views
 app_name = "personal"
 
 urlpatterns = [
+    path("profile/", views.profile_update, name="profile_update"),
+    path("profile/photo/", views.profile_photo, name="profile_photo"),
+
     # Delegation
     path("delegations/", views.delegation_list, name="delegation_list"),
+    path("delegations/<int:pk>/", views.delegation_detail, name="delegation_detail"),
     path("delegations/new/", views.delegation_create, name="delegation_create"),
     path("delegations/<int:pk>/edit/", views.delegation_update, name="delegation_update"),
     path("delegations/<int:pk>/delete/", views.delegation_delete, name="delegation_delete"),
@@ -19,6 +23,8 @@ urlpatterns = [
 
     # Functionary
     path("functionaries/", views.functionary_list, name="functionary_list"),
+    path("functionaries/<int:pk>/", views.functionary_detail, name="functionary_detail"),
+    path("functionaries/<int:pk>/photo/", views.functionary_photo, name="functionary_photo"),
     path("functionaries/new/", views.functionary_create, name="functionary_create"),
     path("functionaries/<int:pk>/edit/", views.functionary_update, name="functionary_update"),
     path("functionaries/<int:pk>/delete/", views.functionary_delete, name="functionary_delete"),

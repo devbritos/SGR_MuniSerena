@@ -178,3 +178,62 @@ class DashboardTests(TestCase):
             reverse('admin_dashboard'),
         )
         self.assertContains(response, 'Panel de control')
+
+    def test_functionary_menu_shows_operational_sections_without_admin_links(self):
+        self.client.force_login(self.user)
+
+        response = self.client.get(reverse('user_dashboard'))
+
+        self.assertEqual(response.status_code, 200)
+        for route_name in (
+            'activities:activity_list',
+            'activities:evidence_list',
+            'agenda:commitment_list',
+            'atenciones:attention_list',
+        ):
+            self.assertContains(response, reverse(route_name))
+        self.assertNotContains(response, reverse('personal:functionary_list'))
+
+    def test_staff_menu_does_not_show_admin_routes_the_staff_role_cannot_open(self):
+        self.client.force_login(self.staff)
+
+        response = self.client.get(reverse('admin_dashboard'))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, reverse('activities:traffic_light'))
+        html = response.content.decode()
+        functionary_list_url = reverse('personal:functionary_list')
+        goals_url = reverse('configuration:goal_list')
+        self.assertNotIn(
+            f'href="{functionary_list_url}" class="sidebar-link',
+            html,
+        )
+        self.assertNotIn(
+            f'href="{goals_url}" class="sidebar-link',
+            html,
+        )
+
+    def test_inactive_admin_functionary_cannot_open_admin_dashboard_or_menu(self):
+        inactive_admin = User.objects.create_user(
+            username='inactive_dashboard_admin',
+            password='test-password',
+        )
+        functionary = Functionary.objects.create(
+            user=inactive_admin,
+            delegation=self.delegation,
+            position=self.position,
+            names='Admin',
+            lastnames='Inactivo',
+            is_active=False,
+        )
+        admin_role = Role.objects.create(role_name=Role.ADMIN)
+        FunctionaryRole.objects.create(functionary=functionary, role=admin_role)
+        self.client.force_login(inactive_admin)
+
+        response = self.client.get(reverse('admin_dashboard'))
+        self.assertEqual(response.status_code, 403)
+
+        response = self.client.get(reverse('personal:profile_update'))
+        self.assertEqual(response.status_code, 200)
+        self.assertNotContains(response, reverse('configuration:goal_list'))
+        self.assertNotContains(response, reverse('personal:functionary_list'))

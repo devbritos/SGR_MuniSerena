@@ -82,8 +82,8 @@
         <div class="card-body p-3">
             <form method="get" class="row g-2 align-items-end">
                 <div class="col-xl-3 col-md-6">
-                    <label class="form-label small fw-bold text-muted mb-1">Buscar texto</label>
-                    <input type="search" name="q" class="form-control" value="{{ search_query }}" placeholder="Origen, solicitante, responsable">
+                    <label class="form-label small fw-bold text-muted mb-1" for="commitment-search">Buscar compromisos</label>
+                    <input id="commitment-search" type="search" name="q" class="form-control" value="{{ search_query }}" placeholder="Origen, solicitante, responsable">
                 </div>
                 <div class="col-xl-3 col-md-6">
                     <label class="form-label small fw-bold text-muted mb-1">Responsable</label>
@@ -131,11 +131,12 @@
             </form>
         </div>
     </div>
+    {% include "_list_sort_controls.html" %}
 
     <!-- Tabla de compromisos adaptada al ancho completo -->
     <div class="card border-0 shadow-sm overflow-hidden">
         <div class="card-body p-0">
-            <table class="table table-hover align-middle mb-0 table-compact">
+            <table class="table table-hover align-middle mb-0 table-compact" data-list-modal-table>
                 <thead class="table-dark">
                     <tr>
                         <th class="ps-3 py-2 text-nowrap" style="width: 10%;">N° / Reg.</th>
@@ -191,7 +192,7 @@
                     <tr>
                         <td colspan="8" class="text-center text-muted py-5">
                             <i class="bi bi-inbox fs-2 d-block mb-2 text-secondary"></i>
-                            No hay compromisos registrados en la agenda colectiva.
+                            {% include "_list_empty_state.html" with empty_message="No hay compromisos registrados." %}
                         </td>
                     </tr>
                     {% endfor %}

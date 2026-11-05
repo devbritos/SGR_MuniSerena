@@ -18,7 +18,7 @@ from .forms import (
 from django.views.generic import TemplateView
 from django.db.models import Exists, OuterRef, Sum
 from core.exports import excel_response
-from core.lists import search_queryset
+from core.lists import ListControlsMixin, apply_list_sort, search_queryset
 from personal.models import Functionary
 from core.mixins import (
     FunctionaryRequiredMixin,
@@ -43,12 +43,18 @@ def get_activity_scope(user):
 
 # ---------- Activity ----------
 
-class ActivityListView(LoginRequiredMixin, FunctionaryOrStaffRequiredMixin, ListView):
+class ActivityListView(ListControlsMixin, LoginRequiredMixin, FunctionaryOrStaffRequiredMixin, ListView):
     model = Activity
     template_name = 'activities/activity_list.html'
     context_object_name = 'activities'
     ordering = ['-date']
     paginate_by = 20
+    sort_fields = {
+        'recent': '-date',
+        'oldest': 'date',
+        'az': ('application', 'pk'),
+        'za': ('-application', '-pk'),
+    }
 
     def get_queryset(self):
         queryset = get_activity_scope(self.request.user).select_related(
@@ -68,7 +74,8 @@ class ActivityListView(LoginRequiredMixin, FunctionaryOrStaffRequiredMixin, List
             'functionary__names',
             'functionary__lastnames',
         )
-        return queryset.order_by(*self.ordering)
+        queryset = queryset.order_by(*self.ordering)
+        return apply_list_sort(queryset, self.request, self.sort_fields)
 
     def render_to_response(self, context, **response_kwargs):
         if self.request.GET.get('export') == 'xlsx':
@@ -205,12 +212,18 @@ class ActivityDeleteView(LoginRequiredMixin, FunctionaryOrStaffRequiredMixin, De
 
 # ---------- Evidence ----------
 
-class EvidenceListView(LoginRequiredMixin, FunctionaryOrStaffRequiredMixin, ListView):
+class EvidenceListView(ListControlsMixin, LoginRequiredMixin, FunctionaryOrStaffRequiredMixin, ListView):
     model = Evidence
     template_name = 'activities/evidence_list.html'
     context_object_name = 'evidences'
     ordering = ['-created_at']
     paginate_by = 20
+    sort_fields = {
+        'recent': '-created_at',
+        'oldest': 'created_at',
+        'az': ('name', 'pk'),
+        'za': ('-name', '-pk'),
+    }
 
     def get_queryset(self):
         latest_evidence = Evidence.objects.filter(
@@ -233,7 +246,8 @@ class EvidenceListView(LoginRequiredMixin, FunctionaryOrStaffRequiredMixin, List
             'functionary__names',
             'functionary__lastnames',
         )
-        return queryset.order_by(*self.ordering)
+        queryset = queryset.order_by(*self.ordering)
+        return apply_list_sort(queryset, self.request, self.sort_fields)
 
     def render_to_response(self, context, **response_kwargs):
         if self.request.GET.get('export') == 'xlsx':
@@ -385,7 +399,8 @@ class EvidenceFileView(LoginRequiredMixin, View):
             'image/gif',
             'image/webp',
         }
-        can_display_inline = content_type in inline_types
+        force_download = request.GET.get('download') == '1'
+        can_display_inline = content_type in inline_types and not force_download
         response = FileResponse(
             evidence.file.open('rb'),
             as_attachment=not can_display_inline,

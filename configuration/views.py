@@ -10,7 +10,12 @@ from .models import Goal, Measuring, Period
 from .forms import GoalForm, MeasuringForm, PeriodForm
 from core.mixins import AdminRequiredMixin
 from core.exports import excel_response
-from core.lists import search_queryset
+from core.lists import (
+    ListControlsMixin,
+    apply_list_sort,
+    get_page_size,
+    search_queryset,
+)
 
 
 def _save_goal_for_positions(form):
@@ -31,11 +36,17 @@ def _save_goal_for_positions(form):
     return goal, len(positions)
 
 
-class GoalListView(LoginRequiredMixin, AdminRequiredMixin, ListView):
+class GoalListView(ListControlsMixin, LoginRequiredMixin, AdminRequiredMixin, ListView):
     model = Goal
     template_name = 'configuration/goal_list.html'
     context_object_name = 'goals'
-    paginate_by = None
+    paginate_by = 20
+    sort_fields = {
+        'recent': ('-period__start_date', '-pk'),
+        'oldest': ('period__start_date', 'pk'),
+        'az': ('position__name', 'measuring__service', 'pk'),
+        'za': ('-position__name', '-measuring__service', '-pk'),
+    }
 
     def get_queryset(self):
         queryset = Goal.objects.select_related(
@@ -55,9 +66,8 @@ class GoalListView(LoginRequiredMixin, AdminRequiredMixin, ListView):
             'measuring__measurable_item',
             'unity',
         )
-        if self.request.GET.get('export') == 'xlsx':
-            return queryset
-        return queryset.order_by('period', 'position__name', 'measuring__service')
+        queryset = queryset.order_by('period', 'position__name', 'measuring__service')
+        return apply_list_sort(queryset, self.request, self.sort_fields)
 
     def render_to_response(self, context, **response_kwargs):
         if self.request.GET.get('export') == 'xlsx':
@@ -90,24 +100,31 @@ class GoalListView(LoginRequiredMixin, AdminRequiredMixin, ListView):
         context['periods'] = Period.objects.all().order_by('-start_date')
         context['selected_period'] = self.request.GET.get('period', '')
 
-        resumen = {}
+        goals = list(self.get_queryset())
+        group_totals = {}
+        for goal in goals:
+            key = (goal.position_id, goal.period_id)
+            group_totals[key] = group_totals.get(key, 0) + goal.weight
 
-        for goal in self.get_queryset():
+        page = Paginator(
+            goals,
+            get_page_size(self.request, default=20),
+        ).get_page(
+            self.request.GET.get('page')
+        )
+        resumen = {}
+        for goal in page.object_list:
             key = (goal.position_id, goal.period_id)
             if key not in resumen:
                 resumen[key] = {
                     'position': goal.position,
                     'period': goal.period,
-                    'total_weight': 0,
+                    'total_weight': group_totals[key],
                     'items': [],
                 }
-            resumen[key]['total_weight'] += goal.weight
             resumen[key]['items'].append(goal)
 
-        page = Paginator(list(resumen.values()), 10).get_page(
-            self.request.GET.get('page')
-        )
-        context['resumen'] = page.object_list
+        context['resumen'] = list(resumen.values())
         context['page_obj'] = page
         context['paginator'] = page.paginator
         context['is_paginated'] = page.has_other_pages()
@@ -163,23 +180,30 @@ class GoalDeactivateView(LoginRequiredMixin, AdminRequiredMixin, View):
         return redirect('configuration:goal_list')
 
 
-class MeasuringListView(LoginRequiredMixin, AdminRequiredMixin, ListView):
+class MeasuringListView(ListControlsMixin, LoginRequiredMixin, AdminRequiredMixin, ListView):
     model = Measuring
     template_name = 'configuration/measuring_list.html'
     context_object_name = 'items'
     paginate_by = 20
+    sort_fields = {
+        'recent': ('-created_at', '-pk'),
+        'oldest': ('created_at', 'pk'),
+        'az': ('service', 'pk'),
+        'za': ('-service', '-pk'),
+    }
 
     def get_queryset(self):
         queryset = Measuring.objects.filter(deleted_at__isnull=True)
         if not self.request.GET.get('all'):
             queryset = queryset.filter(validity=True)
-        return search_queryset(
+        queryset = search_queryset(
             queryset,
             self.request.GET.get('q'),
             'code',
             'service',
             'measurable_item',
         ).order_by('service')
+        return apply_list_sort(queryset, self.request, self.sort_fields)
 
     def render_to_response(self, context, **response_kwargs):
         if self.request.GET.get('export') == 'xlsx':
