@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 
-{% block title %}{% if object %}Editar{% else %}Nuevo{% endif %} compromiso{% endblock %}
+{% block title %}{% if object %}Editar compromiso{% else %}Crear compromiso{% endif %} — SGR{% endblock %}
 
 {% block extra_head %}
 <style>
@@ -38,7 +38,7 @@
                     <i class="bi bi-calendar2-check fs-5" aria-hidden="true"></i>
                 </span>
                 <div>
-                    <h1 class="h4 fw-bold mb-1">{% if object %}Editar compromiso{% else %}Nuevo compromiso{% endif %}</h1>
+                    <h1 class="h4 fw-bold mb-1">{% if object %}Editar compromiso{% else %}Crear compromiso{% endif %}</h1>
                     <p class="mb-0 text-white-50">Registra la solicitud, asigna un responsable y define su seguimiento.</p>
                 </div>
             </div>
@@ -129,9 +129,9 @@
 
                 <div class="commitment-form-actions d-flex justify-content-end gap-2 mt-4 pt-3 border-top">
                     <a href="{% url 'agenda:commitment_list' %}" class="btn btn-outline-secondary">Cancelar</a>
-                    <button type="submit" class="btn btn-primary px-4">
+                    <button type="submit" class="btn btn-primary px-4" data-submit-label="{% if object %}Guardar cambios{% else %}Crear compromiso{% endif %}">
                         <i class="bi bi-check-circle me-1" aria-hidden="true"></i>
-                        {% if object %}Guardar cambios{% else %}Guardar compromiso{% endif %}
+                        {% if object %}Guardar cambios{% else %}Crear compromiso{% endif %}
                     </button>
                 </div>
             </form>

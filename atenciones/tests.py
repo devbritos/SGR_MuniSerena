@@ -78,6 +78,12 @@ class CitizenAttentionTests(TestCase):
             reverse('atenciones:attention_update', args=[attention.pk])
         )
         self.assertEqual(edit_page.status_code, 200)
+        self.assertContains(
+            edit_page,
+            'data-subattention-options-url="'
+            + reverse('atenciones:subattention_options', args=[0])
+            + '"',
+        )
         self.assertContains(edit_page, 'Editar atención ciudadana')
         self.assertContains(edit_page, 'Datos de la persona')
         self.assertContains(edit_page, 'Clasificación')

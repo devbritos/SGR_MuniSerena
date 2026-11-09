@@ -73,14 +73,14 @@ class ActivityForm(forms.ModelForm):
             ),
         }
         labels = {
-            'date': 'Fecha de Registro',
-            'measuring': 'Ítem a Medir',
-            'application': 'Solicitud / Requerimiento',
-            'taken_action': 'Acción Realizada',
-            'quantity': 'Cantidad / Personas Atendidas',
-            'name_contact': 'Nombre de Contacto',
-            'telephone_contact': 'Teléfono de Contacto',
-            'enters_pipe': '¿Ingresa al Tubo de Trabajo?',
+            'date': 'Fecha de registro',
+            'measuring': 'Ítem de medición',
+            'application': 'Solicitud o requerimiento',
+            'taken_action': 'Acción realizada',
+            'quantity': 'Cantidad de personas atendidas',
+            'name_contact': 'Nombre de contacto',
+            'telephone_contact': 'Teléfono de contacto',
+            'enters_pipe': '¿Se incorpora al tubo de trabajo?',
         }
         help_texts = {
             'quantity': 'Indica cuántas personas o atenciones representa este registro (mínimo 1).'
@@ -247,10 +247,13 @@ class EvidenceForm(forms.ModelForm):
 
 
 class EvidenceValidationForm(forms.ModelForm):
-    """Formulario aparte, solo para que el verificador apruebe/rechace."""
     class Meta:
         model = Evidence
         fields = ['validity_state', 'observations_validity']
+        labels = {
+            'validity_state': 'Estado de la evidencia',
+            'observations_validity': 'Observaciones de validación',
+        }
         widgets = {
             'validity_state': forms.Select(attrs={'class': 'form-select'}),
             'observations_validity': forms.Textarea(attrs={'class': 'form-control', 'rows': 2}),
@@ -258,13 +261,14 @@ class EvidenceValidationForm(forms.ModelForm):
 
     def __init__(self, *args, verificator=None, **kwargs):
         super().__init__(*args, **kwargs)
+        validity_labels = {
+            Evidence.Validity.APPROVED: 'Aprobada',
+            Evidence.Validity.REJECTED: 'Rechazada',
+        }
         self.fields['validity_state'].choices = [
-            choice
-            for choice in Evidence.Validity.choices
-            if choice[0] in {
-                Evidence.Validity.APPROVED,
-                Evidence.Validity.REJECTED,
-            }
+            (value, validity_labels[value])
+            for value, _ in Evidence.Validity.choices
+            if value in validity_labels
         ]
         if self.instance:
             self.instance.verificator = verificator

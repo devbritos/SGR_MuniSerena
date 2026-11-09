@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 {% load crispy_forms_tags %}
 
-{% block title %}{% if object %}Editar delegación{% else %}Nueva delegación{% endif %} — SGR{% endblock %}
+{% block title %}{% if object %}Editar delegación{% else %}Crear delegación{% endif %} — SGR{% endblock %}
 
 {% block extra_head %}
 <style>
@@ -192,7 +192,7 @@
                     <a href="{% url 'personal:delegation_list' %}" class="btn btn-outline-secondary">
                         <i class="bi bi-arrow-left" aria-hidden="true"></i>Cancelar
                     </a>
-                    <button type="submit" class="btn btn-primary">
+                    <button type="submit" class="btn btn-primary" data-submit-label="{% if object %}Guardar cambios{% else %}Crear delegación{% endif %}">
                         <i class="bi bi-check2" aria-hidden="true"></i>{% if object %}Guardar cambios{% else %}Crear delegación{% endif %}
                     </button>
                 </div>

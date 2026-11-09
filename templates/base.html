@@ -454,7 +454,7 @@
             {% if user.is_staff or user.is_superuser or user.functionary.is_active and not user.functionary.deleted_at %}
             <div class="sidebar-section-title">Principal</div>
             <a href="{% url 'dashboard_redirect' %}" class="sidebar-link {% if 'dashboard' in request.path %}active{% endif %}">
-                <i class="bi bi-speedometer2" aria-hidden="true"></i> Dashboard
+                <i class="bi bi-speedometer2" aria-hidden="true"></i> Panel de control
             </a>
             {% endif %}
 
@@ -584,6 +584,134 @@
                 });
             }
 
+            function initializeFormEnhancements(root) {
+                const groupsContainer = root.querySelector('[data-permission-groups]');
+                if (groupsContainer) {
+                    const searchInput = root.querySelector('#permission-search');
+                    const countElement = root.querySelector('[data-selected-count]');
+                    const items = Array.from(groupsContainer.querySelectorAll('[data-permission-item]'));
+                    const groups = Array.from(groupsContainer.querySelectorAll('[data-permission-group]'));
+
+                    const updateCount = function () {
+                        countElement.textContent = groupsContainer.querySelectorAll(
+                            'input[name="permissions"]:checked'
+                        ).length;
+                    };
+                    const updateVisibility = function () {
+                        const query = searchInput.value.trim().toLocaleLowerCase();
+                        groups.forEach(function (group) {
+                            const groupItems = Array.from(
+                                group.querySelectorAll('[data-permission-item]')
+                            );
+                            let visibleItems = 0;
+                            groupItems.forEach(function (item) {
+                                const matches = item.dataset.searchText
+                                    .toLocaleLowerCase()
+                                    .includes(query);
+                                item.hidden = !matches;
+                                if (matches) visibleItems += 1;
+                            });
+                            group.hidden = visibleItems === 0;
+                            const groupCheckbox = group.querySelector('[data-select-group]');
+                            const visibleCheckboxes = groupItems
+                                .filter(function (item) { return !item.hidden; })
+                                .map(function (item) {
+                                    return item.querySelector('input[name="permissions"]');
+                                });
+                            groupCheckbox.checked = visibleCheckboxes.length > 0
+                                && visibleCheckboxes.every(function (checkbox) {
+                                    return checkbox.checked;
+                                });
+                            groupCheckbox.indeterminate = visibleCheckboxes.some(
+                                function (checkbox) { return checkbox.checked; }
+                            ) && !groupCheckbox.checked;
+                        });
+                    };
+
+                    searchInput.addEventListener('input', updateVisibility);
+                    groupsContainer.addEventListener('change', function (event) {
+                        if (event.target.matches('input[name="permissions"]')) {
+                            updateCount();
+                            updateVisibility();
+                        }
+                        if (event.target.matches('[data-select-group]')) {
+                            const group = event.target.closest('[data-permission-group]');
+                            group.querySelectorAll(
+                                '[data-permission-item]:not([hidden]) input[name="permissions"]'
+                            ).forEach(function (checkbox) {
+                                checkbox.checked = event.target.checked;
+                            });
+                            updateCount();
+                            updateVisibility();
+                        }
+                    });
+                    root.querySelector('[data-select-visible]').addEventListener(
+                        'click',
+                        function () {
+                            items.filter(function (item) { return !item.hidden; })
+                                .forEach(function (item) {
+                                    item.querySelector(
+                                        'input[name="permissions"]'
+                                    ).checked = true;
+                                });
+                            updateCount();
+                            updateVisibility();
+                        }
+                    );
+                    root.querySelector('[data-clear-visible]').addEventListener(
+                        'click',
+                        function () {
+                            items.filter(function (item) { return !item.hidden; })
+                                .forEach(function (item) {
+                                    item.querySelector(
+                                        'input[name="permissions"]'
+                                    ).checked = false;
+                                });
+                            updateCount();
+                            updateVisibility();
+                        }
+                    );
+                    updateCount();
+                    updateVisibility();
+                }
+
+                const attentionForm = root.querySelector(
+                    '[data-subattention-options-url]'
+                );
+                if (attentionForm) {
+                    const typeSelect = attentionForm.querySelector('#id_attention_type');
+                    const subSelect = attentionForm.querySelector('#id_sub_attention');
+                    const errorBox = attentionForm.querySelector('#subattention-error');
+                    typeSelect.addEventListener('change', async function () {
+                        subSelect.replaceChildren(new Option('---------', ''));
+                        subSelect.disabled = true;
+                        errorBox.classList.add('d-none');
+                        if (!typeSelect.value) {
+                            subSelect.disabled = false;
+                            return;
+                        }
+                        try {
+                            const endpoint = attentionForm.dataset.subattentionOptionsUrl
+                                .replace('/0/', '/' + typeSelect.value + '/');
+                            const response = await fetch(endpoint, {
+                                headers: {'X-Requested-With': 'XMLHttpRequest'}
+                            });
+                            if (!response.ok) {
+                                throw new Error('No se pudieron cargar las subatenciones.');
+                            }
+                            const payload = await response.json();
+                            payload.results.forEach(function (item) {
+                                subSelect.add(new Option(item.name, item.id));
+                            });
+                            subSelect.disabled = false;
+                        } catch (error) {
+                            errorBox.textContent = error.message;
+                            errorBox.classList.remove('d-none');
+                        }
+                    });
+                }
+            }
+
             const pageContent = document.getElementById('page-content');
             const modalElement = document.getElementById('listActionModal');
             const modalTitle = document.getElementById('listActionModalTitle');
@@ -594,6 +722,7 @@
                 return;
             }
             associateFormErrors(pageContent);
+            initializeFormEnhancements(pageContent);
 
             const modal = bootstrap.Modal.getOrCreateInstance(modalElement);
             const actionPath = /\/(?:new|nuevo|nueva|create|crear|edit|editar|delete|eliminar|desactivar|deactivate|validar)\/?$/i;
@@ -646,6 +775,7 @@
                 });
                 modalBody.innerHTML = content.innerHTML;
                 associateFormErrors(modalBody);
+                initializeFormEnhancements(modalBody);
                 return parsed;
             }
 
@@ -723,6 +853,10 @@
                 const submitButtons = Array.from(form.querySelectorAll('button[type="submit"], input[type="submit"]'));
                 submitButtons.forEach(function (button) {
                     button.disabled = true;
+                    button.setAttribute('aria-busy', 'true');
+                    const submittingLabel = button.dataset.submitLabel || 'Guardando...';
+                    button.innerHTML = '<span class="spinner-border spinner-border-sm me-2" aria-hidden="true"></span>'
+                        + submittingLabel;
                 });
 
                 try {
@@ -1017,7 +1151,9 @@
                         form.querySelectorAll('button[type="submit"]').forEach(function (button) {
                             button.disabled = true;
                             button.setAttribute('aria-busy', 'true');
-                            button.innerHTML = '<span class="spinner-border spinner-border-sm me-2" aria-hidden="true"></span>Guardando...';
+                            const submittingLabel = button.dataset.submitLabel || 'Guardando...';
+                            button.innerHTML = '<span class="spinner-border spinner-border-sm me-2" aria-hidden="true"></span>'
+                                + submittingLabel;
                         });
                     });
                 });

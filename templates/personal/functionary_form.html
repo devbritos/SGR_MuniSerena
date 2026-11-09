@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 {% load crispy_forms_tags %}
 
-{% block title %}{% if object %}Editar funcionario{% else %}Nuevo funcionario{% endif %} — SGR{% endblock %}
+{% block title %}{% if object %}Editar funcionario{% else %}Crear funcionario{% endif %} — SGR{% endblock %}
 
 {% block extra_head %}
 <style>
@@ -165,7 +165,7 @@
         <ol class="breadcrumb small mb-0">
             <li class="breadcrumb-item"><a href="{% url 'personal:functionary_list' %}">Funcionarios</a></li>
             <li class="breadcrumb-item active" aria-current="page">
-                {% if object %}Editar funcionario{% else %}Nuevo funcionario{% endif %}
+                {% if object %}Editar funcionario{% else %}Crear funcionario{% endif %}
             </li>
         </ol>
     </nav>
@@ -175,7 +175,7 @@
             <i class="bi bi-person-vcard fs-3" aria-hidden="true"></i>
             <div>
                 <h1 class="mb-1">
-                    {% if object %}Editar funcionario{% else %}Nuevo funcionario{% endif %}
+                    {% if object %}Editar funcionario{% else %}Crear funcionario{% endif %}
                 </h1>
                 <p>
                     {% if object %}
@@ -262,7 +262,7 @@
                     <a href="{% url 'personal:functionary_list' %}" class="btn btn-outline-secondary">
                         <i class="bi bi-arrow-left me-1" aria-hidden="true"></i>Cancelar
                     </a>
-                    <button type="submit" class="btn btn-primary px-3">
+                    <button type="submit" class="btn btn-primary px-3" data-submit-label="{% if object %}Guardar cambios{% else %}Crear funcionario{% endif %}">
                         <i class="bi bi-check2 me-1" aria-hidden="true"></i>
                         {% if object %}Guardar cambios{% else %}Crear funcionario{% endif %}
                     </button>

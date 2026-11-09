@@ -57,9 +57,9 @@ class Activity(BaseModel):
 
 class Evidence(BaseModel):
     class Validity(models.TextChoices):
-        PENDING = 'PENDING', 'Pending'
-        APPROVED = 'APPROVED', 'Approved'
-        REJECTED = 'REJECTED', 'Rejected'
+        PENDING = 'PENDING', 'Pendiente'
+        APPROVED = 'APPROVED', 'Aprobada'
+        REJECTED = 'REJECTED', 'Rechazada'
 
     name = models.CharField(max_length=50)
     author = models.CharField(max_length=50)
