@@ -58,9 +58,19 @@ Este proyecto fue desarrollado para la asignatura Programación Back End (TI3041
    Copy-Item .env.example .env
    ```
 
-   Genera una clave secreta fuerte con `python -c "import secrets; print(secrets.token_urlsafe(50))"` y copia el resultado en `SECRET_KEY`. Completa las variables de base de datos. En desarrollo puedes poner `DEBUG=True`; en AWS debe quedar `DEBUG=False`. No compartas ni subas `.env` al repositorio.
+   Genera una clave secreta fuerte con `python -c "import secrets; print(secrets.token_urlsafe(50))"` y copia el resultado en `SECRET_KEY`. Completa las variables de base de datos. En desarrollo puedes poner `DEBUG=True`; en AWS debe quedar `DEBUG=False`. Para cargar las cuentas de prueba, define `SEED_USER_PASSWORD` con una contraseña robusta de al menos 16 caracteres. No compartas ni subas `.env` al repositorio.
 
    En desarrollo (`DEBUG=True`) las actualizaciones en tiempo real usan un canal en memoria. Para producción, configura `REDIS_URL` con la dirección de un Redis accesible por la aplicación, por ejemplo `redis://localhost:6379/0`.
+
+### Semillas de prueba
+
+Con `DEBUG=True` y `SEED_USER_PASSWORD` configurada, ejecuta:
+
+```powershell
+python manage.py poblar_bd
+```
+
+El comando crea hasta 2.000 registros marcados y reproducibles: 1.000 atenciones, 400 compromisos, 400 actividades y 200 evidencias. Al repetirlo, conserva los registros existentes y solo agrega los que faltan; no elimina datos. También deja seis cuentas locales listas: `admin@sgr.cl`, `coordinador@sgr.cl`, `delegado@sgr.cl`, `funcionario@sgr.cl`, `verificador@sgr.cl` y `consulta@sgr.cl`. Las seis usan el valor configurado en `SEED_USER_PASSWORD`. El comando se niega a ejecutarse con `DEBUG=False` y no contiene una contraseña predeterminada.
 
 5. Comprueba la configuración y crea las tablas:
 

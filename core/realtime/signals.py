@@ -1,8 +1,13 @@
+import logging
+
 from asgiref.sync import async_to_sync
 from django.apps import apps
 from django.db import transaction
 from django.db.models.signals import m2m_changed, post_delete, post_save
+from redis.exceptions import RedisError
 
+
+logger = logging.getLogger(__name__)
 
 BUSINESS_APP_LABELS = {
     'activities',
@@ -18,10 +23,16 @@ def _notify_clients():
     from channels.layers import get_channel_layer
 
     channel_layer = get_channel_layer()
-    async_to_sync(channel_layer.group_send)(
-        GROUP_NAME,
-        {'type': 'data.changed'},
-    )
+    try:
+        async_to_sync(channel_layer.group_send)(
+            GROUP_NAME,
+            {'type': 'data.changed'},
+        )
+    except RedisError:
+        logger.exception(
+            'No se pudo notificar el cambio por Redis; los datos ya quedaron '
+            'guardados y los clientes no recibieron la actualización en vivo.'
+        )
 
 
 def schedule_data_update(using='default'):

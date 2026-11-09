@@ -30,6 +30,7 @@ if not SECRET_KEY:
  
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = config('DEBUG', default=False, cast=bool)
+SEED_USER_PASSWORD = config('SEED_USER_PASSWORD', default='')
  
 ALLOWED_HOSTS = config(
     'ALLOWED_HOSTS',
