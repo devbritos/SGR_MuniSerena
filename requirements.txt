@@ -1,4 +1,7 @@
 asgiref==3.12.1
+channels>=4.2,<5.0
+channels-redis>=4.2,<5.0
+daphne>=4.1,<5.0
 Django==5.2.17
 sqlparse==0.6.0
 tzdata==2026.4
@@ -11,3 +14,4 @@ gunicorn
 mysqlclient>=2.2.7
 openpyxl>=3.1.5
 Pillow>=10.0
+Faker>=30.0

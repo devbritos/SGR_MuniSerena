@@ -249,8 +249,10 @@
 </main>
 <script>
     (() => {
+        const initialize = () => {
         const groupsContainer = document.querySelector('[data-permission-groups]');
-        if (!groupsContainer) return;
+        if (!groupsContainer || groupsContainer.dataset.liveUpdateBound) return;
+        groupsContainer.dataset.liveUpdateBound = 'true';
 
         const searchInput = document.getElementById('permission-search');
         const countElement = document.querySelector('[data-selected-count]');
@@ -314,6 +316,13 @@
 
         updateCount();
         updateVisibility();
+        };
+
+        if (!window.sgrRoleFormRefreshBound) {
+            document.addEventListener('sgr:page-updated', initialize);
+            window.sgrRoleFormRefreshBound = true;
+        }
+        initialize();
     })();
 </script>
 {% endblock %}

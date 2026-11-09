@@ -290,11 +290,12 @@
 {% endblock %}
 {% block extra_scripts %}
 <script>
-document.addEventListener('DOMContentLoaded', function () {
+function initializeAttentionForm() {
     const typeSelect = document.getElementById('id_attention_type');
     const subSelect = document.getElementById('id_sub_attention');
     const errorBox = document.getElementById('subattention-error');
-    if (!typeSelect || !subSelect || !errorBox) return;
+    if (!typeSelect || !subSelect || !errorBox || typeSelect.dataset.liveUpdateBound) return;
+    typeSelect.dataset.liveUpdateBound = 'true';
 
     const endpointTemplate = "{% url 'atenciones:subattention_options' 0 %}";
     typeSelect.addEventListener('change', async function () {
@@ -321,6 +322,9 @@ document.addEventListener('DOMContentLoaded', function () {
             errorBox.classList.remove('d-none');
         }
     });
-});
+}
+
+document.addEventListener('DOMContentLoaded', initializeAttentionForm);
+document.addEventListener('sgr:page-updated', initializeAttentionForm);
 </script>
 {% endblock %}

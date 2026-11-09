@@ -599,6 +599,111 @@
             const actionPath = /\/(?:new|nuevo|nueva|create|crear|edit|editar|delete|eliminar|desactivar|deactivate|validar)\/?$/i;
             const actionPagePath = actionPath;
             const modalStyles = [];
+            let refreshInProgress = false;
+            let pendingPageRefresh = null;
+
+            function shouldDeferRefresh() {
+                const activeElement = document.activeElement;
+                return modalElement.classList.contains('show')
+                    || pageContent.dataset.hasUnsavedChanges === 'true'
+                    || (
+                        activeElement
+                        && pageContent.contains(activeElement)
+                        && activeElement.matches('input, select, textarea')
+                    );
+            }
+
+            function flushPendingRefresh() {
+                if (!pendingPageRefresh || refreshInProgress || shouldDeferRefresh()) {
+                    return;
+                }
+
+                const pending = pendingPageRefresh;
+                pendingPageRefresh = null;
+                refreshPage(pending.url, pending.replaceAddress);
+            }
+
+            async function refreshPage(url, replaceAddress) {
+                if (refreshInProgress || shouldDeferRefresh()) {
+                    return;
+                }
+
+                refreshInProgress = true;
+                try {
+                    const response = await fetch(url, {
+                        headers: {
+                            'X-Requested-With': 'XMLHttpRequest',
+                            'Accept': 'text/html'
+                        },
+                        credentials: 'same-origin',
+                        cache: 'no-store'
+                    });
+                    if (response.redirected && new URL(response.url).pathname.includes('/accounts/login')) {
+                        window.location.assign(response.url);
+                        return;
+                    }
+                    if (!response.ok) {
+                        throw new Error(`No se pudo actualizar la página (HTTP ${response.status}).`);
+                    }
+
+                    const parsed = new DOMParser().parseFromString(await response.text(), 'text/html');
+                    const content = parsed.getElementById('page-content');
+                    if (!content) {
+                        throw new Error('La respuesta no contiene el contenido esperado.');
+                    }
+
+                    if (content.innerHTML !== pageContent.innerHTML) {
+                        pageContent.innerHTML = content.innerHTML;
+                        associateFormErrors(pageContent);
+                        pageContent.dataset.hasUnsavedChanges = 'false';
+                        document.dispatchEvent(new CustomEvent('sgr:page-updated'));
+                    }
+                    const pageTitle = parsed.querySelector('title');
+                    if (pageTitle && pageTitle.textContent.trim()) {
+                        document.title = pageTitle.textContent;
+                    }
+                    if (replaceAddress && response.url) {
+                        window.history.replaceState(null, '', response.url);
+                    }
+                } catch (error) {
+                    console.error('Error al actualizar los datos de la página:', error);
+                } finally {
+                    refreshInProgress = false;
+                    flushPendingRefresh();
+                }
+            }
+
+            function requestPageRefresh(url, replaceAddress) {
+                pendingPageRefresh = {
+                    url: url || window.location.href,
+                    replaceAddress: Boolean(replaceAddress)
+                };
+                flushPendingRefresh();
+            }
+
+            window.sgrRefreshCurrentPage = function () {
+                requestPageRefresh(window.location.href, false);
+            };
+
+            pageContent.addEventListener('input', function (event) {
+                if (event.target.matches('input:not([type="hidden"]), select, textarea')) {
+                    pageContent.dataset.hasUnsavedChanges = 'true';
+                }
+            });
+            pageContent.addEventListener('change', function (event) {
+                if (event.target.matches('input:not([type="hidden"]), select, textarea')) {
+                    pageContent.dataset.hasUnsavedChanges = 'true';
+                }
+            });
+            pageContent.addEventListener('focusout', function () {
+                window.setTimeout(flushPendingRefresh, 0);
+            });
+            pageContent.addEventListener('reset', function () {
+                window.setTimeout(function () {
+                    pageContent.dataset.hasUnsavedChanges = 'false';
+                    flushPendingRefresh();
+                }, 0);
+            });
 
             function setModalChromeVisible(visible) {
                 modalHeader.classList.toggle('d-none', !visible);
@@ -743,8 +848,8 @@
                         return;
                     }
                     if (response.redirected && !actionPagePath.test(responseUrl.pathname)) {
+                        requestPageRefresh(response.url, true);
                         modal.hide();
-                        window.location.reload();
                         return;
                     }
                     if (!response.ok) {
@@ -856,7 +961,10 @@
                 modal.show();
             });
 
-            modalElement.addEventListener('hidden.bs.modal', clearModalStyles);
+            modalElement.addEventListener('hidden.bs.modal', function () {
+                clearModalStyles();
+                flushPendingRefresh();
+            });
         });
     </script>
 
@@ -1023,6 +1131,49 @@
                 });
             });
     </script>
+    {% if request.user.is_authenticated %}
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            let reconnectDelay = 1000;
+            let reconnectTimer;
+            let connectionErrorReported = false;
+
+            function connect() {
+                const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+                const socket = new WebSocket(`${protocol}//${window.location.host}/ws/updates/`);
+
+                socket.addEventListener('open', function () {
+                    reconnectDelay = 1000;
+                    connectionErrorReported = false;
+                });
+                socket.addEventListener('message', function (event) {
+                    try {
+                        const message = JSON.parse(event.data);
+                        if (message.type === 'data_changed' && window.sgrRefreshCurrentPage) {
+                            window.sgrRefreshCurrentPage();
+                        }
+                    } catch (error) {
+                        console.error('No se pudo procesar la actualización en tiempo real:', error);
+                    }
+                });
+                socket.addEventListener('close', function () {
+                    window.clearTimeout(reconnectTimer);
+                    reconnectTimer = window.setTimeout(connect, reconnectDelay);
+                    reconnectDelay = Math.min(reconnectDelay * 2, 30000);
+                });
+                socket.addEventListener('error', function () {
+                    if (!connectionErrorReported) {
+                        console.error('No hay conexión en tiempo real; se intentará reconectar.');
+                        connectionErrorReported = true;
+                    }
+                    socket.close();
+                });
+            }
+
+            connect();
+        });
+    </script>
+    {% endif %}
     {% block extra_scripts %}{% endblock %}
 </body>
 </html>

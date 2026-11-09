@@ -91,7 +91,7 @@
 {% block extra_scripts %}
 <script src="https://cdn.jsdelivr.net/npm/croppr@2.3.1/dist/croppr.min.js"></script>
 <script>
-document.addEventListener('DOMContentLoaded', function () {
+function initializeProfilePhotoForm() {
     const form = document.getElementById('profilePhotoForm');
     const fileInput = document.getElementById('photoFile');
     const cropImage = document.getElementById('cropImage');
@@ -101,6 +101,8 @@ document.addEventListener('DOMContentLoaded', function () {
     const croppedField = document.getElementById('id_cropped_image');
     const saveButton = document.getElementById('savePhotoButton');
     const cropError = document.getElementById('cropError');
+    if (!form || form.dataset.liveUpdateBound) return;
+    form.dataset.liveUpdateBound = 'true';
     let cropper = null;
     let sourceUrl = null;
     let renderSequence = 0;
@@ -238,6 +240,9 @@ document.addEventListener('DOMContentLoaded', function () {
             showError('Selecciona y confirma un recorte antes de guardar.');
         }
     });
-});
+}
+
+document.addEventListener('DOMContentLoaded', initializeProfilePhotoForm);
+document.addEventListener('sgr:page-updated', initializeProfilePhotoForm);
 </script>
 {% endblock %}
