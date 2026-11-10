@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 {% load crispy_forms_tags %}
 
-{% block title %}{% if object %}Editar rol{% else %}Nuevo rol{% endif %} — SGR{% endblock %}
+{% block title %}{% if object %}Editar rol{% else %}Crear rol{% endif %} — SGR{% endblock %}
 
 {% block extra_head %}
 <style>
@@ -240,7 +240,7 @@
             </div>
             <div class="role-form-actions">
                 <a href="{% url 'personal:role_list' %}" class="btn btn-outline-secondary">Cancelar</a>
-                <button type="submit" class="btn btn-danger">
+                <button type="submit" class="btn btn-danger" data-submit-label="{% if object %}Guardar cambios{% else %}Crear rol{% endif %}">
                     {% if object %}Guardar cambios{% else %}Crear rol{% endif %}
                 </button>
             </div>

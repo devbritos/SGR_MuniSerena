@@ -70,6 +70,23 @@ class CommitmentActivityLinkTests(TestCase):
         data.update(overrides)
         return data
 
+    def test_commitment_form_uses_spanish_labels_and_status_choices(self):
+        response = self.client.get(reverse('agenda:commitment_create'))
+
+        self.assertEqual(response.status_code, 200)
+        for label in (
+            'Origen de la solicitud',
+            'Nombre del solicitante',
+            'Territorio o sector',
+            'Fecha límite de cumplimiento',
+            'Estado del compromiso',
+        ):
+            self.assertContains(response, label)
+        self.assertContains(response, 'Registrado')
+        self.assertContains(response, 'En proceso')
+        self.assertNotContains(response, 'Joined')
+        self.assertNotContains(response, 'In progress')
+
     def test_commitment_responsible_is_preselected_and_scoped_to_own_delegation(self):
         create_url = reverse('agenda:commitment_create')
         other_user = User.objects.create_user(username='colega_compromiso')

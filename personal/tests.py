@@ -427,7 +427,7 @@ class FunctionaryFormViewTests(TestCase):
         response = self.client.get(reverse('personal:functionary_create'))
 
         self.assertEqual(response.status_code, 200)
-        self.assertContains(response, 'Nuevo funcionario')
+        self.assertContains(response, 'Crear funcionario')
         self.assertContains(response, '/static/images/faroletras.png')
         self.assertContains(response, 'Datos del funcionario')
         self.assertContains(response, 'Acceso al sistema')
@@ -738,6 +738,19 @@ class RoleCatalogTests(TestCase):
         )
 
         self.assertEqual(response.status_code, 200)
+        permission_groups = response.context['form'].permission_groups
+        activities_group = next(
+            group for group in permission_groups
+            if group['name'] == 'Actividades'
+        )
+        activity_permission = next(
+            item for item in activities_group['permissions']
+            if item['id'] == permission.pk
+        )
+        self.assertEqual(activity_permission['label'], 'Ver actividad')
+        self.assertEqual(activity_permission['description'], 'Ver actividad')
+        self.assertContains(response, 'Actividades')
+        self.assertNotContains(response, 'Can view activity')
         self.assertEqual(
             response.context['form']['role_name'].value(),
             'Usuario de Consulta',

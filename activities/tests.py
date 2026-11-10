@@ -105,7 +105,7 @@ class StaffEvidenceAccessTests(TestCase):
             'Descripción o información adicional',
         ):
             self.assertContains(response, label)
-        self.assertContains(response, 'Guardar evidencia')
+        self.assertContains(response, 'Subir evidencia')
         self.assertNotContains(response, '>Name<')
         self.assertNotContains(response, '>Author<')
 
@@ -122,6 +122,19 @@ class StaffEvidenceAccessTests(TestCase):
         self.evidence.refresh_from_db()
         self.assertEqual(self.evidence.validity_state, Evidence.Validity.APPROVED)
         self.assertEqual(self.evidence.date_validity, timezone.localdate())
+
+    def test_evidence_validation_form_uses_spanish_labels_and_choices(self):
+        response = self.client.get(
+            reverse('activities:evidence_validate', args=[self.evidence.pk]),
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'Estado de la evidencia')
+        self.assertContains(response, 'Observaciones de validación')
+        self.assertContains(response, 'Aprobada')
+        self.assertContains(response, 'Rechazada')
+        self.assertNotContains(response, 'Approved')
+        self.assertNotContains(response, 'Rejected')
 
     def test_staff_can_view_evidence_file_through_authenticated_route(self):
         file_url = reverse('activities:evidence_file', args=[self.evidence.pk])

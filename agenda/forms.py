@@ -57,14 +57,14 @@ class CommitmentForm(forms.ModelForm):
             }),
         }
         labels = {
-            'origin': 'Origen de la Solicitud',
-            'applic_name': 'Nombre del Solicitante',
-            'territory': 'Territorio / Sector',
-            'commitment_date': 'Fecha Límite de Cumplimiento',
-            'support': 'Respaldo / Medio',
-            'state': 'Estado del Compromiso',
-            'observation': 'Observación / Compromiso Adquirido',
-            'measuring': 'Ítem a Medir Asociado',
+            'origin': 'Origen de la solicitud',
+            'applic_name': 'Nombre del solicitante',
+            'territory': 'Territorio o sector',
+            'commitment_date': 'Fecha límite de cumplimiento',
+            'support': 'Respaldo o medio',
+            'state': 'Estado del compromiso',
+            'observation': 'Observación o compromiso adquirido',
+            'measuring': 'Ítem de medición asociado',
             'functionary': 'Responsable del compromiso',
         }
 

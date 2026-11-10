@@ -7,10 +7,10 @@ from core.models import BaseModel
 
 class Commitment(BaseModel):
     class State(models.TextChoices):
-        JOINED = 'JOINED', 'Joined'
-        PENDING = 'PENDING', 'Pending'
-        IN_PROGRESS = 'IN_PROGRESS', 'In progress'
-        DONE = 'DONE', 'Done'
+        JOINED = 'JOINED', 'Registrado'
+        PENDING = 'PENDING', 'Pendiente'
+        IN_PROGRESS = 'IN_PROGRESS', 'En proceso'
+        DONE = 'DONE', 'Realizado'
 
     origin = models.CharField(max_length=100)
     applic_name = models.CharField(max_length=70)

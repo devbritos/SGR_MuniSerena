@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 {% load crispy_forms_tags %}
-{% block title %}{% if object %}Editar atención{% else %}Registrar atención ciudadana{% endif %}{% endblock %}
+{% block title %}{% if object %}Editar atención ciudadana{% else %}Crear atención ciudadana{% endif %} — SGR{% endblock %}
 {% block extra_head %}
 <style>
     .attention-form-page {
@@ -162,7 +162,7 @@
             <i class="bi bi-chat-left-text"></i>
         </div>
         <div>
-            <h1>{% if object %}Editar atención ciudadana{% else %}Registrar atención ciudadana{% endif %}</h1>
+            <h1>{% if object %}Editar atención ciudadana{% else %}Crear atención ciudadana{% endif %}</h1>
             <p>
                 {% if object %}
                 Revisa y actualiza la información de esta solicitud. La persona responsable y la delegación se mantienen.
@@ -226,7 +226,7 @@
         </div>
         {% endif %}
 
-        <form method="post">
+        <form method="post" data-subattention-options-url="{% url 'atenciones:subattention_options' 0 %}">
             {% csrf_token %}
             {% if form.non_field_errors %}
             <div class="alert alert-danger m-3 mb-0" role="alert">{{ form.non_field_errors }}</div>
@@ -278,8 +278,8 @@
                         <i class="bi bi-arrow-left" aria-hidden="true"></i>Cancelar
                     </a>
                     {% if has_active_attention_types %}
-                    <button class="btn btn-primary" type="submit">
-                        <i class="bi bi-check2" aria-hidden="true"></i>{% if object %}Guardar cambios{% else %}Registrar atención{% endif %}
+                    <button class="btn btn-primary" type="submit" data-submit-label="{% if object %}Guardar cambios{% else %}Crear atención ciudadana{% endif %}">
+                        <i class="bi bi-check2" aria-hidden="true"></i>{% if object %}Guardar cambios{% else %}Crear atención ciudadana{% endif %}
                     </button>
                     {% endif %}
                 </div>

@@ -227,6 +227,11 @@ class PositionForm(forms.ModelForm):
     class Meta:
         model = Position
         fields = ['name', 'validity', 'default_role']
+        labels = {
+            'name': 'Nombre del cargo',
+            'validity': 'Cargo activo',
+            'default_role': 'Rol por defecto',
+        }
         widgets = {
             'name': forms.TextInput(attrs={'class': 'form-control'}),
             'validity': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
@@ -248,6 +253,20 @@ class PositionForm(forms.ModelForm):
 
 
 class RoleForm(forms.ModelForm):
+    PERMISSION_GROUP_LABELS = {
+        'admin': 'Administración',
+        'activities': 'Actividades',
+        'configuration': 'Configuración',
+        'core': 'Sistema',
+        'personal': 'Personal',
+    }
+    PERMISSION_MODEL_LABELS = {
+        ('activities', 'activity'): 'actividad',
+        ('activities', 'evidence'): 'evidencia',
+        ('agenda', 'commitment'): 'compromiso',
+        ('configuration', 'period'): 'período',
+        ('personal', 'userprofile'): 'perfil de usuario',
+    }
     PERMISSION_ACTION_LABELS = {
         'add': 'Crear',
         'change': 'Editar',
@@ -310,22 +329,29 @@ class RoleForm(forms.ModelForm):
             group = grouped_permissions.setdefault(
                 content_type.app_label,
                 {
-                    'name': app_config.verbose_name,
+                    'name': self.PERMISSION_GROUP_LABELS.get(
+                        content_type.app_label,
+                        str(app_config.verbose_name),
+                    ),
                     'permissions': [],
                 },
             )
             action, separator, _ = permission.codename.partition('_')
             if separator and action in self.PERMISSION_ACTION_LABELS:
+                model_label = self.PERMISSION_MODEL_LABELS.get(
+                    (content_type.app_label, content_type.model),
+                    str(content_type.name).lower(),
+                )
                 label = (
                     f'{self.PERMISSION_ACTION_LABELS[action]} '
-                    f'{content_type.name.lower()}'
+                    f'{model_label}'
                 )
             else:
                 label = permission.name
             group['permissions'].append({
                 'id': permission.pk,
                 'label': label,
-                'description': permission.name,
+                'description': label,
                 'selected': str(permission.pk) in selected_ids,
             })
         self.permission_groups = [
@@ -511,6 +537,10 @@ class FunctionaryRoleForm(forms.ModelForm):
     class Meta:
         model = FunctionaryRole
         fields = ['functionary', 'role']
+        labels = {
+            'functionary': 'Funcionario',
+            'role': 'Rol',
+        }
         widgets = {
             'functionary': forms.Select(attrs={'class': 'form-select'}),
             'role': forms.Select(attrs={'class': 'form-select'}),

@@ -1,15 +1,15 @@
 {% extends "base.html" %}
 {% load crispy_forms_tags %}
-{% block title %}{% if object %}Editar{% else %}Nuevo{% endif %} {{ catalog_title }}{% endblock %}
+{% block title %}{% if object %}Editar {{ catalog_title|lower }}{% else %}Crear {{ catalog_title|lower }}{% endif %} — SGR{% endblock %}
 {% block content %}
 <div class="row justify-content-center"><div class="col-lg-7">
     <div class="card shadow-sm form-card"><div class="card-header bg-municipal text-white">
-        <h1 class="h5 mb-0">{% if object %}Editar{% else %}Nuevo{% endif %} {{ catalog_title }}</h1>
+        <h1 class="h5 mb-0">{% if object %}Editar {{ catalog_title|lower }}{% else %}Crear {{ catalog_title|lower }}{% endif %}</h1>
     </div><div class="card-body">
         <form method="post">{% csrf_token %}{{ form|crispy }}
             <div class="d-flex justify-content-end gap-2 mt-3">
                 <a class="btn btn-outline-secondary" href="{% if catalog_title == 'Subatención' %}{% url 'atenciones:subattention_list' %}{% else %}{% url 'atenciones:attention_type_list' %}{% endif %}">Cancelar</a>
-                <button class="btn btn-primary" type="submit">Guardar</button>
+                <button class="btn btn-primary" type="submit" data-submit-label="{% if object %}Guardar cambios{% else %}Crear {{ catalog_title|lower }}{% endif %}">{% if object %}Guardar cambios{% else %}Crear {{ catalog_title|lower }}{% endif %}</button>
             </div>
         </form>
     </div></div>
