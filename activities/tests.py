@@ -84,6 +84,12 @@ class StaffEvidenceAccessTests(TestCase):
         self.assertContains(evidences_response, self.evidence.name)
         self.assertContains(evidences_response, 'Validar')
 
+    def test_activity_list_shows_responsible_functionary(self):
+        response = self.client.get(reverse('activities:activity_list'))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, self.functionary.full_name)
+
     def test_evidence_upload_form_uses_spanish_labels_and_guidance(self):
         self.client.force_login(self.owner_user)
 

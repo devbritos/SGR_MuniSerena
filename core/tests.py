@@ -1,10 +1,19 @@
 import re
+from io import StringIO
+from tempfile import TemporaryDirectory
 
 from django.test import TestCase
 from django.contrib.auth.models import AnonymousUser, User
 from django.contrib.auth import get_user_model
 from django.core import mail
-from django.test import Client, RequestFactory, SimpleTestCase, override_settings
+from django.test import (
+    Client,
+    RequestFactory,
+    SimpleTestCase,
+    override_settings,
+)
+from django.core.management import call_command
+from django.core.management.base import CommandError
 from django.core.paginator import Paginator
 from django.template import Context, Template
 from django.template.loader import render_to_string
@@ -335,3 +344,49 @@ class AuthenticationAndCodeRecoveryTests(TestCase):
             PasswordRecoveryCode.objects.filter(user=self.user).exists()
         )
         self.assertContains(response, 'No fue posible enviar', status_code=503)
+
+
+class SeedCommandTests(TestCase):
+    def test_seed_command_is_reproducible_and_does_not_duplicate_records(self):
+        from activities.models import Activity, Evidence
+        from agenda.models import Commitment
+        from atenciones.models import Attention
+
+        with TemporaryDirectory() as media_root:
+            with override_settings(
+                DEBUG=True,
+                SEED_USER_PASSWORD='LocalSeedPassword!2026',
+                MEDIA_ROOT=media_root,
+            ):
+                call_command('poblar_bd', stdout=StringIO())
+                first_activity = Activity.objects.filter(
+                    application__contains='[Semilla SGR A#0001]'
+                ).values('application', 'taken_action').get()
+
+                call_command('poblar_bd', stdout=StringIO())
+
+        self.assertEqual(Attention.objects.count(), 1000)
+        self.assertEqual(Commitment.objects.count(), 400)
+        self.assertEqual(Activity.objects.count(), 400)
+        self.assertEqual(Evidence.objects.count(), 200)
+        self.assertEqual(
+            Activity.objects.filter(
+                application__contains='[Semilla SGR A#0001]'
+            ).values('application', 'taken_action').get(),
+            first_activity,
+        )
+        for username in (
+            'admin@sgr.cl',
+            'coordinador@sgr.cl',
+            'delegado@sgr.cl',
+            'funcionario@sgr.cl',
+            'verificador@sgr.cl',
+            'consulta@sgr.cl',
+        ):
+            user = get_user_model().objects.get(username=username)
+            self.assertTrue(user.check_password('LocalSeedPassword!2026'))
+
+    @override_settings(DEBUG=False, SEED_USER_PASSWORD='LocalSeedPassword!2026')
+    def test_seed_command_refuses_to_run_outside_debug(self):
+        with self.assertRaisesMessage(CommandError, 'solo se permite con DEBUG=True'):
+            call_command('poblar_bd', stdout=StringIO())

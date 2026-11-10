@@ -38,6 +38,7 @@
                         <th class="ps-4 py-3">ID / Fecha</th>
                         <th class="py-3">Solicitud / Contacto</th>
                         <th class="py-3">Ítem a Medir</th>
+                        <th class="py-3">Realizada por</th>
                         <th class="text-center py-3">Cantidad</th>
                         <th class="text-center py-3">Estado</th>
                         <th class="text-center py-3">Acciones</th>
@@ -60,6 +61,7 @@
                         <td>
                             <span class="badge bg-secondary">{{ a.measuring.service|default:a.measuring }}</span>
                         </td>
+                        <td>{{ a.functionary.full_name }}</td>
                         <td class="text-center fw-bold">
                             {{ a.quantity|default:1 }}
                         </td>
@@ -94,7 +96,7 @@
                     </tr>
                     {% empty %}
                     <tr>
-                        <td colspan="6" class="text-center text-muted py-5">
+                        <td colspan="7" class="text-center text-muted py-5">
                             {% include "_list_empty_state.html" with empty_message="No has registrado actividades en este período." %}
                         </td>
                     </tr>

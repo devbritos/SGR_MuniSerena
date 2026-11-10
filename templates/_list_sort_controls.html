@@ -1,21 +1,77 @@
-<form method="get" action="{{ request.path }}" class="row g-2 align-items-end mb-3">
+<style>
+    .list-sort-option {
+        flex: 0 0 auto;
+        min-height: 1.8rem;
+        padding: .2rem .55rem;
+        border-radius: 999px;
+        font-size: .8125rem;
+        line-height: 1.2;
+        transition: background-color .15s ease, color .15s ease, border-color .15s ease;
+    }
+    .list-sort-options {
+        flex: 1 1 18rem;
+        min-width: 0;
+        flex-wrap: nowrap;
+        overflow-x: auto;
+        padding: .15rem .1rem .35rem;
+        scrollbar-width: thin;
+    }
+    .list-sort-option:not(.btn-primary) {
+        background-color: #fff;
+    }
+    .list-sort-option:focus-visible {
+        outline: 3px solid #005fcc;
+        outline-offset: 2px;
+    }
+</style>
+<form
+    method="get"
+    action="{{ request.path }}"
+    class="mb-3"
+    data-scroll-anchor="list-sort"
+    data-preserve-scroll
+>
     {% for key, value in request.GET.items %}
         {% if key != 'sort' and key != 'page' and key != 'export' %}
         <input type="hidden" name="{{ key }}" value="{{ value }}">
         {% endif %}
     {% endfor %}
-    <div class="col-12 col-sm-6 col-md-4 col-lg-3">
-        <label class="form-label small fw-semibold mb-1" for="list-sort">Ordenar resultados</label>
-        <select id="list-sort" name="sort" class="form-select form-select-sm">
-            <option value="">Orden predeterminado</option>
+    <div class="d-flex flex-wrap align-items-center gap-2">
+        <div class="flex-shrink-0 me-1">
+            <span class="form-label small fw-semibold mb-0 d-block">{{ sort_heading|default:"Ordenar resultados" }}</span>
+        </div>
+        <div class="d-flex gap-1 list-sort-options" role="group" aria-label="Orden de los resultados">
+            <button
+                type="submit"
+                name="sort"
+                value=""
+                class="btn btn-sm list-sort-option {% if not selected_sort %}btn-primary{% else %}btn-outline-secondary{% endif %}"
+                aria-pressed="{% if not selected_sort %}true{% else %}false{% endif %}"
+            >
+                <i class="bi bi-list-ul me-1" aria-hidden="true"></i>Predeterminado
+            </button>
             {% for value, label in sort_options %}
-            <option value="{{ value }}" {% if selected_sort == value %}selected{% endif %}>{{ label }}</option>
+            <button
+                type="submit"
+                name="sort"
+                value="{{ value }}"
+                class="btn btn-sm list-sort-option {% if selected_sort == value %}btn-primary{% else %}btn-outline-secondary{% endif %}"
+                aria-pressed="{% if selected_sort == value %}true{% else %}false{% endif %}"
+            >
+                {% if value == 'recent' %}
+                <i class="bi bi-sort-down me-1" aria-hidden="true"></i>
+                {% elif value == 'oldest' %}
+                <i class="bi bi-sort-up me-1" aria-hidden="true"></i>
+                {% elif value == 'az' or value|slice:"-3:" == '_az' %}
+                <i class="bi bi-sort-alpha-down me-1" aria-hidden="true"></i>
+                {% elif value == 'za' or value|slice:"-3:" == '_za' %}
+                <i class="bi bi-sort-alpha-up me-1" aria-hidden="true"></i>
+                {% else %}
+                <i class="bi bi-sort-down me-1" aria-hidden="true"></i>
+                {% endif %}
+                {{ label }}
+            </button>
             {% endfor %}
-        </select>
-    </div>
-    <div class="col-auto">
-        <button type="submit" class="btn btn-sm btn-outline-primary">
-            <i class="bi bi-sort-down me-1" aria-hidden="true"></i>Aplicar orden
-        </button>
+        </div>
     </div>
 </form>

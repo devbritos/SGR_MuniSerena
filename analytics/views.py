@@ -1,12 +1,18 @@
 from django.contrib.auth.decorators import login_required
 from django.core.exceptions import PermissionDenied
+from django.core.paginator import Paginator
+from django.db.models import Count, Q
 from django.shortcuts import redirect, render
-from personal.models import Functionary, Delegation
+from personal.models import Delegation, Functionary
 from agenda.models import Commitment
 from activities.models import Activity
 from atenciones.models import Attention
 from django.utils import timezone
-from .calculations import obtener_indicador_funcionario
+from .calculations import (
+    calcular_porcentaje_esperado,
+    obtener_indicador_funcionario,
+    obtener_semaforo_funcionarios,
+)
 from configuration.models import Period
 
 
@@ -86,6 +92,118 @@ def admin_dashboard(request):
         'today': today,
     }
     return render(request, 'analytics/admin_dashboard.html', context)
+
+
+@login_required
+def delegation_dashboard(request):
+    if not (
+        request.user.is_staff
+        or request.user.is_superuser
+        or _active_functionary_admin(request.user)
+    ):
+        raise PermissionDenied
+
+    period = Period.objects.filter(status=True).order_by('-start_date').first()
+    delegations = Delegation.objects.filter(
+        deleted_at__isnull=True,
+    ).annotate(
+        functionary_count=Count(
+            'functionary',
+            filter=Q(functionary__deleted_at__isnull=True),
+        ),
+    )
+    search_query = request.GET.get('q', '').strip()
+    if search_query:
+        delegations = delegations.filter(
+            Q(name__icontains=search_query)
+            | Q(code__icontains=search_query)
+        )
+
+    functionary_filter = request.GET.get('funcionarios', '')
+    if functionary_filter == 'con':
+        delegations = delegations.filter(functionary_count__gt=0)
+    elif functionary_filter == 'sin':
+        delegations = delegations.filter(functionary_count=0)
+
+    delegations = delegations.order_by(
+        '-functionary_count',
+        'name',
+    )
+
+    try:
+        page_size = int(request.GET.get('per_page', '3'))
+    except (TypeError, ValueError):
+        page_size = 3
+    if page_size not in (1, 3):
+        page_size = 3
+    page_obj = Paginator(delegations, page_size).get_page(
+        request.GET.get('page')
+    )
+    delegation_summaries = []
+
+    if period:
+        expected_percentage = calcular_porcentaje_esperado(period)
+        for delegation in page_obj.object_list:
+            functionaries = list(
+                Functionary.objects.filter(
+                    delegation=delegation,
+                    deleted_at__isnull=True,
+                )
+                .select_related('position', 'delegation')
+                .order_by('lastnames', 'names')
+            )
+            metrics, _ = obtener_semaforo_funcionarios(
+                functionaries,
+                period,
+                expected_percentage,
+            )
+            measured_percentages = [
+                item['achieved_percentage']
+                for item in metrics
+                if item['achieved_percentage'] is not None
+            ]
+            average_percentage = (
+                round(
+                    sum(measured_percentages) / len(measured_percentages),
+                    1,
+                )
+                if measured_percentages
+                else None
+            )
+            delegation_summaries.append({
+                'delegation': delegation,
+                'average_percentage': average_percentage,
+                'functionary_count': delegation.functionary_count,
+                'measured_functionary_count': len(measured_percentages),
+            })
+    else:
+        delegation_summaries = [
+            {
+                'delegation': delegation,
+                'average_percentage': None,
+                'functionary_count': delegation.functionary_count,
+                'measured_functionary_count': 0,
+            }
+            for delegation in page_obj.object_list
+        ]
+
+    query_params = request.GET.copy()
+    query_params.pop('page', None)
+
+    return render(
+        request,
+        'analytics/delegation_dashboard.html',
+        {
+            'delegation_summaries': delegation_summaries,
+            'period': period,
+            'page_obj': page_obj,
+            'page_size_options': (1, 3),
+            'selected_page_size': page_size,
+            'query_params': query_params.urlencode(),
+            'search_query': search_query,
+            'functionary_filter': functionary_filter,
+        },
+    )
 # Create your views here.
 
 @login_required
@@ -151,7 +269,7 @@ def dashboard_redirect(request):
         and functionary.is_active
         and functionary.deleted_at is None
     ):
-        return redirect('admin_dashboard')
+        return delegation_dashboard(request)
     return redirect('user_dashboard')
 
 

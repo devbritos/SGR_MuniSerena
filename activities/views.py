@@ -2,13 +2,14 @@ import mimetypes
 
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.contrib import messages
+from django.core.exceptions import PermissionDenied
 from django.db import IntegrityError, transaction
 from django.http import FileResponse, Http404
 from django.shortcuts import get_object_or_404, redirect
 from django.urls import reverse_lazy, reverse
 from django.views.generic import ListView, CreateView, UpdateView, DeleteView, View
 from django.utils import timezone
-from configuration.models import Goal, Period
+from configuration.models import Period
 from .models import Activity, Evidence, approved_activity_queryset
 from .forms import (
     ActivityForm,
@@ -19,11 +20,15 @@ from django.views.generic import TemplateView
 from django.db.models import Exists, OuterRef, Sum
 from core.exports import excel_response
 from core.lists import ListControlsMixin, apply_list_sort, search_queryset
-from personal.models import Functionary
+from personal.models import Delegation, Functionary
 from core.mixins import (
     FunctionaryRequiredMixin,
     FunctionaryOrStaffRequiredMixin,
     VerifierRequiredMixin,
+)
+from analytics.calculations import (
+    calcular_porcentaje_esperado,
+    obtener_semaforo_funcionarios,
 )
 
 
@@ -424,15 +429,37 @@ class TrafficLightView(
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         today = timezone.localdate()
+        user = self.request.user
+        delegation_id = self.kwargs.get('delegacion_id')
+        delegation = None
+        if delegation_id is not None:
+            functionary = getattr(user, 'functionary', None)
+            if not (
+                user.is_superuser
+                or user.is_staff
+                or (
+                    functionary is not None
+                    and functionary.is_admin
+                    and functionary.is_active
+                    and functionary.deleted_at is None
+                )
+            ):
+                raise PermissionDenied
+            delegation = get_object_or_404(
+                Delegation,
+                pk=delegation_id,
+                deleted_at__isnull=True,
+            )
+            context['delegation'] = delegation
+
         period = Period.objects.filter(status=True).order_by('-start_date').first()
-        
+
         if not period:
             context['error'] = "No hay un período de medición activo configurado."
             return context
 
-        # 2. Cálculos del Período (Avance Esperado al Día)
         total_days = (period.end_date - period.start_date).days + 1
-        
+        expected_percentage = calcular_porcentaje_esperado(period, today)
         if today < period.start_date:
             elapsed_days = 0
         elif today > period.end_date:
@@ -440,14 +467,12 @@ class TrafficLightView(
         else:
             elapsed_days = (today - period.start_date).days + 1
 
-        expected_percentage = (elapsed_days / total_days * 100) if total_days > 0 else 0
-
-        # 3. Métrica por Funcionario
         functionaries = Functionary.objects.filter(
             deleted_at__isnull=True
         ).select_related('position', 'delegation')
-        user = self.request.user
-        if not user.is_superuser and not user.is_staff:
+        if delegation is not None:
+            functionaries = functionaries.filter(delegation=delegation)
+        elif not user.is_superuser and not user.is_staff:
             functionary = user.functionary
             if not functionary.has_global_scope:
                 if functionary.is_delegate:
@@ -456,103 +481,19 @@ class TrafficLightView(
                     )
                 else:
                     functionaries = functionaries.filter(pk=functionary.pk)
-        traffic_light_data = []
-        active_goals = Goal.objects.filter(
-            period=period,
-            validity=True,
-            deleted_at__isnull=True,
-            measuring__validity=True,
-            measuring__deleted_at__isnull=True,
-        )
-        validated_activities = approved_activity_queryset(Activity.objects.filter(
-            date__range=[period.start_date, period.end_date],
-            deleted_at__isnull=True,
-            functionary__in=functionaries,
-        ))
-        context['unmatched_validated_activity_count'] = (
-            validated_activities.annotate(
-                has_active_goal=Exists(
-                    active_goals.filter(
-                        position=OuterRef('functionary__position'),
-                        measuring=OuterRef('measuring'),
-                    )
-                )
-            )
-            .filter(has_active_goal=False)
-            .count()
+        traffic_light_data, unmatched_count = obtener_semaforo_funcionarios(
+            functionaries,
+            period,
+            expected_percentage,
         )
 
-        for func in functionaries:
-            # Obtener las metas configuradas para el cargo del funcionario en este período
-            goals = active_goals.filter(
-                position=func.position,
-            ).select_related('measuring')
-            has_active_goals = goals.exists()
-
-            total_weighted_compliance = 0.0
-            matched_activity_count = 0
-
-            for goal in goals:
-                # Sumar actividades realizadas y validadas por el funcionario para esta meta/ítem
-                # Usas la suma acumulada de la cantidad:
-                achieved_query = approved_activity_queryset(Activity.objects.filter(
-                    functionary=func,
-                    measuring=goal.measuring,
-                    date__range=[period.start_date, period.end_date],
-                    deleted_at__isnull=True,
-                )).aggregate(total=Sum('quantity'))
-
-                achieved = achieved_query['total'] or 0
-                if achieved:
-                    matched_activity_count += 1
-
-                # Porcentaje de cumplimiento del ítem (Avance / Meta)
-                target_value = float(goal.target_value)
-                item_compliance = (achieved / target_value) if target_value > 0 else 0
-                # Cap de 100% por ítem antes de ponderar (opcional según reglas)
-                item_compliance = min(item_compliance, 1.0)
-
-                # Sumar al cumplimiento ponderado
-                total_weighted_compliance += item_compliance * float(goal.weight)
-
-            # 4. Determinar Estado del Semáforo (Verde, Amarillo, Rojo)
-            # Diferencia entre lo logrado y lo esperado
-            diff = total_weighted_compliance - expected_percentage
-
-            if not has_active_goals:
-                status = 'no_goal'
-                label = 'Sin meta activa para este cargo'
-            elif diff >= -5:
-                status = 'green'    # En línea o superior
-                label = 'En línea con lo esperado'
-            elif -15 <= diff < -5:
-                status = 'yellow'   # Atención
-                label = 'Atención'
-            else:
-                status = 'red'      # Bajo lo esperado
-                label = 'Bajo lo esperado'
-
-            traffic_light_data.append({
-                'functionary': func,
-                'achieved_percentage': (
-                    round(total_weighted_compliance, 1)
-                    if has_active_goals
-                    else None
-                ),
-                'expected_percentage': round(expected_percentage, 1),
-                'has_active_goals': has_active_goals,
-                'has_matched_activities': matched_activity_count > 0,
-                'status': status,
-                'label': label,
-            })
-
-        # Contexto final para el template
         context['period'] = period
         context['today'] = today
         context['total_days'] = total_days
         context['elapsed_days'] = elapsed_days
         context['expected_percentage'] = round(expected_percentage, 1)
         context['traffic_light_data'] = traffic_light_data
+        context['unmatched_validated_activity_count'] = unmatched_count
 
         return context
 

@@ -1,0 +1,106 @@
+{% extends "base.html" %}
+
+{% block title %}Semáforo por delegación — SGR{% endblock %}
+
+{% block content %}
+<main class="container-fluid py-4 px-3 px-lg-4">
+    <header class="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-4">
+        <div>
+            <p class="text-uppercase text-muted small fw-semibold mb-1">Tablero de control</p>
+            <h1 class="h2 fw-bold mb-1">Semáforo por delegación</h1>
+            {% if period %}
+            <p class="text-muted mb-0">
+                Resumen del período {{ period.start_date|date:"d/m/Y" }} al
+                {{ period.end_date|date:"d/m/Y" }}.
+            </p>
+            {% else %}
+            <p class="text-muted mb-0">No hay un período de medición activo configurado.</p>
+            {% endif %}
+        </div>
+    </header>
+
+    {% if not period %}
+    <div class="alert alert-warning" role="alert">
+        Configura un período activo para calcular el rendimiento de las delegaciones.
+    </div>
+    {% endif %}
+
+    <form method="get" class="card border-0 shadow-sm mb-4" role="search">
+        <div class="card-body">
+            <div class="row g-3 align-items-end">
+                <div class="col-md-6">
+                    <label for="delegation-search" class="form-label">Buscar delegación</label>
+                    <input
+                        id="delegation-search"
+                        type="search"
+                        name="q"
+                        value="{{ search_query }}"
+                        class="form-control"
+                        placeholder="Nombre o código"
+                    >
+                </div>
+                <div class="col-md-4">
+                    <label for="delegation-functionaries" class="form-label">Funcionarios</label>
+                    <select id="delegation-functionaries" name="funcionarios" class="form-select">
+                        <option value="" {% if not functionary_filter %}selected{% endif %}>Todas las delegaciones</option>
+                        <option value="con" {% if functionary_filter == 'con' %}selected{% endif %}>Con funcionarios</option>
+                        <option value="sin" {% if functionary_filter == 'sin' %}selected{% endif %}>Sin funcionarios</option>
+                    </select>
+                </div>
+                <div class="col-md-2 d-flex gap-2">
+                    <button type="submit" class="btn btn-primary flex-grow-1">Buscar</button>
+                    {% if search_query or functionary_filter %}
+                    <a href="{% url 'dashboard_redirect' %}" class="btn btn-outline-secondary">Limpiar</a>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </form>
+
+    <div class="row g-4">
+        {% for summary in delegation_summaries %}
+        <div class="col-sm-6 col-xl-4">
+            <section class="card h-100 border-0 shadow-sm">
+                <div class="card-body d-flex flex-column p-4">
+                    <div class="d-flex justify-content-between align-items-start gap-3 mb-3">
+                        <h2 class="h5 fw-bold mb-0">{{ summary.delegation.name }}</h2>
+                        <span class="badge text-bg-light border">
+                            {{ summary.functionary_count }} funcionario(s)
+                        </span>
+                    </div>
+                    <p class="text-muted small mb-2">Promedio global de cumplimiento</p>
+                    <p class="display-6 fw-bold text-primary mb-2">
+                        {% if summary.average_percentage is not None %}
+                            {{ summary.average_percentage|floatformat:1 }}%
+                        {% else %}
+                            —
+                        {% endif %}
+                    </p>
+                    {% if period %}
+                    <p class="text-muted small mb-4">
+                        Promedio sobre {{ summary.measured_functionary_count }} funcionario(s)
+                        con metas activas.
+                    </p>
+                    {% else %}
+                    <p class="text-muted small mb-4">Sin período para calcular el promedio.</p>
+                    {% endif %}
+                    <a
+                        class="btn btn-primary mt-auto"
+                        href="{% url 'dashboard_delegation_detail' summary.delegation.pk %}"
+                    >
+                        Ver Funcionarios
+                    </a>
+                </div>
+            </section>
+        </div>
+        {% empty %}
+        <div class="col-12">
+            <div class="alert alert-info mb-0" role="status">
+                No se encontraron delegaciones con esos filtros.
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    {% include "_pagination.html" %}
+</main>
+{% endblock %}
