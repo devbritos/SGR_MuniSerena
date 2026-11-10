@@ -142,7 +142,7 @@ Para desarrollo local, si no se configura un host de base de datos real o si el 
 
 `DEBUG` está desactivado por defecto. `ALLOWED_HOSTS` acepta una lista separada por comas y por defecto contempla la IP usada actualmente y las direcciones locales. Si el servidor usa un dominio, configura ese dominio en `ALLOWED_HOSTS` y su origen completo (incluyendo `https://`) en `CSRF_TRUSTED_ORIGINS`.
 
-Las páginas autenticadas reciben avisos por WebSocket cuando se modifican datos de las aplicaciones principales. El navegador solicita la página actual de forma asíncrona para mostrar los cambios y pospone la actualización si hay cambios sin guardar o un formulario modal abierto.
+Las páginas autenticadas reciben avisos por WebSocket cuando se modifican datos de las aplicaciones principales. El navegador solicita la página actual de forma asíncrona para mostrar los cambios y pospone la actualización si hay cambios sin guardar o un formulario modal abierto. Si un aviso se pierde o la conexión en tiempo real no está disponible, la página visible vuelve a sincronizarse automáticamente cada 15 segundos.
 
 ### Preparar el servidor AWS
 

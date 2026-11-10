@@ -389,7 +389,7 @@
                 <i class="bi bi-list" aria-hidden="true"></i>
             </button>
 
-            <a class="navbar-brand d-flex align-items-center me-auto" href="{% url 'dashboard_redirect' %}">
+            <a class="navbar-brand d-flex align-items-center me-auto" href="{% if user.is_staff or user.is_superuser or user.functionary.is_admin and user.functionary.is_active and not user.functionary.deleted_at %}{% url 'admin_dashboard' %}{% else %}{% url 'dashboard_redirect' %}{% endif %}">
                 <img src="{% static 'images/faroletras.png' %}" alt="Logo SGR" class="navbar-brand-logo me-2">
                 <span class="fw-bold fs-5 tracking-tight d-none d-sm-inline"></span>
             </a>
@@ -453,14 +453,14 @@
             </button>
             {% if user.is_staff or user.is_superuser or user.functionary.is_active and not user.functionary.deleted_at %}
             <div class="sidebar-section-title">Principal</div>
-            <a href="{% url 'dashboard_redirect' %}" class="sidebar-link {% if 'dashboard' in request.path %}active{% endif %}">
+            <a href="{% if user.is_staff or user.is_superuser or user.functionary.is_admin and user.functionary.is_active and not user.functionary.deleted_at %}{% url 'admin_dashboard' %}{% else %}{% url 'dashboard_redirect' %}{% endif %}" class="sidebar-link {% if request.resolver_match.url_name == 'admin_dashboard' or request.resolver_match.url_name == 'user_dashboard' %}active{% endif %}">
                 <i class="bi bi-speedometer2" aria-hidden="true"></i> Dashboard
             </a>
             {% endif %}
 
             <div class="sidebar-section-title">Gestión</div>
             {% if user.is_superuser or user.is_staff or user.functionary.is_active and not user.functionary.deleted_at %}
-            <a href="{% url 'activities:traffic_light' %}" class="sidebar-link {% if 'semaforo' in request.path or 'traffic' in request.path %}active{% endif %}">
+            <a href="{% if user.is_superuser or user.is_staff or user.functionary.is_admin and user.functionary.is_active and not user.functionary.deleted_at %}{% url 'dashboard_redirect' %}{% else %}{% url 'activities:traffic_light' %}{% endif %}" class="sidebar-link {% if request.resolver_match.url_name == 'dashboard_redirect' or request.resolver_match.url_name == 'dashboard_delegation_detail' or request.resolver_match.url_name == 'traffic_light' %}active{% endif %}">
                 <i class="bi bi-stoplights" aria-hidden="true"></i> Semáforo
             </a>
             {% endif %}
@@ -1138,6 +1138,15 @@
             let reconnectTimer;
             let connectionErrorReported = false;
 
+            function refreshVisiblePage() {
+                if (
+                    document.visibilityState === 'visible'
+                    && window.sgrRefreshCurrentPage
+                ) {
+                    window.sgrRefreshCurrentPage();
+                }
+            }
+
             function connect() {
                 const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
                 const socket = new WebSocket(`${protocol}//${window.location.host}/ws/updates/`);
@@ -1145,6 +1154,7 @@
                 socket.addEventListener('open', function () {
                     reconnectDelay = 1000;
                     connectionErrorReported = false;
+                    refreshVisiblePage();
                 });
                 socket.addEventListener('message', function (event) {
                     try {
@@ -1170,6 +1180,8 @@
                 });
             }
 
+            document.addEventListener('visibilitychange', refreshVisiblePage);
+            window.setInterval(refreshVisiblePage, 15000);
             connect();
         });
     </script>

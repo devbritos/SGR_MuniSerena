@@ -149,7 +149,26 @@ class DashboardTests(TestCase):
         self.assertEqual(response.context['actividades_por_validar'], 1)
         self.assertContains(response, 'Actividad validada')
         self.assertContains(response, 'Solicitud vencida')
-        self.assertContains(response, 'images/serena.png')
+        self.assertContains(response, 'Hola, dashboard_admin')
+        self.assertContains(response, 'Accesos rápidos')
+        self.assertContains(response, 'Pendientes que requieren atención')
+        self.assertContains(response, 'images/laserena.png')
+        self.assertContains(response, 'Semáforo')
+        self.assertContains(response, reverse('agenda:commitment_list'))
+        self.assertNotContains(response, reverse('personal:functionary_list'))
+
+    def test_admin_dashboard_links_to_delegation_summary(self):
+        self.client.force_login(self.staff)
+
+        response = self.client.get(reverse('admin_dashboard'))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'Semáforo por delegación')
+        self.assertContains(response, reverse('dashboard_redirect'))
+        self.assertContains(
+            response,
+            f'class="navbar-brand d-flex align-items-center me-auto" href="{reverse("admin_dashboard")}"',
+        )
 
     def test_functionary_with_admin_role_can_open_admin_dashboard(self):
         admin_user = User.objects.create_user(
@@ -170,14 +189,149 @@ class DashboardTests(TestCase):
         )
         self.client.force_login(admin_user)
 
-        response = self.client.get(reverse('dashboard_redirect'), follow=True)
+        response = self.client.get(reverse('dashboard_redirect'))
 
         self.assertEqual(response.status_code, 200)
-        self.assertEqual(
-            response.redirect_chain[-1][0],
-            reverse('admin_dashboard'),
+        self.assertContains(response, 'Semáforo por delegación')
+        self.assertContains(response, reverse('personal:functionary_list'))
+        self.assertContains(response, reverse('personal:delegation_list'))
+
+    def test_delegation_dashboard_averages_and_links_to_scoped_detail(self):
+        second_functionary = Functionary.objects.create(
+            delegation=self.delegation,
+            position=self.position,
+            names='Segundo',
+            lastnames='Funcionario',
         )
-        self.assertContains(response, 'Panel de control')
+        other_delegation = Delegation.objects.create(
+            name='Delegación sin metas',
+            code='DP-02',
+            field='RURAL',
+        )
+        other_position = Position.objects.create(name='Cargo sin metas')
+        other_functionary = Functionary.objects.create(
+            delegation=other_delegation,
+            position=other_position,
+            names='Otro',
+            lastnames='Funcionario',
+        )
+        self.client.force_login(self.staff)
+
+        dashboard_response = self.client.get(reverse('dashboard_redirect'))
+
+        self.assertEqual(dashboard_response.status_code, 200)
+        summaries = {
+            item['delegation'].pk: item
+            for item in dashboard_response.context['delegation_summaries']
+        }
+        self.assertEqual(len(summaries), 2)
+        self.assertEqual(
+            summaries[self.delegation.pk]['average_percentage'],
+            30.0,
+        )
+        self.assertEqual(
+            summaries[self.delegation.pk]['measured_functionary_count'],
+            2,
+        )
+        self.assertIsNone(
+            summaries[other_delegation.pk]['average_percentage'],
+        )
+        self.assertContains(
+            dashboard_response,
+            reverse(
+                'dashboard_delegation_detail',
+                args=[self.delegation.pk],
+            ),
+        )
+
+        detail_response = self.client.get(
+            reverse(
+                'dashboard_delegation_detail',
+                args=[self.delegation.pk],
+            ),
+        )
+
+        self.assertEqual(detail_response.status_code, 200)
+        self.assertEqual(detail_response.context['delegation'], self.delegation)
+        self.assertEqual(
+            {
+                item['functionary'].pk
+                for item in detail_response.context['traffic_light_data']
+            },
+            {self.functionary.pk, second_functionary.pk},
+        )
+        self.assertNotContains(detail_response, other_functionary.full_name)
+        self.assertContains(detail_response, 'Volver a delegaciones')
+
+    def test_delegation_dashboard_orders_filters_and_paginates(self):
+        larger_delegation = Delegation.objects.create(
+            name='Delegación con más funcionarios',
+            code='DP-03',
+            field='RURAL',
+        )
+        empty_delegation = Delegation.objects.create(
+            name='Delegación vacía',
+            code='DP-04',
+            field='RURAL',
+        )
+        for name in ('Ana', 'Beto', 'Carla'):
+            Functionary.objects.create(
+                delegation=larger_delegation,
+                position=self.position,
+                names=name,
+                lastnames='Delegación grande',
+            )
+        self.client.force_login(self.staff)
+
+        first_page = self.client.get(
+            reverse('dashboard_redirect'),
+            {'q': 'DP-', 'funcionarios': 'con', 'per_page': 1},
+        )
+
+        self.assertEqual(first_page.status_code, 200)
+        self.assertEqual(
+            first_page.context['delegation_summaries'][0]['delegation'],
+            larger_delegation,
+        )
+        self.assertEqual(first_page.context['page_obj'].paginator.count, 2)
+        self.assertEqual(first_page.context['page_size_options'], (1, 3))
+
+        second_page = self.client.get(
+            reverse('dashboard_redirect'),
+            {
+                'q': 'DP-',
+                'funcionarios': 'con',
+                'per_page': 1,
+                'page': 2,
+            },
+        )
+
+        self.assertEqual(
+            second_page.context['delegation_summaries'][0]['delegation'],
+            self.delegation,
+        )
+        self.assertTrue(second_page.context['page_obj'].has_previous())
+        self.assertNotEqual(
+            second_page.context['delegation_summaries'][0]['delegation'],
+            empty_delegation,
+        )
+
+    def test_functionary_cannot_open_global_or_other_delegation_dashboard(self):
+        self.client.force_login(self.user)
+
+        dashboard_response = self.client.get(reverse('dashboard_redirect'))
+        detail_response = self.client.get(
+            reverse(
+                'dashboard_delegation_detail',
+                args=[self.delegation.pk],
+            ),
+        )
+
+        self.assertRedirects(
+            dashboard_response,
+            reverse('user_dashboard'),
+        )
+        self.assertEqual(detail_response.status_code, 403)
 
     def test_functionary_menu_shows_operational_sections_without_admin_links(self):
         self.client.force_login(self.user)
@@ -200,7 +354,8 @@ class DashboardTests(TestCase):
         response = self.client.get(reverse('admin_dashboard'))
 
         self.assertEqual(response.status_code, 200)
-        self.assertContains(response, reverse('activities:traffic_light'))
+        self.assertContains(response, reverse('dashboard_redirect'))
+        self.assertContains(response, reverse('admin_dashboard'))
         html = response.content.decode()
         functionary_list_url = reverse('personal:functionary_list')
         goals_url = reverse('configuration:goal_list')

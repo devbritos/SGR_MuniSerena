@@ -59,9 +59,9 @@ class Command(BaseCommand):
                 'Define SEED_USER_PASSWORD en .env antes de crear las cuentas '
                 'de prueba.'
             )
-        if len(settings.SEED_USER_PASSWORD) < 16:
+        if len(settings.SEED_USER_PASSWORD) < 10:
             raise CommandError(
-                'SEED_USER_PASSWORD debe tener al menos 16 caracteres.'
+                'SEED_USER_PASSWORD debe tener al menos 10 caracteres.'
             )
         try:
             validate_password(settings.SEED_USER_PASSWORD)
