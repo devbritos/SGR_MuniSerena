@@ -1,6 +1,6 @@
 {% load static %}
 <!DOCTYPE html>
-<html lang="es">
+<html lang="es-CL">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -8,6 +8,7 @@
     <!-- Bootstrap 5.3 & Icons -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/flatpickr@4.6.13/dist/flatpickr.min.css" rel="stylesheet">
 
     <style id="base-styles">
         :root {
@@ -115,6 +116,17 @@
         .user-menu-trigger {
             border-color: rgba(255, 255, 255, 0.45) !important;
             border-radius: 0.4rem !important;
+        }
+        .user-display-name {
+            font-size: 1rem;
+            font-weight: 700;
+        }
+        .user-menu-avatar {
+            width: 1.75rem;
+            height: 1.75rem;
+            flex: 0 0 1.75rem;
+            object-fit: cover;
+            border: 1px solid rgba(255, 255, 255, .75);
         }
         .nav-account-actions {
             display: flex;
@@ -404,9 +416,13 @@
             {% endif %}
             <div class="nav-account-actions">
                 <div class="dropdown user-menu">
-                    <button class="btn btn-outline-light btn-sm dropdown-toggle d-flex align-items-center gap-2 px-2 py-1 user-menu-trigger" type="button" data-bs-toggle="dropdown" aria-expanded="false" aria-label="Menú de {{ user.username }}">
+                    <button class="btn btn-outline-light btn-sm dropdown-toggle d-flex align-items-center gap-2 px-2 py-1 user-menu-trigger" type="button" data-bs-toggle="dropdown" aria-expanded="false" aria-label="Menú de {% if user.functionary %}{{ user.functionary.full_name }}{% else %}{{ user.get_full_name|default:user.username }}{% endif %}">
+                        {% if user.profile.photo %}
+                        <img class="user-menu-avatar rounded-circle" src="{% url 'personal:profile_photo' %}" alt="">
+                        {% else %}
                         <i class="bi bi-person-circle" aria-hidden="true"></i>
-                        <span class="d-none d-sm-inline fw-semibold">{{ user.username }}</span>
+                        {% endif %}
+                        <span class="d-none d-sm-inline user-display-name">{% if user.functionary %}{{ user.functionary.full_name }}{% else %}{{ user.get_full_name|default:user.username }}{% endif %}</span>
                     </button>
                     <ul class="dropdown-menu dropdown-menu-end shadow">
                         <li><h6 class="dropdown-header">Usuario activo</h6></li>
@@ -560,9 +576,69 @@
     <!-- Bootstrap JS Bundle -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script src="https://cdn.jsdelivr.net/npm/flatpickr@4.6.13"></script>
+    <script src="https://cdn.jsdelivr.net/npm/flatpickr@4.6.13/dist/l10n/es.js"></script>
 
     <script>
         document.addEventListener('DOMContentLoaded', function () {
+            function applyChileanDateMask(input) {
+                if (input.dataset.dateMaskInitialized) {
+                    return;
+                }
+                input.dataset.dateMaskInitialized = 'true';
+                input.setAttribute('inputmode', 'numeric');
+                input.setAttribute('placeholder', 'dd/mm/aaaa');
+                input.addEventListener('input', function () {
+                    const caret = input.selectionStart || 0;
+                    const digitsBeforeCaret = input.value.slice(0, caret).replace(/\D/g, '').length;
+                    const digits = input.value.replace(/\D/g, '').slice(0, 8);
+                    let formatted = digits.slice(0, 2);
+                    if (digits.length > 2) {
+                        formatted += `/${digits.slice(2, 4)}`;
+                    }
+                    if (digits.length > 4) {
+                        formatted += `/${digits.slice(4)}`;
+                    }
+                    input.value = formatted;
+
+                    let nextCaret = 0;
+                    let digitsPassed = 0;
+                    while (nextCaret < formatted.length && digitsPassed < digitsBeforeCaret) {
+                        if (/\d/.test(formatted[nextCaret])) {
+                            digitsPassed += 1;
+                        }
+                        nextCaret += 1;
+                    }
+                    input.setSelectionRange(nextCaret, nextCaret);
+                });
+            }
+
+            function initializeChileanDatePickers(root) {
+                root.querySelectorAll('[data-date-picker="chile"]').forEach(function (dateInput) {
+                    if (dateInput._flatpickr) {
+                        return;
+                    }
+                    if (typeof flatpickr !== 'function') {
+                        applyChileanDateMask(dateInput);
+                        return;
+                    }
+
+                    const inputId = dateInput.id;
+                    flatpickr(dateInput, {
+                        locale: flatpickr.l10ns.es,
+                        dateFormat: 'Y-m-d',
+                        altInput: true,
+                        altFormat: 'd/m/Y',
+                        allowInput: true,
+                        onReady: function (_selectedDates, _dateString, instance) {
+                            instance.altInput.id = inputId;
+                            dateInput.removeAttribute('id');
+                            applyChileanDateMask(instance.altInput);
+                        },
+                    });
+                });
+            }
+
             function associateFormErrors(root) {
                 root.querySelectorAll('form [id$="_error"]').forEach(function (error) {
                     const fieldId = error.id.slice(0, -6);
@@ -593,7 +669,42 @@
             if (!pageContent || !modalElement || !modalTitle || !modalBody || !modalHeader || !modalFooter) {
                 return;
             }
+
+            const preservedScrollKey = 'sgr-preserved-scroll';
+            const preservedScroll = sessionStorage.getItem(preservedScrollKey);
+            let preservedScrollTarget = null;
+            if (preservedScroll) {
+                sessionStorage.removeItem(preservedScrollKey);
+                try {
+                    const position = JSON.parse(preservedScroll);
+                    if (position.path === window.location.pathname) {
+                        preservedScrollTarget = position;
+                        const restorePosition = function () {
+                            const anchor = pageContent.querySelector(
+                                `[data-scroll-anchor="${position.anchor}"]`
+                            );
+                            if (anchor) {
+                                window.scrollTo({
+                                    left: window.scrollX,
+                                    top: window.scrollY
+                                        + anchor.getBoundingClientRect().top
+                                        - position.top,
+                                    behavior: 'instant'
+                                });
+                                preservedScrollTarget = null;
+                            }
+                        };
+                        window.requestAnimationFrame(function () {
+                            window.requestAnimationFrame(restorePosition);
+                        });
+                    }
+                } catch (error) {
+                    console.error('No se pudo restaurar la posición de la lista:', error);
+                }
+            }
+
             associateFormErrors(pageContent);
+            initializeChileanDatePickers(pageContent);
 
             const modal = bootstrap.Modal.getOrCreateInstance(modalElement);
             const actionPath = /\/(?:new|nuevo|nueva|create|crear|edit|editar|delete|eliminar|desactivar|deactivate|validar)\/?$/i;
@@ -653,10 +764,38 @@
                     }
 
                     if (content.innerHTML !== pageContent.innerHTML) {
+                        const scrollX = window.scrollX;
+                        const scrollY = window.scrollY;
+                        const scrollAnchor = pageContent.querySelector('[data-scroll-anchor]');
+                        const scrollAnchorTop = scrollAnchor
+                            ? scrollAnchor.getBoundingClientRect().top
+                            : null;
+                        const scrollTargetTop = preservedScrollTarget
+                            && scrollAnchor
+                            && scrollAnchor.dataset.scrollAnchor
+                                === preservedScrollTarget.anchor
+                            ? preservedScrollTarget.top
+                            : scrollAnchorTop;
                         pageContent.innerHTML = content.innerHTML;
                         associateFormErrors(pageContent);
                         pageContent.dataset.hasUnsavedChanges = 'false';
                         document.dispatchEvent(new CustomEvent('sgr:page-updated'));
+                        window.requestAnimationFrame(function () {
+                            const updatedAnchor = scrollAnchor
+                                ? pageContent.querySelector('[data-scroll-anchor]')
+                                : null;
+                            if (updatedAnchor && scrollTargetTop !== null) {
+                                window.scrollBy(
+                                    0,
+                                    updatedAnchor.getBoundingClientRect().top - scrollTargetTop
+                                );
+                                if (preservedScrollTarget) {
+                                    preservedScrollTarget = null;
+                                }
+                            } else {
+                                window.scrollTo(scrollX, scrollY);
+                            }
+                        });
                     }
                     const pageTitle = parsed.querySelector('title');
                     if (pageTitle && pageTitle.textContent.trim()) {
@@ -703,6 +842,21 @@
                     pageContent.dataset.hasUnsavedChanges = 'false';
                     flushPendingRefresh();
                 }, 0);
+            });
+            pageContent.addEventListener('submit', function (event) {
+                const form = event.target.closest('form[data-preserve-scroll]');
+                const anchor = form && form.dataset.scrollAnchor
+                    ? pageContent.querySelector(
+                        `[data-scroll-anchor="${form.dataset.scrollAnchor}"]`
+                    )
+                    : null;
+                if (anchor) {
+                    sessionStorage.setItem(preservedScrollKey, JSON.stringify({
+                        path: window.location.pathname,
+                        anchor: form.dataset.scrollAnchor,
+                        top: anchor.getBoundingClientRect().top
+                    }));
+                }
             });
 
             function setModalChromeVisible(visible) {
@@ -751,6 +905,7 @@
                 });
                 modalBody.innerHTML = content.innerHTML;
                 associateFormErrors(modalBody);
+                initializeChileanDatePickers(modalBody);
                 return parsed;
             }
 

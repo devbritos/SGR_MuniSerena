@@ -179,6 +179,22 @@ class CommitmentActivityLinkTests(TestCase):
         commitment.refresh_from_db()
         self.assertEqual(commitment.functionary, other_functionary)
 
+    def test_create_accepts_chilean_day_first_date(self):
+        commitment_date = timezone.localdate() + timedelta(days=5)
+
+        response = self.client.post(
+            reverse('agenda:commitment_create'),
+            self._commitment_data(
+                commitment_date=commitment_date.strftime('%d/%m/%Y'),
+            ),
+        )
+
+        self.assertRedirects(response, reverse('agenda:commitment_list'))
+        self.assertEqual(
+            Commitment.objects.get().commitment_date,
+            commitment_date,
+        )
+
     def test_edit_form_shows_existing_date_in_html_date_format_and_allows_change(self):
         commitment_date = timezone.localdate() + timedelta(days=10)
         commitment = Commitment.objects.create(
@@ -193,6 +209,11 @@ class CommitmentActivityLinkTests(TestCase):
         response = self.client.get(edit_url)
 
         self.assertEqual(response.status_code, 200)
+        self.assertContains(response, '<html lang="es-CL">')
+        self.assertContains(response, 'type="text"')
+        self.assertContains(response, 'lang="es-CL"')
+        self.assertContains(response, 'data-date-picker="chile"')
+        self.assertContains(response, "altFormat: 'd/m/Y'")
         self.assertContains(
             response,
             f'value="{commitment_date.isoformat()}"',
@@ -314,3 +335,38 @@ class CommitmentActivityLinkTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertFalse(Commitment.objects.exists())
         self.assertIn('__all__', response.context['form'].errors)
+
+    def test_commitment_sort_options_apply_immediately_and_keep_filters(self):
+        today = timezone.localdate()
+        newer = Commitment.objects.create(
+            origin='Solicitud reciente',
+            applic_name='Vecino reciente',
+            territory='Sector de prueba',
+            commitment_date=today + timedelta(days=5),
+            functionary=self.functionary,
+        )
+        older = Commitment.objects.create(
+            origin='Solicitud antigua',
+            applic_name='Vecino antiguo',
+            territory='Sector de prueba',
+            commitment_date=today + timedelta(days=2),
+            functionary=self.functionary,
+        )
+
+        response = self.client.get(
+            reverse('agenda:commitment_list'),
+            {'sort': 'oldest', 'q': 'Solicitud', 'territory': 'Sector'},
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'Ordenar compromisos')
+        self.assertEqual(
+            list(response.context['commitments']),
+            [older, newer],
+        )
+        self.assertContains(response, 'data-scroll-anchor="list-sort"')
+        self.assertContains(response, 'value="oldest"')
+        self.assertContains(response, 'name="q" value="Solicitud"')
+        self.assertContains(response, 'name="territory" value="Sector"')
+        self.assertContains(response, 'aria-pressed="true"')
+        self.assertNotContains(response, 'Aplicar orden')

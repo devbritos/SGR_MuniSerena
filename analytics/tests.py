@@ -123,6 +123,11 @@ class DashboardTests(TestCase):
         self.assertContains(response, 'Actividad por validar')
         self.assertContains(response, 'Atención territorial')
         self.assertContains(response, 'images/serena.png')
+        self.assertContains(response, 'Menú de Panel Prueba')
+        self.assertContains(
+            response,
+            '<span class="d-none d-sm-inline user-display-name">Panel Prueba</span>',
+        )
 
     def test_site_root_redirects_functionary_to_dashboard(self):
         self.client.force_login(self.user)
