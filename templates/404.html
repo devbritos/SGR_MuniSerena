@@ -1,43 +1,10 @@
-{% extends "base.html" %}
+{% extends "errors/base.html" %}
 
 {% block title %}Página no encontrada — SGR{% endblock %}
-
-{% block content %}
-<section class="container py-5 text-center">
-    <p class="display-1 fw-bold text-warning mb-0">404</p>
-    <h1 class="h3 mb-3">Página no encontrada</h1>
-    <p class="text-muted mb-4">La página que buscas no existe o fue movida.</p>
-    <button type="button" id="go-back" class="btn btn-primary">
-        Volver a la página anterior
-    </button>
-</section>
-{% endblock %}
-
-{% block extra_scripts %}
-<script>
-    document.addEventListener('DOMContentLoaded', function () {
-        function goBack() {
-            if (window.history.length > 1) {
-                window.history.back();
-            } else {
-                window.location.assign('/');
-            }
-        }
-
-        document.getElementById('go-back').addEventListener('click', goBack);
-
-        if (window.Swal) {
-            Swal.fire({
-                title: 'Página no encontrada',
-                text: 'La página que buscas no existe o fue movida.',
-                icon: 'warning',
-                confirmButtonText: 'Volver'
-            }).then(function (result) {
-                if (result.isConfirmed) {
-                    goBack();
-                }
-            });
-        }
-    });
-</script>
+{% block error_code %}404{% endblock %}
+{% block error_heading %}Página no encontrada{% endblock %}
+{% block error_message %}La dirección o el recurso no existe o ya no está disponible. Comprueba la dirección o vuelve al inicio.{% endblock %}
+{% block error_actions %}
+<a class="btn btn-primary" href="/">Volver al inicio</a>
+<button class="btn btn-outline-secondary" type="button" data-go-back>Volver a la página anterior</button>
 {% endblock %}

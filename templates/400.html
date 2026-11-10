@@ -1,0 +1,10 @@
+{% extends "errors/base.html" %}
+
+{% block title %}Solicitud inválida — SGR{% endblock %}
+{% block error_code %}400{% endblock %}
+{% block error_heading %}Solicitud inválida{% endblock %}
+{% block error_message %}No se pudo procesar la solicitud. Revisa los datos e inténtalo nuevamente o vuelve al inicio.{% endblock %}
+{% block error_actions %}
+<a class="btn btn-primary" href="/">Volver al inicio</a>
+<button class="btn btn-outline-secondary" type="button" data-go-back>Volver a corregir la acción</button>
+{% endblock %}

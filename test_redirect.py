@@ -1,32 +1,44 @@
 import requests
+import os
 
-BASE = "http://127.0.0.1:8000"
-session = requests.Session()
 
-# 1. Obtener el CSRF token de la página de login
-login_page = session.get(f"{BASE}/accounts/login/")
-csrf_token = session.cookies.get('csrftoken')
+def main():
+    base = os.environ.get('SGR_BASE_URL', 'http://127.0.0.1:8000')
+    username = os.environ.get('SGR_TEST_USERNAME')
+    password = os.environ.get('SGR_TEST_PASSWORD')
+    if not username or not password:
+        raise RuntimeError(
+            'Define SGR_TEST_USERNAME y SGR_TEST_PASSWORD para ejecutar la prueba manual.'
+        )
+    session = requests.Session()
 
-# 2. Hacer login
-resp = session.post(
-    f"{BASE}/accounts/login/",
-    data={
-        "username": "admin_sgr",
-        "password": "Ventana$123",
-        "csrfmiddlewaretoken": csrf_token,
-    },
-    headers={"Referer": f"{BASE}/accounts/login/"},
-    allow_redirects=False,
-)
-print("Login status:", resp.status_code)
-print("Login Location:", resp.headers.get('Location'))
+    session.get(f"{base}/accounts/login/")
+    csrf_token = session.cookies.get('csrftoken')
+    response = session.post(
+        f"{base}/accounts/login/",
+        data={
+            "username": username,
+            "password": password,
+            "csrfmiddlewaretoken": csrf_token,
+        },
+        headers={"Referer": f"{base}/accounts/login/"},
+        allow_redirects=False,
+    )
+    print("Login status:", response.status_code)
+    print("Login Location:", response.headers.get('Location'))
 
-# 3. Seguir manualmente cada redirección, imprimiendo el destino
-url = f"{BASE}/dashboard/admin/"
-for i in range(5):
-    resp = session.get(url, allow_redirects=False)
-    location = resp.headers.get('Location')
-    print(f"[{i}] {url} -> status {resp.status_code} -> Location: {location}")
-    if resp.status_code != 302:
-        break
-    url = location if location.startswith('http') else BASE + location
+    url = f"{base}/dashboard/admin/"
+    for index in range(5):
+        response = session.get(url, allow_redirects=False)
+        location = response.headers.get('Location')
+        print(
+            f"[{index}] {url} -> status {response.status_code} "
+            f"-> Location: {location}"
+        )
+        if response.status_code != 302:
+            break
+        url = location if location.startswith('http') else base + location
+
+
+if __name__ == '__main__':
+    main()

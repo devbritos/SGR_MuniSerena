@@ -1,0 +1,10 @@
+{% extends "base.html" %}
+{% block title %}Desactivar meta{% endblock %}
+{% block content %}
+<div class="row justify-content-center"><div class="col-lg-6"><div class="card shadow-sm border-danger">
+    <div class="card-header bg-danger text-white"><h1 class="h5 mb-0">Desactivar meta</h1></div>
+    <div class="card-body"><p>¿Quieres desactivar la meta <strong>{{ object }}</strong>?</p>
+        <form method="post">{% csrf_token %}<button class="btn btn-danger" data-confirm-delete="La meta se desactivará y conservará su historial.">Desactivar</button> <a class="btn btn-outline-secondary" href="{% url 'configuration:goal_list' %}">Cancelar</a></form>
+    </div>
+</div></div></div>
+{% endblock %}

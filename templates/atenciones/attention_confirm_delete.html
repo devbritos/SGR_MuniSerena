@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+{% block title %}Eliminar atención ciudadana{% endblock %}
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-lg-6">
+        <div class="card shadow-sm border-danger">
+            <div class="card-header bg-danger text-white">
+                <h1 class="h5 mb-0"><i class="bi bi-trash me-2" aria-hidden="true"></i>Eliminar atención ciudadana</h1>
+            </div>
+            <div class="card-body">
+                <p>¿Confirmas que quieres eliminar la atención de <strong>{{ object.requester_name }}</strong>?</p>
+                <p class="text-muted mb-0">La atención dejará de aparecer en el listado, pero se conservará en el historial del sistema.</p>
+                <form method="post" class="d-flex justify-content-end gap-2 mt-4">
+                    {% csrf_token %}
+                    <a class="btn btn-outline-secondary" href="{% url 'atenciones:attention_list' %}">Cancelar</a>
+                    <button class="btn btn-danger" type="submit">
+                        <i class="bi bi-trash me-1" aria-hidden="true"></i>Eliminar atención
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

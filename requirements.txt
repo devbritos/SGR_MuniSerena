@@ -1,4 +1,7 @@
 asgiref==3.12.1
+channels>=4.2,<5.0
+channels-redis>=4.2,<5.0
+daphne>=4.1,<5.0
 crispy-bootstrap5==2026.9
 Django==5.2.17
 django-crispy-forms==2.7
@@ -8,6 +11,16 @@ python-decouple==3.8
 python-dotenv==1.2.4
 sqlparse==0.6.0
 tzdata==2026.4
+django-crispy-forms>=2.3
+crispy-bootstrap5>=2024.10
+whitenoise>=6.9,<7.0
+python-decouple
+python-dotenv
+gunicorn
+mysqlclient>=2.2.7
+openpyxl>=3.1.5
+Pillow>=10.0
+Faker>=30.0
 python-decouple
 python-dotenv
 gunicorn

@@ -10,7 +10,9 @@ Este proyecto fue desarrollado para la asignatura Programación Back End (TI3041
 - Registro y seguimiento de actividades y sus evidencias, con un flujo de validación.
 - Gestión de compromisos y sus fechas.
 - Configuración de períodos, mediciones y metas.
+- Registro e historial de atención ciudadana con tipo y subatención dependiente.
 - Paneles de seguimiento con indicadores para administración y funcionarios.
+- Actualización en tiempo real de las páginas abiertas cuando se modifican datos.
 - Inicio de sesión y permisos según la cuenta y el rol.
 - Páginas personalizadas para errores 403 y 404.
 
@@ -58,6 +60,8 @@ Este proyecto fue desarrollado para la asignatura Programación Back End (TI3041
 
    Genera una clave secreta fuerte con `python -c "import secrets; print(secrets.token_urlsafe(50))"` y copia el resultado en `SECRET_KEY`. Completa las variables de base de datos. En desarrollo puedes poner `DEBUG=True`; en AWS debe quedar `DEBUG=False`. No compartas ni subas `.env` al repositorio.
 
+   En desarrollo (`DEBUG=True`) las actualizaciones en tiempo real usan un canal en memoria. Para producción, configura `REDIS_URL` con la dirección de un Redis accesible por la aplicación, por ejemplo `redis://localhost:6379/0`.
+
 5. Comprueba la configuración y crea las tablas:
 
    ```powershell
@@ -81,7 +85,7 @@ Abre `http://127.0.0.1:8000/` para entrar al sistema o `http://127.0.0.1:8000/ad
 
 ## Recuperación de contraseña por correo
 
-La pantalla `¿Olvidaste tu contraseña?` usa las vistas incluidas en Django. El correo solo se envía si existe una cuenta activa con esa dirección registrada.
+La pantalla `¿Olvidaste tu contraseña?` mantiene la recuperación estándar de Django mediante enlace seguro. También está disponible el flujo de código temporal de seis dígitos desde el inicio de sesión. El código vence según `PASSWORD_RESET_CODE_TIMEOUT` (600 segundos por defecto), es de un solo uso y se bloquea después de cinco intentos. La respuesta de solicitud es genérica para no revelar si una dirección está registrada.
 
 - Sin `EMAIL_HOST`, Django usa el backend de consola y muestra el mensaje/enlace en la terminal; no llega a una bandeja de entrada.
 - Para enviar correo real, configura en `.env` `EMAIL_HOST`, `EMAIL_PORT`, `EMAIL_HOST_USER`, `EMAIL_HOST_PASSWORD`, `EMAIL_USE_TLS`, `EMAIL_USE_SSL` y `DEFAULT_FROM_EMAIL`. El backend SMTP se selecciona automáticamente al configurar `EMAIL_HOST`.
@@ -95,7 +99,8 @@ La pantalla `¿Olvidaste tu contraseña?` usa las vistas incluidas en Django. El
 | Personal | `/personal/` | Funcionarios, delegaciones, cargos y roles |
 | Actividades | `/activities/` | Actividades, evidencias y validación |
 | Agenda | `/agenda/` | Compromisos |
-| Configuración | `/configuration/` | Metas y períodos |
+| Configuración | `/configuration/` | Ítems de medición, metas y períodos |
+| Atención ciudadana | `/atenciones/` | Registro y consulta de atenciones y catálogos |
 | Paneles | `/dashboard/` | Redirección al panel correspondiente al usuario |
 | Administración Django | `/admin/` | Administración interna de Django |
 
@@ -109,6 +114,7 @@ La pantalla `¿Olvidaste tu contraseña?` usa las vistas incluidas en Django. El
 | `agenda` | Compromisos |
 | `configuration` | Períodos, mediciones y metas |
 | `analytics` | Paneles e indicadores de seguimiento |
+| `atenciones` | Tipos, subatenciones y transacciones de atención ciudadana |
 
 ## Pruebas
 
@@ -120,22 +126,26 @@ python manage.py test
 
 ## Configuración y despliegue
 
-La aplicación carga sus variables desde `.env`. `SECRET_KEY` es obligatoria; por compatibilidad, también se reconoce el nombre antiguo `SECRETKEY`. Usa una clave aleatoria larga y secreta, y cámbiala manualmente antes de desplegar porque la clave configurada actualmente no pasa la comprobación de seguridad de Django. Cambiarla invalida las sesiones y firmas existentes. La conexión requiere `DB_NAME`, `DB_USER` y `DB_HOST`; `DB_PASSWORD` puede quedar vacío si el servidor local no usa contraseña y `DB_PORT` usa `3306` por defecto.
+La aplicación carga sus variables desde `.env`. `SECRET_KEY` es obligatoria; por compatibilidad, también se reconoce el nombre antiguo `SECRETKEY`. Usa una clave aleatoria larga y secreta, y cámbiala manualmente antes de desplegar porque la clave configurada actualmente no pasa la comprobación de seguridad de Django. Cambiarla invalida las sesiones y firmas existentes.
+
+Para desarrollo local, si no se configura un host de base de datos real o si el puerto apunta a un servicio web (por ejemplo, 8000), el proyecto usa SQLite por defecto (`db.sqlite3`). Si se define una configuración válida de MySQL/MariaDB con `DB_HOST`, `DB_NAME`, `DB_USER`, `DB_PASSWORD` y `DB_PORT` (3306 por defecto), entonces se usará esa conexión.
 
 `DEBUG` está desactivado por defecto. `ALLOWED_HOSTS` acepta una lista separada por comas y por defecto contempla la IP usada actualmente y las direcciones locales. Si el servidor usa un dominio, configura ese dominio en `ALLOWED_HOSTS` y su origen completo (incluyendo `https://`) en `CSRF_TRUSTED_ORIGINS`.
 
+Las páginas autenticadas reciben avisos por WebSocket cuando se modifican datos de las aplicaciones principales. El navegador solicita la página actual de forma asíncrona para mostrar los cambios y pospone la actualización si hay cambios sin guardar o un formulario modal abierto.
+
 ### Preparar el servidor AWS
 
-En el servidor, instala las dependencias, configura un `.env` con los valores privados del entorno, y luego ejecuta:
+En el servidor, instala las dependencias, configura un `.env` con los valores privados del entorno (incluido `REDIS_URL`), y luego ejecuta:
 
 ```bash
 python manage.py check --deploy
 python manage.py migrate
 python manage.py collectstatic --noinput
-gunicorn config.wsgi:application --bind 0.0.0.0:8000
+daphne -b 0.0.0.0 -p 8000 config.asgi:application
 ```
 
-Ejecuta Gunicorn como servicio detrás de un proxy web (por ejemplo, Nginx) y permite en el grupo de seguridad solo el tráfico necesario. Las evidencias subidas se guardan en `MEDIA_ROOT`; en AWS configura almacenamiento persistente o un servicio de objetos como S3 y sirve esos archivos de forma segura. `collectstatic` prepara los recursos estáticos, pero estos deben ser servidos por el proxy o un servicio de almacenamiento.
+Ejecuta Daphne como servicio detrás de un proxy web (por ejemplo, Nginx) configurado para permitir la conexión WebSocket, y permite en el grupo de seguridad solo el tráfico necesario. Redis debe estar disponible para todas las instancias de la aplicación; en AWS puedes usar un servicio administrado y mantenerlo en una red privada. WhiteNoise sirve los archivos estáticos recopilados por `collectstatic`, incluidos los logos y recursos de la interfaz. Las evidencias subidas se guardan en `MEDIA_ROOT`; en AWS configura almacenamiento persistente o un servicio de objetos como S3 y sirve esos archivos de forma segura.
 
 No actives `SECURE_SSL_REDIRECT`, `SESSION_COOKIE_SECURE`, `CSRF_COOKIE_SECURE` ni HSTS mientras el sitio solo use HTTP. Una vez configurado y probado HTTPS, habilita esas opciones en el `.env` y aumenta `SECURE_HSTS_SECONDS` gradualmente.
 
@@ -149,6 +159,7 @@ activities/      Actividades y evidencias
 agenda/          Compromisos
 configuration/   Períodos, mediciones y metas
 analytics/       Paneles e indicadores
+atenciones/      Atención ciudadana y sus catálogos
 templates/       Plantillas HTML compartidas y páginas de error
 static/          Archivos estáticos
 ```

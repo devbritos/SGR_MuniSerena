@@ -1,5 +1,9 @@
 from django import forms
+from django.db.models import Q
 from django.utils import timezone
+
+from personal.models import Functionary
+
 from .models import Commitment
 
 
@@ -11,7 +15,7 @@ class CommitmentForm(forms.ModelForm):
         model = Commitment
         fields = [
             'origin', 'applic_name', 'territory', 'commitment_date',
-            'support', 'state', 'observation', 'measuring',
+            'support', 'state', 'observation', 'measuring', 'functionary',
         ]
         widgets = {
             'origin': forms.TextInput(attrs={
@@ -29,7 +33,7 @@ class CommitmentForm(forms.ModelForm):
             'commitment_date': forms.DateInput(attrs={
                 'type': 'date', 
                 'class': 'form-control',
-            }),
+            }, format='%Y-%m-%d'),
             'support': forms.TextInput(attrs={
                 'class': 'form-control', 
                 'placeholder': 'Ej: Oficio N° 102 / Correo'
@@ -45,6 +49,9 @@ class CommitmentForm(forms.ModelForm):
             'measuring': forms.Select(attrs={
                 'class': 'form-select'
             }),
+            'functionary': forms.Select(attrs={
+                'class': 'form-select'
+            }),
         }
         labels = {
             'origin': 'Origen de la Solicitud',
@@ -55,10 +62,38 @@ class CommitmentForm(forms.ModelForm):
             'state': 'Estado del Compromiso',
             'observation': 'Observación / Compromiso Adquirido',
             'measuring': 'Ítem a Medir Asociado',
+            'functionary': 'Responsable del compromiso',
         }
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args, delegation=None, **kwargs):
         super().__init__(*args, **kwargs)
+        functionary_field = self.fields['functionary']
+        functionary_field.queryset = Functionary.objects.none()
+        functionary_field.help_text = (
+            f'Selecciona un funcionario de la delegación {delegation.name}.'
+            if delegation is not None
+            else 'No hay una delegación disponible para asignar el responsable.'
+        )
+        if delegation is not None:
+            eligible_functionaries = Functionary.objects.filter(
+                delegation=delegation,
+                is_active=True,
+                deleted_at__isnull=True,
+            )
+            if self.instance.pk and self.instance.functionary_id:
+                eligible_functionaries = Functionary.objects.filter(
+                    delegation=delegation,
+                ).filter(
+                    Q(
+                        is_active=True,
+                        deleted_at__isnull=True,
+                    )
+                    | Q(pk=self.instance.functionary_id)
+                )
+            functionary_field.queryset = eligible_functionaries.select_related(
+                'position',
+            ).order_by('names', 'lastnames')
+
         # Si es una creación nueva, establecer estado inicial por defecto
         if not self.instance.pk and 'state' in self.fields:
             self.fields['state'].initial = 'JOINED'

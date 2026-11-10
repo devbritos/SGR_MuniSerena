@@ -12,6 +12,16 @@
     <a href="{% url 'personal:position_create' %}" class="btn btn-primary"><i class="bi bi-plus-lg me-1"></i>Nuevo cargo</a>
     {% endif %}
 </div>
+<form method="get" class="row g-2 mb-3">
+    {% if showing_all %}<input type="hidden" name="all" value="1">{% endif %}
+    <div class="col-md-5">
+        <label class="form-label small fw-semibold" for="position-search">Buscar cargos</label>
+        <input id="position-search" class="form-control" name="q" type="search" value="{{ search_query }}" placeholder="Nombre del cargo">
+    </div>
+    <div class="col-auto"><button class="btn btn-outline-secondary" type="submit"><i class="bi bi-search"></i> Buscar</button></div>
+    <div class="col-auto"><a class="btn btn-outline-success" href="{{ request.path }}?{{ query_params }}{% if query_params %}&{% endif %}export=xlsx"><i class="bi bi-file-earmark-excel"></i> Exportar a Excel</a></div>
+</form>
+{% include "_list_sort_controls.html" %}
 <div class="card border-0 shadow-sm">
     <div class="card-header bg-white d-flex justify-content-end">
         {% if showing_all %}
@@ -21,7 +31,7 @@
         {% endif %}
     </div>
     <div class="table-responsive">
-        <table class="table table-hover align-middle mb-0">
+        <table class="table table-hover align-middle mb-0" data-list-modal-table>
             <thead class="table-dark"><tr><th class="ps-3">Cargo</th><th>Rol por defecto</th><th>Estado</th><th class="text-end pe-3">Acciones</th></tr></thead>
             <tbody>
                 {% for position in object_list %}
@@ -45,4 +55,5 @@
         </table>
     </div>
 </div>
+{% include "_pagination.html" %}
 {% endblock %}

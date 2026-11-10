@@ -1,5 +1,7 @@
 from django.contrib import admin, messages
 
+from core.realtime.signals import schedule_data_update
+
 from .models import Goal, Measuring, Period
 
 AUDIT_FIELDS = ('created_at', 'updated_at', 'deleted_at')
@@ -64,9 +66,13 @@ class GoalAdmin(admin.ModelAdmin):
     @admin.action(description="Desactivar metas seleccionadas")
     def deactivate_goals(self, request, queryset):
         updated = queryset.update(validity=False)
+        if updated:
+            schedule_data_update(queryset.db)
         self.message_user(request, f"{updated} meta(s) desactivada(s).", messages.SUCCESS)
 
     @admin.action(description="Activar metas seleccionadas")
     def activate_goals(self, request, queryset):
         updated = queryset.update(validity=True)
+        if updated:
+            schedule_data_update(queryset.db)
         self.message_user(request, f"{updated} meta(s) activada(s).", messages.SUCCESS)

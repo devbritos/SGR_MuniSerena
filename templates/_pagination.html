@@ -1,0 +1,81 @@
+{% if page_obj.paginator.count %}
+<nav class="d-flex flex-column flex-sm-row justify-content-between align-items-center gap-2 my-3" aria-label="Paginación de resultados">
+    <div class="d-flex flex-column flex-md-row align-items-md-center gap-2">
+        <p class="small text-muted mb-0">
+            Mostrando <strong>{{ page_obj.start_index }}–{{ page_obj.end_index }}</strong>
+            de <strong>{{ page_obj.paginator.count }}</strong> resultados
+        </p>
+        <form method="get" action="{{ request.path }}" class="d-flex align-items-center gap-2">
+            {% for key, value in request.GET.items %}
+                {% if key != 'page' and key != 'per_page' and key != 'export' %}
+                <input type="hidden" name="{{ key }}" value="{{ value }}">
+                {% endif %}
+            {% endfor %}
+            <label for="list-page-size" class="small text-nowrap">Por página</label>
+            <select id="list-page-size" name="per_page" class="form-select form-select-sm" aria-label="Registros por página">
+                {% for page_size in page_size_options %}
+                <option value="{{ page_size }}" {% if selected_page_size == page_size %}selected{% endif %}>{{ page_size }}</option>
+                {% endfor %}
+            </select>
+            <button type="submit" class="btn btn-sm btn-outline-secondary text-nowrap">Aplicar</button>
+        </form>
+    </div>
+    <ul class="pagination pagination-sm mb-0 flex-wrap justify-content-center">
+        {% if page_obj.has_previous %}
+        <li class="page-item">
+            <a class="page-link" href="{{ request.path }}?{{ query_params }}{% if query_params %}&amp;{% endif %}page={{ page_obj.previous_page_number }}" aria-label="Página anterior">
+                <i class="bi bi-chevron-left" aria-hidden="true"></i><span class="d-none d-md-inline ms-1">Anterior</span>
+            </a>
+        </li>
+        {% else %}
+        <li class="page-item disabled">
+            <span class="page-link" aria-disabled="true"><i class="bi bi-chevron-left" aria-hidden="true"></i><span class="d-none d-md-inline ms-1">Anterior</span></span>
+        </li>
+        {% endif %}
+
+        {% if page_obj.number > 2 %}
+        <li class="page-item">
+            <a class="page-link" href="{{ request.path }}?{{ query_params }}{% if query_params %}&amp;{% endif %}page=1" aria-label="Ir a la primera página">1</a>
+        </li>
+        {% endif %}
+        {% if page_obj.number > 3 %}
+        <li class="page-item disabled"><span class="page-link" aria-hidden="true">&hellip;</span></li>
+        {% endif %}
+        {% if page_obj.has_previous and page_obj.previous_page_number > 1 %}
+        <li class="page-item">
+            <a class="page-link" href="{{ request.path }}?{{ query_params }}{% if query_params %}&amp;{% endif %}page={{ page_obj.previous_page_number }}" aria-label="Ir a la página {{ page_obj.previous_page_number }}">{{ page_obj.previous_page_number }}</a>
+        </li>
+        {% endif %}
+
+        <li class="page-item active" aria-current="page">
+            <span class="page-link">{{ page_obj.number }}<span class="visually-hidden"> (página actual)</span></span>
+        </li>
+
+        {% if page_obj.has_next and page_obj.next_page_number < page_obj.paginator.num_pages %}
+        <li class="page-item">
+            <a class="page-link" href="{{ request.path }}?{{ query_params }}{% if query_params %}&amp;{% endif %}page={{ page_obj.next_page_number }}" aria-label="Ir a la página {{ page_obj.next_page_number }}">{{ page_obj.next_page_number }}</a>
+        </li>
+        {% endif %}
+        {% if page_obj.number < page_obj.paginator.num_pages|add:"-2" %}
+        <li class="page-item disabled"><span class="page-link" aria-hidden="true">&hellip;</span></li>
+        {% endif %}
+        {% if page_obj.has_next and page_obj.next_page_number < page_obj.paginator.num_pages %}
+        <li class="page-item">
+            <a class="page-link" href="{{ request.path }}?{{ query_params }}{% if query_params %}&amp;{% endif %}page={{ page_obj.paginator.num_pages }}" aria-label="Ir a la última página">{{ page_obj.paginator.num_pages }}</a>
+        </li>
+        {% endif %}
+
+        {% if page_obj.has_next %}
+        <li class="page-item">
+            <a class="page-link" href="{{ request.path }}?{{ query_params }}{% if query_params %}&amp;{% endif %}page={{ page_obj.next_page_number }}" aria-label="Página siguiente">
+                <span class="d-none d-md-inline me-1">Siguiente</span><i class="bi bi-chevron-right" aria-hidden="true"></i>
+            </a>
+        </li>
+        {% else %}
+        <li class="page-item disabled">
+            <span class="page-link" aria-disabled="true"><span class="d-none d-md-inline me-1">Siguiente</span><i class="bi bi-chevron-right" aria-hidden="true"></i></span>
+        </li>
+        {% endif %}
+    </ul>
+</nav>
+{% endif %}

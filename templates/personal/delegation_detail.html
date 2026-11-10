@@ -1,0 +1,37 @@
+{% extends "base.html" %}
+
+{% block title %}Detalle de delegación — SGR{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <nav aria-label="Ruta de navegación" class="mb-3">
+        <a href="{% url 'personal:delegation_list' %}">Delegaciones</a>
+        <span class="text-muted" aria-hidden="true"> / </span>
+        <span aria-current="page">Detalle</span>
+    </nav>
+    <section class="card border-0 shadow-sm" aria-labelledby="delegation-detail-title">
+        <div class="card-body p-4">
+            <div class="d-flex flex-wrap justify-content-between align-items-start gap-3 mb-4">
+                <div>
+                    <h1 class="h3 mb-1" id="delegation-detail-title">{{ object.name }}</h1>
+                    <p class="text-muted mb-0">Detalle de la delegación municipal</p>
+                </div>
+                <div class="d-flex gap-2">
+                    {% if perms.personal.change_delegation or user.is_superuser or user.functionary.is_admin %}
+                    <a class="btn btn-primary" href="{% url 'personal:delegation_update' object.pk %}">Editar</a>
+                    {% endif %}
+                    <a class="btn btn-outline-secondary" href="{% url 'personal:delegation_list' %}">Volver al listado</a>
+                </div>
+            </div>
+            <dl class="row mb-0">
+                <dt class="col-sm-3">Código</dt><dd class="col-sm-9">{{ object.code|default:"—" }}</dd>
+                <dt class="col-sm-3">Dirección</dt><dd class="col-sm-9">{{ object.address }}</dd>
+                <dt class="col-sm-3">Comuna</dt><dd class="col-sm-9">{{ object.commune }}</dd>
+                <dt class="col-sm-3">Estado</dt><dd class="col-sm-9">{% if object.deleted_at %}Archivada{% else %}{{ object.get_state_display }}{% endif %}</dd>
+                <dt class="col-sm-3">Ámbito territorial</dt><dd class="col-sm-9">{{ object.get_field_display }}</dd>
+                <dt class="col-sm-3">Fecha de creación</dt><dd class="col-sm-9">{{ object.created_at|date:"d/m/Y H:i" }}</dd>
+            </dl>
+        </div>
+    </section>
+</div>
+{% endblock %}

@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+{% block title %}Desactivar {{ catalog_title }}{% endblock %}
+{% block content %}
+<div class="row justify-content-center"><div class="col-lg-6">
+    <div class="card shadow-sm border-danger">
+        <div class="card-header bg-danger text-white"><h1 class="h5 mb-0">Desactivar {{ catalog_title }}</h1></div>
+        <div class="card-body">
+            <p>¿Quieres desactivar <strong>{{ object }}</strong>?</p>
+            <p class="text-muted">Se conservarán los registros históricos relacionados.</p>
+            <form method="post">{% csrf_token %}
+                <button class="btn btn-danger" type="submit" data-confirm-delete="El catálogo se desactivará y conservará su historial.">Desactivar</button>
+                <a class="btn btn-outline-secondary" href="{{ cancel_url }}">Cancelar</a>
+            </form>
+        </div>
+    </div>
+</div></div>
+{% endblock %}

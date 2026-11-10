@@ -1,0 +1,7 @@
+<p class="mb-0" role="status">
+    {% if has_list_filters %}
+        No se encontraron registros con los filtros aplicados. Cambia o limpia los filtros y vuelve a intentar.
+    {% else %}
+        {{ empty_message }}
+    {% endif %}
+</p>

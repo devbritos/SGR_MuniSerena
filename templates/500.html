@@ -1,0 +1,10 @@
+{% extends "errors/base.html" %}
+
+{% block title %}Problema temporal — SGR{% endblock %}
+{% block error_code %}500{% endblock %}
+{% block error_heading %}Tenemos un problema temporal{% endblock %}
+{% block error_message %}No pudimos completar la solicitud por un problema del sistema. Inténtalo más tarde o vuelve al inicio.{% endblock %}
+{% block error_actions %}
+<a class="btn btn-primary" href="/">Volver al inicio</a>
+<button class="btn btn-outline-secondary" type="button" data-go-back>Volver a la página anterior</button>
+{% endblock %}

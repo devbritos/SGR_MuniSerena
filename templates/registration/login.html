@@ -1,33 +1,436 @@
 {% extends "base.html" %}
-{% load crispy_forms_tags %}
+{% load crispy_forms_tags static %}
 
-{% block title %}Iniciar sesión{% endblock %}
+{% block title %}Iniciar sesión | SGR La Serena{% endblock %}
+
+{% block extra_head %}
+<style>
+    .login-page {
+        min-height: 100vh;
+        background: #f4f6f8;
+    }
+
+    .login-content {
+        min-height: 100vh;
+    }
+
+    .login-shell {
+        display: grid;
+        grid-template-columns: minmax(0, 1.05fr) minmax(420px, 0.95fr);
+        min-height: 100vh;
+    }
+
+    .login-brand-panel {
+        position: relative;
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+        overflow: hidden;
+        padding: clamp(2rem, 6vw, 5.5rem);
+        color: #fff;
+        background:
+            radial-gradient(ellipse at 15% 90%, rgba(255, 255, 255, 0.12), transparent 42%),
+            linear-gradient(145deg, #870000 0%, #AD0000 52%, #650000 100%);
+    }
+
+    .login-brand-panel::before,
+    .login-brand-panel::after {
+        position: absolute;
+        border: 1px solid rgba(255, 255, 255, 0.12);
+        border-radius: 50%;
+        content: "";
+        pointer-events: none;
+    }
+
+    .login-brand-panel::before {
+        width: 32rem;
+        height: 32rem;
+        right: -13rem;
+        top: -11rem;
+    }
+
+    .login-brand-panel::after {
+        width: 24rem;
+        height: 24rem;
+        right: -9rem;
+        top: -7rem;
+    }
+
+    .login-brand-content,
+    .login-brand-footer {
+        position: relative;
+        z-index: 1;
+    }
+
+    .login-brand-logo {
+        display: block;
+        width: min(100%, 19rem);
+        height: auto;
+        margin-bottom: clamp(3rem, 9vh, 6.5rem);
+        object-fit: contain;
+        object-position: left center;
+    }
+
+    .login-eyebrow {
+        color: #f2d5d5;
+        font-size: 0.82rem;
+        font-weight: 700;
+        letter-spacing: 0.14em;
+        text-transform: uppercase;
+    }
+
+    .login-brand-title {
+        max-width: 38rem;
+        margin: 0.8rem 0 1rem;
+        font-size: clamp(2.35rem, 4.5vw, 4.4rem);
+        font-weight: 700;
+        letter-spacing: -0.045em;
+        line-height: 1.06;
+    }
+
+    .login-brand-description {
+        max-width: 34rem;
+        color: rgba(255, 255, 255, 0.82);
+        font-size: 1.08rem;
+        line-height: 1.75;
+    }
+
+    .login-benefits {
+        display: grid;
+        gap: 1rem;
+        margin: 2.25rem 0 0;
+        padding: 0;
+        list-style: none;
+    }
+
+    .login-benefits li {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+        color: rgba(255, 255, 255, 0.92);
+    }
+
+    .login-benefits i {
+        display: grid;
+        width: 2rem;
+        height: 2rem;
+        place-items: center;
+        border: 1px solid rgba(255, 255, 255, 0.3);
+        border-radius: 50%;
+        color: #fff;
+    }
+
+    .login-brand-footer {
+        margin-top: 3rem;
+        color: rgba(255, 255, 255, 0.7);
+        font-size: 0.85rem;
+    }
+
+    .login-form-panel {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: clamp(1.5rem, 5vw, 5rem);
+        background: #fff;
+    }
+
+    .login-form-card {
+        width: min(100%, 27rem);
+    }
+
+    .login-mobile-brand {
+        display: none;
+    }
+
+    .login-form-heading {
+        margin-bottom: 0.55rem;
+        color: #20252b;
+        font-size: clamp(1.8rem, 3vw, 2.25rem);
+        font-weight: 700;
+        letter-spacing: -0.035em;
+    }
+
+    .login-form-card .login-eyebrow {
+        color: #AD0000;
+    }
+
+    .login-form-intro {
+        margin-bottom: 2rem;
+        color: #6c757d;
+        line-height: 1.6;
+    }
+
+    .login-form-card .form-label {
+        color: #343a40;
+        font-size: 0.92rem;
+        font-weight: 600;
+    }
+
+    .login-form-card .form-control {
+        min-height: 3.1rem;
+        border-color: #dce1e6;
+        border-radius: 0.65rem;
+        box-shadow: none;
+    }
+
+    .login-form-card .form-control:focus {
+        border-color: #AD0000;
+        box-shadow: 0 0 0 0.22rem rgba(173, 0, 0, 0.12);
+    }
+
+    .login-password-field {
+        position: relative;
+    }
+
+    .login-password-field .form-control {
+        padding-right: 3.1rem;
+    }
+
+    .login-password-toggle {
+        position: absolute;
+        top: 50%;
+        right: 0.4rem;
+        display: grid;
+        width: 2.4rem;
+        height: 2.4rem;
+        place-items: center;
+        transform: translateY(-50%);
+        border: 0;
+        border-radius: 0.5rem;
+        background: transparent;
+        color: #68717a;
+    }
+
+    .login-password-toggle:hover,
+    .login-password-toggle:focus-visible {
+        background: #f2f3f5;
+        color: #AD0000;
+    }
+
+    .login-submit {
+        min-height: 3.15rem;
+        border: 0;
+        border-radius: 0.65rem;
+        background: #AD0000;
+        box-shadow: 0 0.5rem 1.2rem rgba(173, 0, 0, 0.2);
+        font-weight: 700;
+        transition: transform 0.15s ease, box-shadow 0.15s ease;
+    }
+
+    .login-submit:hover {
+        transform: translateY(-1px);
+        background: #920000;
+        box-shadow: 0 0.7rem 1.4rem rgba(173, 0, 0, 0.24);
+    }
+
+    .login-help-links {
+        display: grid;
+        gap: 0.7rem;
+        margin-top: 1.4rem;
+        text-align: center;
+    }
+
+    .login-help-links a {
+        color: #8b0000;
+        font-size: 0.9rem;
+        font-weight: 600;
+        text-decoration: none;
+    }
+
+    .login-help-links a:hover {
+        color: #5f0000;
+        text-decoration: underline;
+    }
+
+    .login-security-note {
+        display: flex;
+        align-items: flex-start;
+        gap: 0.65rem;
+        margin-top: 2rem;
+        padding: 0.85rem 1rem;
+        border: 1px solid #e9ecef;
+        border-radius: 0.65rem;
+        background: #f8f9fa;
+        color: #6c757d;
+        font-size: 0.8rem;
+        line-height: 1.5;
+    }
+
+    .login-security-note i {
+        margin-top: 0.08rem;
+        color: #AD0000;
+    }
+
+    @media (max-width: 900px) {
+        .login-shell {
+            grid-template-columns: minmax(0, 0.9fr) minmax(380px, 1.1fr);
+        }
+
+        .login-brand-panel {
+            padding: 2.5rem;
+        }
+
+        .login-brand-title {
+            font-size: clamp(2rem, 5vw, 3.3rem);
+        }
+    }
+
+    @media (max-width: 700px) {
+        .login-shell {
+            display: block;
+            min-height: 100vh;
+            background: #fff;
+        }
+
+        .login-brand-panel {
+            display: none;
+        }
+
+        .login-form-panel {
+            min-height: 100vh;
+            padding: 2rem 1.25rem;
+        }
+
+        .login-form-card {
+            max-width: 27rem;
+        }
+
+        .login-mobile-brand {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            margin-bottom: 2.5rem;
+            color: #AD0000;
+            font-weight: 700;
+        }
+
+        .login-mobile-brand img {
+            width: 3.4rem;
+            height: 3.4rem;
+            padding: 0.35rem;
+            border-radius: 0.65rem;
+            background: #AD0000;
+            object-fit: contain;
+        }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+        .login-submit {
+            transition: none;
+        }
+
+        .login-submit:hover {
+            transform: none;
+        }
+    }
+</style>
+{% endblock %}
 
 {% block content %}
-<div class="row justify-content-center mt-5">
-    <div class="col-md-5 col-lg-4">
-        <div class="card shadow-sm">
-            <div class="card-body p-4">
-                <h1 class="h4 mb-3 text-center">Iniciar sesión</h1>
+<main class="login-shell">
+    <section class="login-brand-panel" aria-label="Sistema de Gestión de Resultados">
+        <div class="login-brand-content">
+            <img
+                src="{% static 'images/faroletras.png' %}"
+                alt="Municipalidad de La Serena"
+                class="login-brand-logo"
+            >
+            <p class="login-eyebrow">Municipalidad de La Serena</p>
+            <h1 class="login-brand-title">Gestión pública con resultados.</h1>
+            <p class="login-brand-description">
+                Accede al Sistema de Gestión de Resultados para dar seguimiento
+                a la planificación y el trabajo de los equipos municipales.
+            </p>
+            <ul class="login-benefits">
+                <li><i class="bi bi-bar-chart-line" aria-hidden="true"></i> Seguimiento de metas y actividades</li>
+                <li><i class="bi bi-people" aria-hidden="true"></i> Información organizada por equipos</li>
+                <li><i class="bi bi-shield-check" aria-hidden="true"></i> Acceso según tu perfil autorizado</li>
+            </ul>
+        </div>
+        <p class="login-brand-footer mb-0">
+            Sistema de Gestión de Resultados · Municipalidad de La Serena
+        </p>
+    </section>
 
-                {% if form.errors %}
-                <div class="alert alert-danger">Usuario o contraseña incorrectos.</div>
-                {% endif %}
+    <section class="login-form-panel" aria-labelledby="login-heading">
+        <div class="login-form-card">
+            <div class="login-mobile-brand">
+                <img src="{% static 'images/faroletras.png' %}" alt="" aria-hidden="true">
+                <span>SGR · La Serena</span>
+            </div>
 
-                <form method="post">
-                    {% csrf_token %}
-                    <input type="hidden" name="next" value="{{ next }}">
-                    {{ form|crispy }}
-                    <button type="submit" class="btn btn-primary w-100 mt-2">Entrar</button>
-                </form>
+            <p class="login-eyebrow text-danger">Bienvenido/a</p>
+            <h2 id="login-heading" class="login-form-heading">Inicia sesión</h2>
+            <p class="login-form-intro">
+                Ingresa tus credenciales institucionales para continuar.
+            </p>
 
-                <div class="text-center mt-3">
-                    <a href="{% url 'password_reset' %}" class="text-decoration-none small">
-                        ¿Olvidaste tu contraseña?
-                    </a>
+            {% if form.errors %}
+            <div class="alert alert-danger d-flex align-items-start gap-2" role="alert">
+                <i class="bi bi-exclamation-circle-fill mt-1" aria-hidden="true"></i>
+                <span>El usuario/correo o la contraseña no son correctos. Revisa tus datos e inténtalo nuevamente.</span>
+            </div>
+            {% endif %}
+
+            <form method="post" autocomplete="on">
+                {% csrf_token %}
+                <input type="hidden" name="next" value="{{ next }}">
+                {{ form.username|as_crispy_field }}
+                <div class="mb-3">
+                    <label class="form-label" for="{{ form.password.id_for_label }}">Contraseña</label>
+                    <div class="login-password-field">
+                        {{ form.password }}
+                        <button
+                            class="login-password-toggle"
+                            type="button"
+                            data-password-toggle
+                            aria-label="Mostrar contraseña"
+                            aria-pressed="false"
+                            aria-controls="{{ form.password.id_for_label }}"
+                        >
+                            <i class="bi bi-eye" aria-hidden="true"></i>
+                        </button>
+                    </div>
+                    {% for error in form.password.errors %}
+                    <div class="invalid-feedback d-block">{{ error }}</div>
+                    {% endfor %}
                 </div>
+                <button type="submit" class="btn btn-primary login-submit w-100 mt-2">
+                    <i class="bi bi-box-arrow-in-right me-2" aria-hidden="true"></i>Entrar al sistema
+                </button>
+            </form>
+
+            <div class="login-help-links">
+                <a href="{% url 'password_reset' %}">¿Olvidaste tu contraseña?</a>
+                <a href="{% url 'password_recovery_request' %}">Recuperar con código de seis dígitos</a>
+            </div>
+
+            <div class="login-security-note">
+                <i class="bi bi-lock-fill" aria-hidden="true"></i>
+                <span>Tu acceso es personal. Cierra sesión al terminar, especialmente si usas un equipo compartido.</span>
             </div>
         </div>
-    </div>
-</div>
+    </section>
+</main>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+    document.querySelectorAll('[data-password-toggle]').forEach(function (button) {
+        button.addEventListener('click', function () {
+            const password = document.getElementById(button.getAttribute('aria-controls'));
+            const icon = button.querySelector('i');
+            const showing = password.type === 'password';
+
+            password.type = showing ? 'text' : 'password';
+            button.setAttribute('aria-pressed', String(showing));
+            button.setAttribute(
+                'aria-label',
+                showing ? 'Ocultar contraseña' : 'Mostrar contraseña'
+            );
+            icon.classList.toggle('bi-eye', !showing);
+            icon.classList.toggle('bi-eye-slash', showing);
+        });
+    });
+</script>
 {% endblock %}

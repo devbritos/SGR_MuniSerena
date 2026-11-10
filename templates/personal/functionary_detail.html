@@ -1,0 +1,44 @@
+{% extends "base.html" %}
+
+{% block title %}Detalle de funcionario — SGR{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <nav aria-label="Ruta de navegación" class="mb-3">
+        <a href="{% url 'personal:functionary_list' %}">Funcionarios</a>
+        <span class="text-muted" aria-hidden="true"> / </span>
+        <span aria-current="page">Detalle</span>
+    </nav>
+    <section class="card border-0 shadow-sm" aria-labelledby="functionary-detail-title">
+        <div class="card-body p-4">
+            <div class="d-flex flex-wrap justify-content-between align-items-start gap-3 mb-4">
+                <div>
+                    <h1 class="h3 mb-1" id="functionary-detail-title">{{ object.full_name }}</h1>
+                    <p class="text-muted mb-0">Detalle del funcionario</p>
+                </div>
+                <div class="d-flex gap-2">
+                    {% if perms.personal.change_functionary or user.is_superuser or user.functionary.is_admin %}
+                    <a class="btn btn-primary" href="{% url 'personal:functionary_update' object.pk %}">Editar</a>
+                    {% endif %}
+                    <a class="btn btn-outline-secondary" href="{% url 'personal:functionary_list' %}">Volver al listado</a>
+                </div>
+            </div>
+            <dl class="row mb-0">
+                <dt class="col-sm-3">Nombre</dt><dd class="col-sm-9">{{ object.full_name }}</dd>
+                <dt class="col-sm-3">Correo</dt><dd class="col-sm-9">{{ object.user.email|default:"—" }}</dd>
+                <dt class="col-sm-3">Delegación</dt><dd class="col-sm-9">{{ object.delegation.name }}</dd>
+                <dt class="col-sm-3">Cargo</dt><dd class="col-sm-9">{{ object.position.name }}</dd>
+                <dt class="col-sm-3">Roles</dt>
+                <dd class="col-sm-9">
+                    {% for assignment in object.active_roles %}
+                    {{ assignment.role.get_role_name_display }}{% if not forloop.last %}, {% endif %}
+                    {% empty %}Sin roles activos{% endfor %}
+                </dd>
+                <dt class="col-sm-3">Estado</dt>
+                <dd class="col-sm-9">{% if object.deleted_at %}Archivado{% elif object.is_active %}Activo{% else %}Inactivo{% endif %}</dd>
+                <dt class="col-sm-3">Fecha de creación</dt><dd class="col-sm-9">{{ object.created_at|date:"d/m/Y H:i" }}</dd>
+            </dl>
+        </div>
+    </section>
+</div>
+{% endblock %}

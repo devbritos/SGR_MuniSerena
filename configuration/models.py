@@ -25,9 +25,24 @@ class Period(BaseModel):
 
 
 class Measuring(BaseModel):
-    service = models.CharField(max_length=100)
-    measurable_item = models.CharField(max_length=100)
-    validity = models.BooleanField(default=True)
+    code = models.CharField(
+        max_length=30,
+        unique=True,
+        null=True,
+        blank=True,
+        verbose_name='Código',
+    )
+    service = models.CharField(max_length=100, verbose_name='Nombre')
+    measurable_item = models.CharField(
+        max_length=500,
+        blank=True,
+        verbose_name='Descripción',
+    )
+    validity = models.BooleanField(default=True, verbose_name='Activo')
+
+    class Meta:
+        verbose_name = 'Ítem de medición'
+        verbose_name_plural = 'Ítems de medición'
 
     def __str__(self):
         return f"{self.service} – {self.measurable_item}"
@@ -48,6 +63,8 @@ class Goal(BaseModel):
     measuring = models.ForeignKey('Measuring', on_delete=models.PROTECT, related_name='goals')
 
     class Meta:
+        verbose_name = 'Meta'
+        verbose_name_plural = 'Metas'
         constraints = [
             models.UniqueConstraint(
                 fields=['position', 'measuring', 'period'],

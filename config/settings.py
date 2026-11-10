@@ -41,6 +41,7 @@ CSRF_TRUSTED_ORIGINS = config(
     default='http://3.82.124.141',
     cast=Csv(),
 )
+CSRF_FAILURE_VIEW = 'core.error_views.csrf_failure'
 
 # Enable these only after HTTPS is configured on the AWS endpoint.
 SECURE_SSL_REDIRECT = config('SECURE_SSL_REDIRECT', default=False, cast=bool)
@@ -53,12 +54,14 @@ SECURE_CONTENT_TYPE_NOSNIFF = True
 # Application definition
  
 INSTALLED_APPS = [
+    'daphne',
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    'channels',
     "crispy_forms",
     "crispy_bootstrap5",
     "core",
@@ -67,10 +70,12 @@ INSTALLED_APPS = [
     "agenda",
     "analytics",
     "configuration",
+    "atenciones",
 ]
  
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
+    'whitenoise.middleware.WhiteNoiseMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
@@ -97,6 +102,29 @@ TEMPLATES = [
 ]
  
 WSGI_APPLICATION = 'config.wsgi.application'
+ASGI_APPLICATION = 'config.asgi.application'
+
+REDIS_URL = config('REDIS_URL', default='')
+if REDIS_URL:
+    CHANNEL_LAYERS = {
+        'default': {
+            'BACKEND': 'channels_redis.core.RedisChannelLayer',
+            'CONFIG': {
+                'hosts': [REDIS_URL],
+            },
+        },
+    }
+elif DEBUG:
+    CHANNEL_LAYERS = {
+        'default': {
+            'BACKEND': 'channels.layers.InMemoryChannelLayer',
+        },
+    }
+else:
+    raise ImproperlyConfigured(
+        'Define REDIS_URL para habilitar las actualizaciones en tiempo real.'
+    )
+
 EMAIL_HOST = config('EMAIL_HOST', default='')
 EMAIL_PORT = config('EMAIL_PORT', default=587, cast=int)
 EMAIL_HOST_USER = config('EMAIL_HOST_USER', default='')
@@ -120,15 +148,29 @@ DEFAULT_FROM_EMAIL = config(
 # Database
 # https://docs.djangoproject.com/en/5.2/ref/settings/#databases
 
-    # Producción (AWS con MariaDB)
-DATABASES = {
+DB_HOST = config('DB_HOST', default='')
+DB_PORT = config('DB_PORT', default='3306', cast=int)
+DB_NAME = config('DB_NAME', default='')
+DB_USER = config('DB_USER', default='')
+MYSQL_CONFIGURED = bool(DB_HOST and DB_NAME and DB_USER and DB_PORT not in (80, 8000, 8080))
+USE_SQLITE = config('USE_SQLITE', default=not MYSQL_CONFIGURED, cast=bool)
+
+if USE_SQLITE:
+    DATABASES = {
+        'default': {
+            'ENGINE': 'django.db.backends.sqlite3',
+            'NAME': BASE_DIR / 'db.sqlite3',
+        }
+    }
+else:
+    DATABASES = {
         'default': {
             'ENGINE': 'django.db.backends.mysql',
-            'NAME': config('DB_NAME', 'dbsgr'),
-            'USER': config('DB_USER', 'admin_sgr'),
+            'NAME': DB_NAME,
+            'USER': DB_USER,
             'PASSWORD': config('DB_PASSWORD', default=''),
-            'HOST': config('DB_HOST'),
-            'PORT': config('DB_PORT', default='3306'),
+            'HOST': DB_HOST,
+            'PORT': DB_PORT,
             'OPTIONS': {
                 'init_command': "SET sql_mode='STRICT_TRANS_TABLES'",
             },
@@ -152,6 +194,18 @@ AUTH_PASSWORD_VALIDATORS = [
         'NAME': 'django.contrib.auth.password_validation.NumericPasswordValidator',
     },
 ]
+
+AUTHENTICATION_BACKENDS = [
+    'django.contrib.auth.backends.ModelBackend',
+    'core.backends.FunctionaryRoleBackend',
+]
+PASSWORD_RESET_CODE_TIMEOUT = config(
+    'PASSWORD_RESET_CODE_TIMEOUT',
+    default=600,
+    cast=int,
+)
+if PASSWORD_RESET_CODE_TIMEOUT < 1:
+    raise ImproperlyConfigured('PASSWORD_RESET_CODE_TIMEOUT debe ser mayor que cero.')
  
  
 # Internationalization
@@ -169,13 +223,21 @@ USE_TZ = True
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/5.2/howto/static-files/
  
-STATIC_URL = 'static/'
+STATIC_URL = '/static/'
 STATICFILES_DIRS = [
     os.path.join(BASE_DIR, 'static'),
 ]
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field
 STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
+STORAGES = {
+    'default': {
+        'BACKEND': 'django.core.files.storage.FileSystemStorage',
+    },
+    'staticfiles': {
+        'BACKEND': 'whitenoise.storage.CompressedStaticFilesStorage',
+    },
+}
 MEDIA_URL = '/media/'
 MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
