@@ -29,7 +29,8 @@ if not SECRET_KEY:
     )
  
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = config('DEBUG', default=False, cast=bool)
+DEBUG = config('DEBUG', default=True, cast=bool)
+SEED_USER_PASSWORD = config('SEED_USER_PASSWORD', default='')
  
 ALLOWED_HOSTS = config(
     'ALLOWED_HOSTS',
@@ -54,12 +55,14 @@ SECURE_CONTENT_TYPE_NOSNIFF = True
 # Application definition
  
 INSTALLED_APPS = [
+    'daphne',
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    'channels',
     "crispy_forms",
     "crispy_bootstrap5",
     "core",
@@ -100,6 +103,29 @@ TEMPLATES = [
 ]
  
 WSGI_APPLICATION = 'config.wsgi.application'
+ASGI_APPLICATION = 'config.asgi.application'
+
+REDIS_URL = config('REDIS_URL', default='')
+if DEBUG:
+    CHANNEL_LAYERS = {
+        'default': {
+            'BACKEND': 'channels.layers.InMemoryChannelLayer',
+        },
+    }
+elif REDIS_URL:
+    CHANNEL_LAYERS = {
+        'default': {
+            'BACKEND': 'channels_redis.core.RedisChannelLayer',
+            'CONFIG': {
+                'hosts': [REDIS_URL],
+            },
+        },
+    }
+else:
+    raise ImproperlyConfigured(
+        'Define REDIS_URL para habilitar las actualizaciones en tiempo real.'
+    )
+
 EMAIL_HOST = config('EMAIL_HOST', default='')
 EMAIL_PORT = config('EMAIL_PORT', default=587, cast=int)
 EMAIL_HOST_USER = config('EMAIL_HOST_USER', default='')

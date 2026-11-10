@@ -12,6 +12,7 @@ Este proyecto fue desarrollado para la asignatura Programación Back End (TI3041
 - Configuración de períodos, mediciones y metas.
 - Registro e historial de atención ciudadana con tipo y subatención dependiente.
 - Paneles de seguimiento con indicadores para administración y funcionarios.
+- Actualización en tiempo real de las páginas abiertas cuando se modifican datos.
 - Inicio de sesión y permisos según la cuenta y el rol.
 - Páginas personalizadas para errores 403 y 404.
 
@@ -57,7 +58,19 @@ Este proyecto fue desarrollado para la asignatura Programación Back End (TI3041
    Copy-Item .env.example .env
    ```
 
-   Genera una clave secreta fuerte con `python -c "import secrets; print(secrets.token_urlsafe(50))"` y copia el resultado en `SECRET_KEY`. Completa las variables de base de datos. En desarrollo puedes poner `DEBUG=True`; en AWS debe quedar `DEBUG=False`. No compartas ni subas `.env` al repositorio.
+   Genera una clave secreta fuerte con `python -c "import secrets; print(secrets.token_urlsafe(50))"` y copia el resultado en `SECRET_KEY`. Completa las variables de base de datos. En desarrollo puedes poner `DEBUG=True`; en AWS debe quedar `DEBUG=False`. Para cargar las cuentas de prueba, define `SEED_USER_PASSWORD` con una contraseña robusta de al menos 16 caracteres. No compartas ni subas `.env` al repositorio.
+
+   En desarrollo (`DEBUG=True`) las actualizaciones en tiempo real usan un canal en memoria. Para producción, configura `REDIS_URL` con la dirección de un Redis accesible por la aplicación, por ejemplo `redis://localhost:6379/0`.
+
+### Semillas de prueba
+
+Con `DEBUG=True` y `SEED_USER_PASSWORD` configurada, ejecuta:
+
+```powershell
+python manage.py poblar_bd
+```
+
+El comando crea hasta 2.000 registros marcados y reproducibles: 1.000 atenciones, 400 compromisos, 400 actividades y 200 evidencias. Al repetirlo, conserva los registros existentes y solo agrega los que faltan; no elimina datos. También deja seis cuentas locales listas: `admin@sgr.cl`, `coordinador@sgr.cl`, `delegado@sgr.cl`, `funcionario@sgr.cl`, `verificador@sgr.cl` y `consulta@sgr.cl`. Las seis usan el valor configurado en `SEED_USER_PASSWORD`. El comando se niega a ejecutarse con `DEBUG=False` y no contiene una contraseña predeterminada.
 
 5. Comprueba la configuración y crea las tablas:
 
@@ -129,18 +142,20 @@ Para desarrollo local, si no se configura un host de base de datos real o si el 
 
 `DEBUG` está desactivado por defecto. `ALLOWED_HOSTS` acepta una lista separada por comas y por defecto contempla la IP usada actualmente y las direcciones locales. Si el servidor usa un dominio, configura ese dominio en `ALLOWED_HOSTS` y su origen completo (incluyendo `https://`) en `CSRF_TRUSTED_ORIGINS`.
 
+Las páginas autenticadas reciben avisos por WebSocket cuando se modifican datos de las aplicaciones principales. El navegador solicita la página actual de forma asíncrona para mostrar los cambios y pospone la actualización si hay cambios sin guardar o un formulario modal abierto. Si un aviso se pierde o la conexión en tiempo real no está disponible, la página visible vuelve a sincronizarse automáticamente cada 15 segundos.
+
 ### Preparar el servidor AWS
 
-En el servidor, instala las dependencias, configura un `.env` con los valores privados del entorno, y luego ejecuta:
+En el servidor, instala las dependencias, configura un `.env` con los valores privados del entorno (incluido `REDIS_URL`), y luego ejecuta:
 
 ```bash
 python manage.py check --deploy
 python manage.py migrate
 python manage.py collectstatic --noinput
-gunicorn config.wsgi:application --bind 0.0.0.0:8000
+daphne -b 0.0.0.0 -p 8000 config.asgi:application
 ```
 
-Ejecuta Gunicorn como servicio detrás de un proxy web (por ejemplo, Nginx) y permite en el grupo de seguridad solo el tráfico necesario. WhiteNoise sirve los archivos estáticos recopilados por `collectstatic`, incluidos los logos y recursos de la interfaz. Las evidencias subidas se guardan en `MEDIA_ROOT`; en AWS configura almacenamiento persistente o un servicio de objetos como S3 y sirve esos archivos de forma segura.
+Ejecuta Daphne como servicio detrás de un proxy web (por ejemplo, Nginx) configurado para permitir la conexión WebSocket, y permite en el grupo de seguridad solo el tráfico necesario. Redis debe estar disponible para todas las instancias de la aplicación; en AWS puedes usar un servicio administrado y mantenerlo en una red privada. WhiteNoise sirve los archivos estáticos recopilados por `collectstatic`, incluidos los logos y recursos de la interfaz. Las evidencias subidas se guardan en `MEDIA_ROOT`; en AWS configura almacenamiento persistente o un servicio de objetos como S3 y sirve esos archivos de forma segura.
 
 No actives `SECURE_SSL_REDIRECT`, `SESSION_COOKIE_SECURE`, `CSRF_COOKIE_SECURE` ni HSTS mientras el sitio solo use HTTP. Una vez configurado y probado HTTPS, habilita esas opciones en el `.env` y aumenta `SECURE_HSTS_SECONDS` gradualmente.
 

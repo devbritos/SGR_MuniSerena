@@ -247,4 +247,82 @@
         </form>
     </section>
 </main>
+<script>
+    (() => {
+        const initialize = () => {
+        const groupsContainer = document.querySelector('[data-permission-groups]');
+        if (!groupsContainer || groupsContainer.dataset.liveUpdateBound) return;
+        groupsContainer.dataset.liveUpdateBound = 'true';
+
+        const searchInput = document.getElementById('permission-search');
+        const countElement = document.querySelector('[data-selected-count]');
+        const items = Array.from(groupsContainer.querySelectorAll('[data-permission-item]'));
+        const groups = Array.from(groupsContainer.querySelectorAll('[data-permission-group]'));
+
+        const updateCount = () => {
+            countElement.textContent = groupsContainer.querySelectorAll(
+                'input[name="permissions"]:checked'
+            ).length;
+        };
+
+        const updateVisibility = () => {
+            const query = searchInput.value.trim().toLocaleLowerCase();
+            groups.forEach((group) => {
+                const groupItems = Array.from(group.querySelectorAll('[data-permission-item]'));
+                let visibleItems = 0;
+                groupItems.forEach((item) => {
+                    const matches = item.dataset.searchText.toLocaleLowerCase().includes(query);
+                    item.hidden = !matches;
+                    if (matches) visibleItems += 1;
+                });
+                group.hidden = visibleItems === 0;
+                const groupCheckbox = group.querySelector('[data-select-group]');
+                const visibleCheckboxes = groupItems
+                    .filter((item) => !item.hidden)
+                    .map((item) => item.querySelector('input[name="permissions"]'));
+                groupCheckbox.checked = visibleCheckboxes.length > 0
+                    && visibleCheckboxes.every((checkbox) => checkbox.checked);
+                groupCheckbox.indeterminate = visibleCheckboxes.some((checkbox) => checkbox.checked)
+                    && !groupCheckbox.checked;
+            });
+        };
+
+        searchInput.addEventListener('input', updateVisibility);
+        groupsContainer.addEventListener('change', (event) => {
+            if (event.target.matches('input[name="permissions"]')) {
+                updateCount();
+                updateVisibility();
+            }
+            if (event.target.matches('[data-select-group]')) {
+                const group = event.target.closest('[data-permission-group]');
+                group.querySelectorAll('[data-permission-item]:not([hidden]) input[name="permissions"]')
+                    .forEach((checkbox) => { checkbox.checked = event.target.checked; });
+                updateCount();
+                updateVisibility();
+            }
+        });
+        document.querySelector('[data-select-visible]').addEventListener('click', () => {
+            items.filter((item) => !item.hidden)
+                .forEach((item) => { item.querySelector('input[name="permissions"]').checked = true; });
+            updateCount();
+            updateVisibility();
+        });
+        document.querySelector('[data-clear-visible]').addEventListener('click', () => {
+            items.filter((item) => !item.hidden)
+                .forEach((item) => { item.querySelector('input[name="permissions"]').checked = false; });
+            updateCount();
+            updateVisibility();
+        });
+
+        updateCount();
+        updateVisibility();
+        };
+
+        if (!window.sgrRoleFormRefreshBound) {
+            document.addEventListener('sgr:page-updated', initialize);
+            window.sgrRoleFormRefreshBound = true;
+        }
+        initialize();
+    })();
+</script>
 {% endblock %}

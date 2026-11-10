@@ -31,8 +31,11 @@ class CommitmentForm(forms.ModelForm):
                 'placeholder': 'Ej: Sector Las Compañías, Cuadrante 2'
             }),
             'commitment_date': forms.DateInput(attrs={
-                'type': 'date', 
+                'type': 'text',
                 'class': 'form-control',
+                'lang': 'es-CL',
+                'data-date-picker': 'chile',
+                'placeholder': 'dd/mm/aaaa',
             }, format='%Y-%m-%d'),
             'support': forms.TextInput(attrs={
                 'class': 'form-control', 

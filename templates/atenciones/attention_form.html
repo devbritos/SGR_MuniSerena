@@ -288,3 +288,43 @@
     </div>
 </main>
 {% endblock %}
+{% block extra_scripts %}
+<script>
+function initializeAttentionForm() {
+    const typeSelect = document.getElementById('id_attention_type');
+    const subSelect = document.getElementById('id_sub_attention');
+    const errorBox = document.getElementById('subattention-error');
+    if (!typeSelect || !subSelect || !errorBox || typeSelect.dataset.liveUpdateBound) return;
+    typeSelect.dataset.liveUpdateBound = 'true';
+
+    const endpointTemplate = "{% url 'atenciones:subattention_options' 0 %}";
+    typeSelect.addEventListener('change', async function () {
+        subSelect.replaceChildren(new Option('---------', ''));
+        subSelect.disabled = true;
+        errorBox.classList.add('d-none');
+        if (!typeSelect.value) {
+            subSelect.disabled = false;
+            return;
+        }
+        try {
+            const endpoint = endpointTemplate.replace('/0/', '/' + typeSelect.value + '/');
+            const response = await fetch(endpoint, {
+                headers: {'X-Requested-With': 'XMLHttpRequest'}
+            });
+            if (!response.ok) throw new Error('No se pudieron cargar las subatenciones.');
+            const payload = await response.json();
+            payload.results.forEach(function (item) {
+                subSelect.add(new Option(item.name, item.id));
+            });
+            subSelect.disabled = false;
+        } catch (error) {
+            errorBox.textContent = error.message;
+            errorBox.classList.remove('d-none');
+        }
+    });
+}
+
+document.addEventListener('DOMContentLoaded', initializeAttentionForm);
+document.addEventListener('sgr:page-updated', initializeAttentionForm);
+</script>
+{% endblock %}

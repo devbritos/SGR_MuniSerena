@@ -931,6 +931,17 @@ class ProfilePhotoViewTests(TestCase):
         self.assertContains(response, 'id="photoFile"')
         self.assertContains(response, 'id="cropPreview"')
 
+    def test_profile_photo_is_displayed_in_the_navigation_bar(self):
+        response = self._post_photo()
+
+        self.assertRedirects(response, reverse('personal:profile_update'))
+        response = self.client.get(reverse('personal:profile_update'))
+
+        self.assertContains(
+            response,
+            f'<img class="user-menu-avatar rounded-circle" src="{reverse("personal:profile_photo")}" alt="">',
+        )
+
     def test_functionary_list_displays_profile_photo_through_authorized_view(self):
         delegation = Delegation.objects.create(
             name='Delegación Foto',

@@ -65,6 +65,11 @@ class MeasuringCatalogViewTests(TestCase):
         results = list(response.context['items'])
         self.assertEqual(results[0].pk, zulu.pk)
         self.assertEqual(results[-1].pk, alpha.pk)
+        self.assertContains(response, 'Ordenar resultados')
+        self.assertContains(response, 'data-scroll-anchor="list-sort"')
+        self.assertContains(response, 'data-preserve-scroll')
+        self.assertContains(response, 'name="sort"')
+        self.assertContains(response, 'value="za"')
 
     def test_measuring_create_reports_success_only_after_save(self):
         response = self.client.post(
