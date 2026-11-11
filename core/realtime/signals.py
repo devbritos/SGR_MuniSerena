@@ -16,6 +16,7 @@ BUSINESS_APP_LABELS = {
     'configuration',
     'personal',
 }
+REALTIME_ONLY_MODEL_LABELS = {'personal.delegationchatmessage'}
 GROUP_NAME = 'sgr_data_updates'
 
 
@@ -57,6 +58,9 @@ def connect_model_signals():
             continue
 
         label = model._meta.label_lower
+        if label in REALTIME_ONLY_MODEL_LABELS:
+            continue
+
         post_save.connect(
             _model_changed,
             sender=model,

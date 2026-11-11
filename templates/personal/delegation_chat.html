@@ -1,0 +1,471 @@
+{% extends "base.html" %}
+
+{% block title %}Chat de {{ delegation.name }} — SGR{% endblock %}
+
+{% block extra_head %}
+<style>
+    .delegation-chat-shell {
+        max-width: 1440px;
+        margin: 0 auto;
+    }
+
+    .chat-hero {
+        position: relative;
+        overflow: hidden;
+        border: 0;
+        border-radius: 1.1rem;
+        background: linear-gradient(120deg, #7a2021, #ad0000 62%, #c44330);
+        color: #fff;
+    }
+
+    .chat-hero::after {
+        position: absolute;
+        right: 2rem;
+        bottom: -3.2rem;
+        width: 10rem;
+        height: 10rem;
+        border: 1.5rem solid rgba(255, 255, 255, 0.08);
+        border-radius: 50%;
+        content: "";
+        pointer-events: none;
+    }
+
+    .chat-hero-icon {
+        display: grid;
+        width: 3.5rem;
+        height: 3.5rem;
+        flex: 0 0 3.5rem;
+        place-items: center;
+        border: 1px solid rgba(255, 255, 255, 0.28);
+        border-radius: 1rem;
+        background: rgba(255, 255, 255, 0.13);
+        font-size: 1.6rem;
+    }
+
+    .chat-layout {
+        display: grid;
+        min-height: min(68vh, 760px);
+        grid-template-columns: minmax(0, 1fr) 290px;
+    }
+
+    .chat-conversation {
+        display: flex;
+        min-width: 0;
+        flex-direction: column;
+    }
+
+    .chat-toolbar {
+        border-bottom: 1px solid #edf0f2;
+    }
+
+    .chat-connection-dot {
+        display: inline-block;
+        width: 0.55rem;
+        height: 0.55rem;
+        margin-right: 0.4rem;
+        border-radius: 50%;
+        background: #d97706;
+        vertical-align: 0.05rem;
+    }
+
+    .chat-connection-dot.is-connected {
+        background: #198754;
+        box-shadow: 0 0 0 0.2rem rgba(25, 135, 84, 0.13);
+    }
+
+    .chat-connection-dot.is-disconnected {
+        background: #dc3545;
+    }
+
+    .chat-messages {
+        display: flex;
+        min-height: 330px;
+        flex: 1 1 auto;
+        flex-direction: column;
+        gap: 0.85rem;
+        overflow-y: auto;
+        padding: 1.25rem clamp(1rem, 3vw, 2rem);
+        background:
+            radial-gradient(ellipse at top left, rgba(173, 0, 0, 0.035), transparent 45%),
+            #fbfcfd;
+        scroll-behavior: smooth;
+    }
+
+    .chat-message {
+        max-width: min(78%, 680px);
+        align-self: flex-start;
+        padding: 0.7rem 0.9rem;
+        border: 1px solid #e8ebee;
+        border-radius: 0.25rem 1rem 1rem;
+        background: #fff;
+        box-shadow: 0 0.25rem 0.8rem rgba(26, 35, 44, 0.045);
+    }
+
+    .chat-message.is-own {
+        align-self: flex-end;
+        border-color: #f0d7d7;
+        border-radius: 1rem 0.25rem 1rem 1rem;
+        background: #fff3f3;
+    }
+
+    .chat-message-body {
+        margin: 0.35rem 0 0;
+        color: #343a40;
+        line-height: 1.5;
+        overflow-wrap: anywhere;
+        white-space: pre-wrap;
+    }
+
+    .chat-composer {
+        border-top: 1px solid #edf0f2;
+        background: #fff;
+    }
+
+    .chat-participants {
+        border-left: 1px solid #edf0f2;
+        background: #fff;
+    }
+
+    .chat-participant-avatar {
+        display: grid;
+        width: 2.4rem;
+        height: 2.4rem;
+        flex: 0 0 2.4rem;
+        place-items: center;
+        border: 1px solid #f0d7d7;
+        border-radius: 50%;
+        background: #fff3f3;
+        color: #8a0000;
+        font-size: 0.78rem;
+        font-weight: 700;
+    }
+
+    .chat-empty-state {
+        margin: auto;
+        max-width: 22rem;
+        text-align: center;
+    }
+
+    @media (max-width: 767.98px) {
+        .chat-layout {
+            min-height: 70vh;
+            grid-template-columns: minmax(0, 1fr);
+        }
+
+        .chat-participants {
+            border-top: 1px solid #edf0f2;
+            border-left: 0;
+        }
+
+        .chat-message {
+            max-width: 92%;
+        }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+        .chat-messages {
+            scroll-behavior: auto;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<main class="delegation-chat-shell pb-5"
+      id="delegationChat"
+      data-websocket-path="/ws/chat/"
+      data-current-user-id="{{ current_user_id }}">
+    <header class="chat-hero shadow-sm mb-4 p-4 p-lg-5">
+        <div class="position-relative d-flex align-items-center gap-3" style="z-index: 1;">
+            <div class="chat-hero-icon" aria-hidden="true"><i class="bi bi-chat-dots-fill"></i></div>
+            <div>
+                <p class="small text-white-50 text-uppercase fw-bold mb-1">Comunicación interna</p>
+                <h1 class="h3 fw-bold mb-1">Chat de {{ delegation.name }}</h1>
+                <p class="mb-0 text-white-50">Conversa en tiempo real con tu equipo de delegación.</p>
+            </div>
+        </div>
+    </header>
+
+    <section class="card border-0 shadow-sm overflow-hidden" aria-label="Chat de la delegación">
+        <div class="chat-layout">
+            <div class="chat-conversation">
+                <div class="chat-toolbar d-flex flex-wrap justify-content-between align-items-center gap-2 px-3 px-lg-4 py-3">
+                    <div>
+                        <h2 class="h6 fw-bold mb-1">Conversación del equipo</h2>
+                        <span class="small text-muted">
+                            <span class="chat-connection-dot" data-chat-connection-dot aria-hidden="true"></span>
+                            <span data-chat-connection-status role="status" aria-live="polite">Conectando al chat…</span>
+                        </span>
+                    </div>
+                    <span class="badge rounded-pill text-bg-light border px-3 py-2">
+                        <i class="bi bi-people-fill me-1 text-danger" aria-hidden="true"></i>
+                        {{ participants|length }} integrante{{ participants|length|pluralize:"s" }}
+                    </span>
+                </div>
+
+                <ol class="chat-messages list-unstyled mb-0"
+                    data-chat-messages
+                    role="log"
+                    aria-label="Mensajes del chat"
+                    aria-live="polite"
+                    aria-relevant="additions">
+                    {% for message in chat_messages %}
+                    <li class="chat-message{% if message.sender.user_id == current_user_id %} is-own{% endif %}"
+                        data-chat-message
+                        data-sender-id="{{ message.sender.user_id }}">
+                        <div class="d-flex align-items-baseline justify-content-between gap-3">
+                            <span class="small fw-bold text-dark">{{ message.sender.full_name }}</span>
+                            <time class="small text-muted text-nowrap" datetime="{{ message.created_at|date:'c' }}">{{ message.created_at|date:"H:i" }}</time>
+                        </div>
+                        <p class="chat-message-body">{{ message.body }}</p>
+                    </li>
+                    {% empty %}
+                    <li class="chat-empty-state py-5" data-chat-empty>
+                        <div class="chat-participant-avatar mx-auto mb-3" aria-hidden="true">
+                            <i class="bi bi-chat-heart"></i>
+                        </div>
+                        <h3 class="h6 fw-bold">¡Inicia la conversación!</h3>
+                        <p class="small text-muted mb-0">Este espacio es solo para los funcionarios de tu delegación. Envía el primer mensaje.</p>
+                    </li>
+                    {% endfor %}
+                </ol>
+
+                <div class="chat-composer p-3 p-lg-4">
+                    <p class="small text-danger mb-2" data-chat-feedback role="status" aria-live="polite"></p>
+                    <form data-chat-form>
+                        {% csrf_token %}
+                        <label class="visually-hidden" for="chat-message-input">Escribe un mensaje</label>
+                        <div class="input-group">
+                            <textarea class="form-control"
+                                      id="chat-message-input"
+                                      name="message"
+                                      rows="2"
+                                      maxlength="2000"
+                                      placeholder="Escribe un mensaje para tu equipo…"
+                                      aria-describedby="chat-composer-hint chat-character-count"
+                                      required></textarea>
+                            <button class="btn btn-primary px-3 px-md-4" type="submit" data-chat-send>
+                                <i class="bi bi-send-fill me-1" aria-hidden="true"></i>
+                                <span class="d-none d-sm-inline">Enviar</span>
+                            </button>
+                        </div>
+                        <div class="d-flex justify-content-between gap-2 mt-2">
+                            <span class="small text-muted" id="chat-composer-hint">Enter para enviar · Shift + Enter para una nueva línea</span>
+                            <span class="small text-muted text-nowrap" id="chat-character-count" data-chat-count>0 / 2000</span>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <aside class="chat-participants p-3 p-lg-4" aria-labelledby="chat-participants-heading">
+                <div class="d-flex align-items-center justify-content-between mb-3">
+                    <h2 class="h6 fw-bold mb-0" id="chat-participants-heading">Tu equipo</h2>
+                    <span class="badge rounded-pill text-bg-light border">{{ participants|length }}</span>
+                </div>
+                <p class="small text-muted mb-3">Funcionarios de {{ delegation.name }}</p>
+                <ul class="list-unstyled d-grid gap-3 mb-0">
+                    {% for participant in participants %}
+                    <li class="d-flex align-items-center gap-2">
+                        <span class="chat-participant-avatar" aria-hidden="true">{{ participant.names|first }}{{ participant.lastnames|first }}</span>
+                        <span class="small fw-semibold text-dark">{{ participant.full_name }}</span>
+                    </li>
+                    {% empty %}
+                    <li class="small text-muted">No hay otros integrantes activos.</li>
+                    {% endfor %}
+                </ul>
+                <div class="alert alert-light border small mt-4 mb-0">
+                    <i class="bi bi-shield-check text-success me-1" aria-hidden="true"></i>
+                    Solo los funcionarios activos de esta delegación pueden leer y enviar mensajes.
+                </div>
+            </aside>
+        </div>
+    </section>
+</main>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        const chat = document.getElementById('delegationChat');
+        if (!chat) {
+            return;
+        }
+
+        const messages = chat.querySelector('[data-chat-messages]');
+        const form = chat.querySelector('[data-chat-form]');
+        const input = chat.querySelector('#chat-message-input');
+        const sendButton = chat.querySelector('[data-chat-send]');
+        const counter = chat.querySelector('[data-chat-count]');
+        const feedback = chat.querySelector('[data-chat-feedback]');
+        const connectionStatus = chat.querySelector('[data-chat-connection-status]');
+        const connectionDot = chat.querySelector('[data-chat-connection-dot]');
+        const currentUserId = chat.dataset.currentUserId;
+        const maxMessageLength = 2000;
+        let socket;
+        let reconnectTimer;
+        let shouldReconnect = true;
+
+        function scrollMessagesToBottom() {
+            messages.scrollTop = messages.scrollHeight;
+        }
+
+        function setConnection(isConnected) {
+            connectionDot.classList.toggle('is-connected', isConnected);
+            connectionDot.classList.toggle('is-disconnected', !isConnected);
+            connectionStatus.textContent = isConnected
+                ? 'Conectado · mensajes en tiempo real'
+                : 'Conexión interrumpida · reconectando…';
+            sendButton.disabled = !isConnected;
+            input.disabled = !isConnected;
+        }
+
+        function appendMessage(message) {
+            const emptyState = messages.querySelector('[data-chat-empty]');
+            if (emptyState) {
+                emptyState.remove();
+            }
+
+            const item = document.createElement('li');
+            item.className = 'chat-message';
+            item.dataset.chatMessage = '';
+            item.dataset.senderId = String(message.sender_id);
+            if (String(message.sender_id) === currentUserId) {
+                item.classList.add('is-own');
+            }
+
+            const heading = document.createElement('div');
+            heading.className = 'd-flex align-items-baseline justify-content-between gap-3';
+            const sender = document.createElement('span');
+            sender.className = 'small fw-bold text-dark';
+            sender.textContent = message.sender_name;
+            const sentAt = document.createElement('time');
+            sentAt.className = 'small text-muted text-nowrap';
+            sentAt.dateTime = message.sent_at;
+            sentAt.textContent = new Date(message.sent_at).toLocaleTimeString('es-CL', {
+                hour: '2-digit',
+                minute: '2-digit'
+            });
+            heading.append(sender, sentAt);
+
+            const body = document.createElement('p');
+            body.className = 'chat-message-body';
+            body.textContent = message.body;
+            item.append(heading, body);
+            messages.append(item);
+            scrollMessagesToBottom();
+        }
+
+        function replaceHistory(history) {
+            messages.querySelectorAll('[data-chat-message], [data-chat-empty]').forEach(function (item) {
+                item.remove();
+            });
+            history.forEach(appendMessage);
+            if (history.length === 0) {
+                const emptyState = document.createElement('li');
+                emptyState.className = 'chat-empty-state py-5';
+                emptyState.dataset.chatEmpty = '';
+                const title = document.createElement('h3');
+                title.className = 'h6 fw-bold';
+                title.textContent = '¡Inicia la conversación!';
+                const description = document.createElement('p');
+                description.className = 'small text-muted mb-0';
+                description.textContent = 'Este espacio es solo para los funcionarios de tu delegación. Envía el primer mensaje.';
+                emptyState.append(title, description);
+                messages.append(emptyState);
+            }
+            scrollMessagesToBottom();
+        }
+
+        function connect() {
+            const socketUrl = new URL(chat.dataset.websocketPath, window.location.href);
+            socketUrl.protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+            socket = new WebSocket(socketUrl);
+
+            socket.addEventListener('open', function () {
+                setConnection(true);
+            });
+            socket.addEventListener('message', function (event) {
+                let payload;
+                try {
+                    payload = JSON.parse(event.data);
+                } catch (error) {
+                    console.error('El servidor envió una respuesta de chat no válida:', error);
+                    feedback.textContent = 'No se pudo leer una actualización del chat.';
+                    return;
+                }
+
+                if (payload.type === 'message') {
+                    feedback.textContent = '';
+                    appendMessage(payload.message);
+                } else if (payload.type === 'history') {
+                    replaceHistory(payload.messages);
+                } else if (payload.type === 'error') {
+                    feedback.textContent = payload.message;
+                }
+            });
+            socket.addEventListener('close', function (event) {
+                setConnection(false);
+                if (event.code === 4401 || event.code === 4403) {
+                    shouldReconnect = false;
+                    connectionStatus.textContent = event.code === 4401
+                        ? 'Inicia sesión nuevamente para usar el chat.'
+                        : 'Tu cuenta ya no tiene acceso al chat de esta delegación.';
+                    feedback.textContent = connectionStatus.textContent;
+                    return;
+                }
+                if (shouldReconnect) {
+                    window.clearTimeout(reconnectTimer);
+                    reconnectTimer = window.setTimeout(connect, 2500);
+                }
+            });
+            socket.addEventListener('error', function (error) {
+                console.error('No se pudo establecer la conexión con el chat:', error);
+                feedback.textContent = 'No se pudo conectar al chat. Intentando nuevamente…';
+            });
+        }
+
+        input.addEventListener('input', function () {
+            counter.textContent = `${input.value.length} / ${maxMessageLength}`;
+        });
+        input.addEventListener('keydown', function (event) {
+            if (event.key === 'Enter' && !event.shiftKey) {
+                event.preventDefault();
+                form.requestSubmit();
+            }
+        });
+        form.addEventListener('submit', function (event) {
+            event.preventDefault();
+            const body = input.value.trim();
+            if (!body) {
+                feedback.textContent = 'Escribe un mensaje antes de enviarlo.';
+                return;
+            }
+            if (body.length > maxMessageLength) {
+                feedback.textContent = 'El mensaje supera el máximo de 2000 caracteres.';
+                return;
+            }
+            if (!socket || socket.readyState !== WebSocket.OPEN) {
+                feedback.textContent = 'El chat no está conectado todavía. Intenta nuevamente en un momento.';
+                return;
+            }
+
+            socket.send(JSON.stringify({ message: body }));
+            input.value = '';
+            counter.textContent = `0 / ${maxMessageLength}`;
+            feedback.textContent = '';
+        });
+
+        window.addEventListener('beforeunload', function () {
+            shouldReconnect = false;
+            window.clearTimeout(reconnectTimer);
+            if (socket) {
+                socket.close();
+            }
+        });
+
+        scrollMessagesToBottom();
+        setConnection(false);
+        connect();
+    });
+</script>
+{% endblock %}

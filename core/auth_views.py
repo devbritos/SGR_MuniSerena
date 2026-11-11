@@ -5,11 +5,13 @@ from smtplib import SMTPException
 
 from django.conf import settings
 from django.contrib import messages
+from django.contrib.auth.views import LoginView
 from django.contrib.auth import get_user_model, update_session_auth_hash
 from django.contrib.auth.hashers import check_password, make_password
 from django.core.mail import send_mail
 from django.db.models import F
 from django.shortcuts import redirect, render
+from django.urls import reverse
 from django.utils import timezone
 
 from .forms import (
@@ -23,6 +25,24 @@ logger = logging.getLogger(__name__)
 MAX_CODE_ATTEMPTS = 5
 RECOVERY_USER_SESSION_KEY = 'password_recovery_user_id'
 RECOVERY_CODE_SESSION_KEY = 'password_recovery_code_id'
+
+
+class SGRLoginView(LoginView):
+    def get_success_url(self):
+        redirect_to = self.get_redirect_url()
+        if redirect_to:
+            return redirect_to
+
+        user = self.request.user
+        functionary = getattr(user, 'functionary', None)
+        if user.is_staff or user.is_superuser or (
+            functionary
+            and functionary.is_admin
+            and functionary.is_active
+            and functionary.deleted_at is None
+        ):
+            return reverse('admin_dashboard')
+        return reverse('user_dashboard')
 
 
 def password_recovery_request(request):

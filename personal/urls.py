@@ -7,6 +7,7 @@ app_name = "personal"
 urlpatterns = [
     path("profile/", views.profile_update, name="profile_update"),
     path("profile/photo/", views.profile_photo, name="profile_photo"),
+    path("chat/", views.delegation_chat, name="delegation_chat"),
 
     # Delegation
     path("delegations/", views.delegation_list, name="delegation_list"),

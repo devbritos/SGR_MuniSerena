@@ -255,6 +255,15 @@ class FunctionaryFormViewTests(TestCase):
         self.assertEqual(results[0].pk, last.pk)
         self.assertEqual(results[-1].pk, first.pk)
 
+    def test_functionary_list_has_action_to_view_personal_data(self):
+        response = self.client.get(reverse('personal:functionary_list'))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'data-list-modal-table')
+        self.assertContains(response, 'id="listActionModal"')
+        self.assertContains(response, 'button.innerHTML = \'<i class="bi bi-eye"')
+        self.assertContains(response, self.functionary.full_name)
+
     def test_functionary_list_restores_its_state_after_visiting_detail(self):
         list_url = reverse('personal:functionary_list')
         response = self.client.get(

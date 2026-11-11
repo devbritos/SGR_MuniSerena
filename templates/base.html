@@ -105,13 +105,48 @@
             margin-top: 0.5rem;
         }
         .active-delegation {
+            display: flex;
+            align-items: center;
+            gap: 0.6rem;
             max-width: 45vw;
-            white-space: normal;
+            min-width: 0;
+            white-space: nowrap;
             line-height: 1.2;
             margin-left: 0.75rem;
         }
+        .active-delegation-label {
+            min-width: 0;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
         .delegation-code {
             font-weight: 700;
+        }
+        .navbar-chat-link {
+            display: inline-flex;
+            flex: 0 0 auto;
+            align-items: center;
+            justify-content: center;
+            gap: 0.35rem;
+            min-height: 2.15rem;
+            padding: 0.3rem 0.65rem;
+            border: 1px solid rgba(255, 255, 255, 0.45);
+            border-radius: 999px;
+            background: rgba(255, 255, 255, 0.1);
+            color: #fff;
+            font-size: 0.78rem;
+            font-weight: 700;
+            text-decoration: none;
+            transition: background-color 0.15s ease, border-color 0.15s ease;
+        }
+        .navbar-chat-link:hover,
+        .navbar-chat-link:focus-visible {
+            border-color: #fff;
+            background: rgba(255, 255, 255, 0.22);
+            color: #fff;
+        }
+        .navbar-chat-link i {
+            font-size: 0.95rem;
         }
         .user-menu-trigger {
             border-color: rgba(255, 255, 255, 0.45) !important;
@@ -181,10 +216,18 @@
         }
         @media (max-width: 575.98px) {
             .active-delegation {
-                max-width: 36vw;
+                max-width: 43vw;
                 margin-left: 0.35rem;
                 font-size: 0.68rem !important;
-                overflow-wrap: anywhere;
+                gap: 0.35rem;
+            }
+            .navbar-chat-link {
+                width: 2rem;
+                min-height: 2rem;
+                padding: 0;
+            }
+            .navbar-chat-label {
+                display: none;
             }
             .nav-account-actions {
                 gap: 0.3rem;
@@ -363,6 +406,22 @@
             color: var(--municipal-red-dark);
         }
 
+        .sidebar-link-chat {
+            margin: 0.25rem 0.55rem;
+            border: 1px solid #f0d7b3;
+            border-left: 3px solid var(--municipal-gold);
+            border-radius: 0.55rem;
+            background: linear-gradient(120deg, #fff1f1, #fff9e8);
+            color: var(--municipal-red-dark);
+            font-weight: 700;
+        }
+
+        .sidebar-link-chat:hover,
+        .sidebar-link-chat.active {
+            background: linear-gradient(120deg, #ffe3e3, #fff2cc);
+            color: var(--municipal-red-dark);
+        }
+
         /* Contenido Principal */
         .page-content {
             flex: 1 1 auto;
@@ -409,9 +468,17 @@
             {% if user.is_authenticated %}
             {% if user.functionary %}
             <div class="text-white small text-end me-2 active-delegation">
-                <span class="delegation-code">{{ user.functionary.delegation.code|default:"Sin código" }}</span>
-                <span aria-hidden="true">·</span>
-                <span>{{ user.functionary.delegation.name }}</span>
+                <span class="active-delegation-label" title="{{ user.functionary.delegation.name }}">
+                    <span class="delegation-code">{{ user.functionary.delegation.code|default:"Sin código" }}</span>
+                    <span aria-hidden="true"> · </span>
+                    <span>{{ user.functionary.delegation.name }}</span>
+                </span>
+                {% if user.functionary.is_active and not user.functionary.deleted_at and not user.functionary.delegation.deleted_at %}
+                <a class="navbar-chat-link" href="{% url 'personal:delegation_chat' %}" aria-label="Abrir el chat de {{ user.functionary.delegation.name }}" title="Chat de la delegación" data-delegation-chat-shortcut>
+                    <i class="bi bi-chat-dots-fill" aria-hidden="true"></i>
+                    <span class="navbar-chat-label">Chat</span>
+                </a>
+                {% endif %}
             </div>
             {% endif %}
             <div class="nav-account-actions">
@@ -484,6 +551,11 @@
             <a href="{% url 'atenciones:attention_list' %}" class="sidebar-link {% if 'atenciones' in request.path %}active{% endif %}">
                 <i class="bi bi-chat-left-text-fill" aria-hidden="true"></i> Atención ciudadana
             </a>
+            {% if not user.functionary.delegation.deleted_at %}
+            <a href="{% url 'personal:delegation_chat' %}" class="sidebar-link sidebar-link-chat {% if request.resolver_match.url_name == 'delegation_chat' %}active{% endif %}" {% if request.resolver_match.url_name == 'delegation_chat' %}aria-current="page"{% endif %}>
+                <i class="bi bi-chat-dots-fill" aria-hidden="true"></i> Chat de delegación
+            </a>
+            {% endif %}
             {% endif %}
             {% if user.is_staff or user.is_superuser or user.functionary.is_active and not user.functionary.deleted_at %}
             <a href="{% url 'agenda:commitment_list' %}" class="sidebar-link {% if 'agenda' in request.path or 'commitment' in request.path %}active{% endif %}">
@@ -1296,6 +1368,7 @@
             function refreshVisiblePage() {
                 if (
                     document.visibilityState === 'visible'
+                    && !document.getElementById('delegationChat')
                     && window.sgrRefreshCurrentPage
                 ) {
                     window.sgrRefreshCurrentPage();
@@ -1315,7 +1388,7 @@
                     try {
                         const message = JSON.parse(event.data);
                         if (message.type === 'data_changed' && window.sgrRefreshCurrentPage) {
-                            window.sgrRefreshCurrentPage();
+                            refreshVisiblePage();
                         }
                     } catch (error) {
                         console.error('No se pudo procesar la actualización en tiempo real:', error);

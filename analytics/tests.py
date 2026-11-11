@@ -140,6 +140,46 @@ class DashboardTests(TestCase):
             reverse('user_dashboard'),
         )
 
+    def test_staff_login_redirects_to_management_dashboard(self):
+        response = self.client.post(
+            reverse('login'),
+            {'username': self.staff.username, 'password': 'test-password'},
+        )
+
+        self.assertRedirects(
+            response,
+            reverse('admin_dashboard'),
+            fetch_redirect_response=False,
+        )
+
+    def test_functionary_login_redirects_to_personal_dashboard(self):
+        response = self.client.post(
+            reverse('login'),
+            {'username': self.user.username, 'password': 'test-password'},
+        )
+
+        self.assertRedirects(
+            response,
+            reverse('user_dashboard'),
+            fetch_redirect_response=False,
+        )
+
+    def test_login_keeps_an_explicit_safe_next_destination(self):
+        response = self.client.post(
+            reverse('login'),
+            {
+                'username': self.staff.username,
+                'password': 'test-password',
+                'next': reverse('dashboard_redirect'),
+            },
+        )
+
+        self.assertRedirects(
+            response,
+            reverse('dashboard_redirect'),
+            fetch_redirect_response=False,
+        )
+
     def test_admin_dashboard_shows_live_system_totals(self):
         self.client.force_login(self.staff)
 

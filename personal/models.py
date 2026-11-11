@@ -250,6 +250,35 @@ class FunctionaryRole(BaseModel):
         return f'{self.functionary.full_name} -> {self.role}'
 
 
+class DelegationChatMessage(models.Model):
+    delegation = models.ForeignKey(
+        Delegation,
+        on_delete=models.CASCADE,
+        related_name='chat_messages',
+    )
+    sender = models.ForeignKey(
+        Functionary,
+        on_delete=models.CASCADE,
+        related_name='chat_messages',
+    )
+    body = models.CharField(max_length=2000)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['created_at', 'pk']
+        indexes = [
+            models.Index(
+                fields=['delegation', 'created_at'],
+                name='chat_del_created_idx',
+            ),
+        ]
+        verbose_name = 'Mensaje del chat'
+        verbose_name_plural = 'Mensajes del chat'
+
+    def __str__(self):
+        return f'{self.sender.full_name}: {self.body[:50]}'
+
+
 class UserProfile(models.Model):
     user = models.OneToOneField(
         settings.AUTH_USER_MODEL,

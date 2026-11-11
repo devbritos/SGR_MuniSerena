@@ -28,6 +28,7 @@ from .forms import (
 )
 from .models import (
     Delegation,
+    DelegationChatMessage,
     Functionary,
     FunctionaryRole,
     Position,
@@ -91,6 +92,47 @@ def _authorized_delegations(user, current=None):
     if current is None:
         return queryset.filter(state='ACTIVO')
     return queryset.filter(Q(state='ACTIVO') | Q(pk=current.pk))
+
+
+@login_required
+def delegation_chat(request):
+    functionary = getattr(request.user, 'functionary', None)
+    if (
+        functionary is None
+        or not functionary.is_active
+        or functionary.deleted_at is not None
+        or not request.user.is_active
+        or functionary.delegation.deleted_at is not None
+    ):
+        raise PermissionDenied
+
+    messages = list(
+        DelegationChatMessage.objects.filter(
+            delegation_id=functionary.delegation_id,
+            sender__is_active=True,
+            sender__deleted_at__isnull=True,
+        )
+        .select_related('sender')
+        .order_by('-created_at', '-pk')[:50]
+    )
+    messages.reverse()
+    participants = (
+        Functionary.objects.filter(
+            delegation_id=functionary.delegation_id,
+            is_active=True,
+            deleted_at__isnull=True,
+            user__is_active=True,
+        )
+        .select_related('user')
+        .order_by('names', 'lastnames')
+    )
+
+    return render(request, 'personal/delegation_chat.html', {
+        'chat_messages': messages,
+        'participants': participants,
+        'current_user_id': request.user.pk,
+        'delegation': functionary.delegation,
+    })
 
 
 def _list_state_key(module):
