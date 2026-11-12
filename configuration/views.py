@@ -1,5 +1,6 @@
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.contrib import messages
+from django.http import JsonResponse
 from django.views.generic import ListView, CreateView, UpdateView, View
 from django.db import transaction
 from django.urls import reverse_lazy
@@ -237,8 +238,24 @@ class MeasuringCreateView(LoginRequiredMixin, AdminRequiredMixin, CreateView):
 
     def form_valid(self, form):
         response = super().form_valid(form)
+        if self.request.GET.get('modal') == '1':
+            return JsonResponse(
+                {
+                    'id': self.object.pk,
+                    'label': str(self.object),
+                },
+                status=201,
+            )
         messages.success(self.request, 'Ítem creado correctamente.')
         return response
+
+    def form_invalid(self, form):
+        if self.request.GET.get('modal') == '1':
+            return JsonResponse(
+                {'errors': form.errors.get_json_data()},
+                status=400,
+            )
+        return super().form_invalid(form)
 
 
 class MeasuringUpdateView(LoginRequiredMixin, AdminRequiredMixin, UpdateView):

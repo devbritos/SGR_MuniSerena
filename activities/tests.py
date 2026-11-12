@@ -82,7 +82,18 @@ class StaffEvidenceAccessTests(TestCase):
         self.assertEqual(activity_edit_response.status_code, 200)
         self.assertEqual(evidences_response.status_code, 200)
         self.assertContains(evidences_response, self.evidence.name)
-        self.assertContains(evidences_response, 'Validar')
+        self.assertContains(evidences_response, 'Validar evidencia')
+
+    def test_evidence_list_has_prominent_validation_action_without_eye_button(self):
+        response = self.client.get(reverse('activities:evidence_list'))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'Validar evidencia')
+        self.assertContains(response, 'btn-evidence-validate')
+        self.assertNotRegex(
+            response.content.decode(),
+            r'<table[^>]*data-list-modal-table',
+        )
 
     def test_activity_list_shows_responsible_functionary(self):
         response = self.client.get(reverse('activities:activity_list'))
@@ -108,6 +119,21 @@ class StaffEvidenceAccessTests(TestCase):
         self.assertContains(response, 'Guardar evidencia')
         self.assertNotContains(response, '>Name<')
         self.assertNotContains(response, '>Author<')
+
+    def test_evidence_validation_form_uses_spanish_labels_and_dark_modal_header(self):
+        response = self.client.get(
+            reverse('activities:evidence_validate', args=[self.evidence.pk])
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'Decisión de validación')
+        self.assertContains(response, 'Aprobar evidencia')
+        self.assertContains(response, 'Rechazar evidencia')
+        self.assertContains(response, 'Observaciones de validación')
+        self.assertContains(response, 'evidence-validation-card')
+        self.assertContains(response, 'btn-evidence-validate')
+        self.assertNotContains(response, 'Validity state')
+        self.assertNotContains(response, 'Observations validity')
 
     def test_staff_can_approve_other_users_evidence(self):
         response = self.client.post(

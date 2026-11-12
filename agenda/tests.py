@@ -70,6 +70,16 @@ class CommitmentActivityLinkTests(TestCase):
         data.update(overrides)
         return data
 
+    def test_new_commitment_link_opens_in_the_shared_modal(self):
+        response = self.client.get(reverse('agenda:commitment_list'))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(
+            response,
+            'href="%s"' % reverse('agenda:commitment_create'),
+        )
+        self.assertNotContains(response, 'data-no-modal')
+
     def test_commitment_responsible_is_preselected_and_scoped_to_own_delegation(self):
         create_url = reverse('agenda:commitment_create')
         other_user = User.objects.create_user(username='colega_compromiso')
@@ -94,6 +104,7 @@ class CommitmentActivityLinkTests(TestCase):
         response = self.client.get(create_url)
 
         self.assertEqual(response.status_code, 200)
+        self.assertNotContains(response, '¿No tienes un ítem a medir asociado?')
         responsible_field = response.context['form'].fields['functionary']
         self.assertCountEqual(
             list(responsible_field.queryset),
@@ -107,6 +118,59 @@ class CommitmentActivityLinkTests(TestCase):
             outside_functionary,
             responsible_field.queryset,
         )
+
+    def test_commitment_modal_uses_server_validation_and_reports_invalid_fields(self):
+        response = self.client.post(
+            reverse('agenda:commitment_create'),
+            self._commitment_data(
+                origin='',
+                commitment_date='',
+                activity_id='',
+            ),
+            HTTP_X_REQUESTED_WITH='XMLHttpRequest',
+            HTTP_ACCEPT='text/html',
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'novalidate')
+        self.assertContains(response, 'No se pudo guardar el compromiso.')
+        self.assertIn('origin', response.context['form'].errors)
+        self.assertIn('commitment_date', response.context['form'].errors)
+        self.assertFalse(Commitment.objects.exists())
+
+    def test_commitment_modal_submission_saves_valid_commitment(self):
+        response = self.client.post(
+            reverse('agenda:commitment_create'),
+            self._commitment_data(
+                activity_id='',
+                measuring=str(self.measuring.pk),
+            ),
+            HTTP_X_REQUESTED_WITH='XMLHttpRequest',
+            HTTP_ACCEPT='text/html',
+        )
+
+        self.assertRedirects(response, reverse('agenda:commitment_list'))
+        commitment = Commitment.objects.get()
+        self.assertEqual(commitment.origin, 'Solicitud de origen')
+        self.assertEqual(commitment.measuring, self.measuring)
+
+    def test_sgr_admin_can_open_measuring_creation_from_commitment_form(self):
+        admin_role = Role.objects.create(role_name=Role.ADMIN)
+        FunctionaryRole.objects.create(
+            functionary=self.functionary,
+            role=admin_role,
+        )
+
+        response = self.client.get(reverse('agenda:commitment_create'))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, '¿No tienes un ítem a medir asociado?')
+        self.assertContains(
+            response,
+            'data-open-measuring-modal',
+        )
+        self.assertContains(response, 'Crear y asociar ítem')
+        self.assertContains(response, 'measuringCreateForm')
 
     def test_commitment_can_be_assigned_to_another_functionary_in_same_delegation(self):
         other_user = User.objects.create_user(username='responsable_compromiso')
@@ -338,31 +402,46 @@ class CommitmentActivityLinkTests(TestCase):
 
     def test_commitment_sort_options_apply_immediately_and_keep_filters(self):
         today = timezone.localdate()
-        newer = Commitment.objects.create(
-            origin='Solicitud reciente',
+        created_recently = Commitment.objects.create(
+            origin='Solicitud ingresada recientemente',
             applic_name='Vecino reciente',
+            territory='Sector de prueba',
+            commitment_date=today + timedelta(days=2),
+            functionary=self.functionary,
+        )
+        created_earlier = Commitment.objects.create(
+            origin='Solicitud ingresada anteriormente',
+            applic_name='Vecino antiguo',
             territory='Sector de prueba',
             commitment_date=today + timedelta(days=5),
             functionary=self.functionary,
         )
-        older = Commitment.objects.create(
-            origin='Solicitud antigua',
-            applic_name='Vecino antiguo',
-            territory='Sector de prueba',
-            commitment_date=today + timedelta(days=2),
-            functionary=self.functionary,
+        Commitment.objects.filter(pk=created_recently.pk).update(
+            created_at=timezone.now() - timedelta(hours=1),
+        )
+        Commitment.objects.filter(pk=created_earlier.pk).update(
+            created_at=timezone.now() - timedelta(days=1),
         )
 
         response = self.client.get(
             reverse('agenda:commitment_list'),
             {'sort': 'oldest', 'q': 'Solicitud', 'territory': 'Sector'},
         )
+        recent_response = self.client.get(
+            reverse('agenda:commitment_list'),
+            {'sort': 'recent', 'q': 'Solicitud', 'territory': 'Sector'},
+        )
 
         self.assertEqual(response.status_code, 200)
+        self.assertEqual(recent_response.status_code, 200)
         self.assertContains(response, 'Ordenar compromisos')
         self.assertEqual(
             list(response.context['commitments']),
-            [older, newer],
+            [created_earlier, created_recently],
+        )
+        self.assertEqual(
+            list(recent_response.context['commitments']),
+            [created_recently, created_earlier],
         )
         self.assertContains(response, 'data-scroll-anchor="list-sort"')
         self.assertContains(response, 'value="oldest"')

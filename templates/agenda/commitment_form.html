@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% load crispy_forms_tags %}
 
 {% block title %}{% if object %}Editar{% else %}Nuevo{% endif %} compromiso{% endblock %}
 
@@ -22,6 +23,18 @@
     .commitment-form-card .invalid-feedback,
     .commitment-form-card .errorlist { display: block; margin-top: .35rem; color: #b02a37; font-size: .875rem; list-style: none; padding-left: 0; }
     .commitment-form-actions .btn { min-height: 2.65rem; border-radius: .65rem; font-weight: 600; }
+    .measuring-create-trigger { min-height: 3.25rem; border-color: #ad0000; color: #ad0000; }
+    .measuring-create-trigger:hover,
+    .measuring-create-trigger:focus-visible { border-color: #7a2021; background: #ad0000; color: #fff; }
+    .measuring-create-modal { z-index: 1070; }
+    .modal-backdrop.measuring-create-backdrop { z-index: 1065; }
+    .measuring-create-modal .modal-header { background: linear-gradient(120deg, #8e0000, #ad0000 58%, #7a2021); }
+    .measuring-create-modal .modal-content { overflow: hidden; border: 0; border-radius: 1rem; }
+    .measuring-create-modal form { display: flex; flex: 1 1 auto; flex-direction: column; min-height: 0; overflow: hidden; }
+    .measuring-create-modal .modal-body { flex: 1 1 auto; min-height: 0; overflow-y: auto; padding: clamp(1.25rem, 4vw, 2rem); }
+    .measuring-create-modal .form-control,
+    .measuring-create-modal .form-select { min-height: 2.75rem; border-radius: .65rem; }
+    .measuring-create-modal textarea.form-control { min-height: 6rem; }
     @media (max-width: 575.98px) {
         .commitment-form-actions { flex-direction: column-reverse; }
         .commitment-form-actions .btn { width: 100%; }
@@ -45,9 +58,16 @@
         </header>
 
         <div class="commitment-form-body card-body">
-            <form method="post">
+            <form method="post" novalidate>
                 {% csrf_token %}
                 {% if form.activity_id %}{{ form.activity_id }}{% endif %}
+
+                {% if form.errors %}
+                <div class="alert alert-danger" role="alert">
+                    <div class="fw-semibold">No se pudo guardar el compromiso.</div>
+                    <div>Revisa los campos marcados y vuelve a intentarlo.</div>
+                </div>
+                {% endif %}
 
                 {% if form.non_field_errors %}
                 <div class="alert alert-danger" role="alert">
@@ -106,6 +126,13 @@
                         <div class="col-12 col-md-6">
                             <label class="form-label" for="{{ form.measuring.id_for_label }}">{{ form.measuring.label }}</label>
                             {{ form.measuring }}
+                            {% if can_create_measuring %}
+                            <button type="button" class="btn btn-outline-danger measuring-create-trigger w-100 d-flex align-items-center gap-3 mt-2 px-3 text-start" data-open-measuring-modal>
+                                <i class="bi bi-plus-circle fs-5" aria-hidden="true"></i>
+                                <span><span class="d-block fw-semibold">¿No tienes un ítem a medir asociado?</span><span class="small">Crear uno aquí sin salir del compromiso</span></span>
+                            </button>
+                            <div id="measuringCreateFeedback" class="mt-2" aria-live="polite"></div>
+                            {% endif %}
                             {% if form.measuring.help_text %}<div class="form-text">{{ form.measuring.help_text }}</div>{% endif %}
                             {% for error in form.measuring.errors %}<div id="{{ form.measuring.id_for_label }}_error" class="invalid-feedback">{{ error }}</div>{% endfor %}
                         </div>
@@ -135,6 +162,32 @@
                     </button>
                 </div>
             </form>
+            {% if can_create_measuring %}
+            <div class="modal fade measuring-create-modal" id="measuringCreateModal" tabindex="-1" aria-labelledby="measuringCreateModalTitle" aria-hidden="true">
+                <div class="modal-dialog modal-dialog-centered modal-lg modal-dialog-scrollable">
+                    <div class="modal-content">
+                        <div class="modal-header text-white">
+                            <div>
+                                <h2 class="modal-title fs-5 fw-bold" id="measuringCreateModalTitle"><i class="bi bi-list-check me-2" aria-hidden="true"></i>Crear ítem de medición</h2>
+                                <p class="small text-white-50 mb-0 mt-1">Completa los datos y se asociará al compromiso automáticamente.</p>
+                            </div>
+                            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+                        </div>
+                        <form id="measuringCreateForm" method="post" action="{% url 'configuration:measuring_create' %}?modal=1" data-measuring-create-form>
+                            {% csrf_token %}
+                            <div class="modal-body">
+                                <div id="measuringCreateErrors" class="alert alert-danger d-none" role="alert" data-measuring-create-errors></div>
+                                {{ measuring_form|crispy }}
+                            </div>
+                            <div class="modal-footer">
+                                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
+                                <button type="submit" class="btn btn-danger px-4"><i class="bi bi-check-lg me-1" aria-hidden="true"></i>Crear y asociar ítem</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+            {% endif %}
         </div>
     </article>
 </main>

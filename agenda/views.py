@@ -5,6 +5,8 @@ from django.urls import reverse_lazy
 from django.utils import timezone
 from django.views.generic import ListView, CreateView, UpdateView, DeleteView
 
+from configuration.forms import MeasuringForm
+
 from .models import Commitment
 from .forms import CommitmentForm
 from personal.models import Functionary
@@ -16,6 +18,13 @@ from core.mixins import (
 from core.exports import excel_response
 from core.lists import ListControlsMixin, apply_list_sort, search_queryset
 from activities.models import Activity
+
+
+def _can_create_measuring(user):
+    functionary = getattr(user, 'functionary', None)
+    return user.is_superuser or (
+        functionary is not None and functionary.is_admin
+    )
 
 
 def get_commitment_scope(user):
@@ -43,8 +52,8 @@ class CommitmentListView(ListControlsMixin, LoginRequiredMixin, FunctionaryOrSta
     ordering = ['commitment_date']
     paginate_by = 20
     sort_fields = {
-        'recent': ('-commitment_date', '-pk'),
-        'oldest': ('commitment_date', 'pk'),
+        'recent': ('-created_at', '-pk'),
+        'oldest': ('created_at', 'pk'),
         'az': ('origin', 'pk'),
         'za': ('-origin', '-pk'),
     }
@@ -157,6 +166,13 @@ class CommitmentCreateView(LoginRequiredMixin, FunctionaryRequiredMixin, CreateV
     template_name = 'agenda/commitment_form.html'
     success_url = reverse_lazy('agenda:commitment_list')
 
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['can_create_measuring'] = _can_create_measuring(self.request.user)
+        if context['can_create_measuring']:
+            context['measuring_form'] = MeasuringForm()
+        return context
+
     def get_initial(self):
         initial = super().get_initial()
         functionary = getattr(self.request.user, 'functionary', None)
@@ -226,6 +242,13 @@ class CommitmentUpdateView(LoginRequiredMixin, FunctionaryOrStaffRequiredMixin, 
 
     def get_queryset(self):
         return get_commitment_scope(self.request.user)
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['can_create_measuring'] = _can_create_measuring(self.request.user)
+        if context['can_create_measuring']:
+            context['measuring_form'] = MeasuringForm()
+        return context
 
     def get_form_kwargs(self):
         kwargs = super().get_form_kwargs()

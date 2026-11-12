@@ -258,7 +258,7 @@ class PeriodForm(forms.ModelForm):
                 attrs={'class': 'form-control', 'min': 0, 'step': 1}
             ),
             'maximum_computable_days': forms.NumberInput(
-                attrs={'class': 'form-control', 'min': 1}
+                attrs={'class': 'form-control', 'min': 1, 'readonly': True}
             ),
             'version_parameter': forms.TextInput(
                 attrs={
@@ -287,7 +287,7 @@ class PeriodForm(forms.ModelForm):
             'end_date': 'Último día incluido. No puede ser anterior a la fecha de inicio.',
             'status': 'El período activo se usa para calcular el avance y el semáforo.',
             'minimum_threshold': 'Valor mínimo usado por la configuración del período.',
-            'maximum_computable_days': 'No puede superar la duración total del período.',
+            'maximum_computable_days': 'Se calcula automáticamente contando la fecha de inicio y la de término.',
             'version_parameter': 'Etiqueta para identificar la versión de esta configuración.',
             'semaphore': 'Referencia de configuración del semáforo para este período.',
         }
@@ -296,7 +296,6 @@ class PeriodForm(forms.ModelForm):
         cleaned_data = super().clean()
         start_date = cleaned_data.get('start_date')
         end_date = cleaned_data.get('end_date')
-        maximum_days = cleaned_data.get('maximum_computable_days')
         minimum_threshold = cleaned_data.get('minimum_threshold')
 
         if minimum_threshold is not None and minimum_threshold < 0:
@@ -304,21 +303,10 @@ class PeriodForm(forms.ModelForm):
                 'minimum_threshold',
                 'El umbral mínimo no puede ser negativo.',
             )
-        if maximum_days is not None and maximum_days < 1:
-            self.add_error(
-                'maximum_computable_days',
-                'Debe permitir al menos un día computable.',
-            )
-
         if start_date and end_date and end_date < start_date:
             self.add_error('end_date', 'La fecha de término no puede ser anterior a la de inicio.')
-        elif start_date and end_date and maximum_days is not None:
-            period_days = (end_date - start_date).days + 1
-            if maximum_days > period_days:
-                self.add_error(
-                    'maximum_computable_days',
-                    'Los días computables no pueden superar la duración del período.',
-                )
+        elif start_date and end_date:
+            cleaned_data['maximum_computable_days'] = (end_date - start_date).days + 1
 
         return cleaned_data
 
@@ -336,7 +324,9 @@ class PeriodForm(forms.ModelForm):
 
     def save(self, commit=True):
         period = super().save(commit=False)
-        period.computable_days = (period.end_date - period.start_date).days + 1
+        period_days = (period.end_date - period.start_date).days + 1
+        period.computable_days = period_days
+        period.maximum_computable_days = period_days
         if commit:
             period.save()
             self.save_m2m()

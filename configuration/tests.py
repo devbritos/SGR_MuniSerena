@@ -4,6 +4,7 @@ from django.urls import reverse
 
 from personal.models import Delegation, Functionary, FunctionaryRole, Position, Role
 
+from .forms import PeriodForm
 from .models import Goal, Measuring, Period
 
 # Create your tests here.
@@ -83,6 +84,42 @@ class MeasuringCatalogViewTests(TestCase):
         )
         self.assertRedirects(response, reverse('configuration:measuring_list'))
         self.assertTrue(Measuring.objects.filter(code='IT-02').exists())
+
+    def test_measuring_create_modal_returns_created_item_as_json(self):
+        response = self.client.post(
+            f"{reverse('configuration:measuring_create')}?modal=1",
+            {
+                'code': 'IT-MODAL',
+                'service': 'Ítem creado en modal',
+                'measurable_item': 'Descripción de prueba',
+                'validity': 'on',
+            },
+            HTTP_X_REQUESTED_WITH='XMLHttpRequest',
+            HTTP_ACCEPT='application/json',
+        )
+
+        self.assertEqual(response.status_code, 201)
+        item = Measuring.objects.get(code='IT-MODAL')
+        self.assertEqual(
+            response.json(),
+            {'id': item.pk, 'label': str(item)},
+        )
+
+    def test_measuring_create_modal_returns_validation_errors(self):
+        response = self.client.post(
+            f"{reverse('configuration:measuring_create')}?modal=1",
+            {
+                'code': '',
+                'service': '',
+                'measurable_item': 'Descripción de prueba',
+            },
+            HTTP_X_REQUESTED_WITH='XMLHttpRequest',
+            HTTP_ACCEPT='application/json',
+        )
+
+        self.assertEqual(response.status_code, 400)
+        self.assertIn('errors', response.json())
+        self.assertFalse(Measuring.objects.exists())
 
     def test_measuring_form_uses_clear_spanish_labels_and_guidance(self):
         response = self.client.get(reverse('configuration:measuring_create'))
@@ -242,3 +279,41 @@ class PeriodCreateEntryPointTests(TestCase):
         self.assertContains(period_response, 'Fecha de término')
         self.assertContains(period_response, 'Máximo de días computables')
         self.assertContains(period_response, 'Período activo')
+
+
+class PeriodFormTests(TestCase):
+    def test_computes_maximum_days_inclusively_from_period_dates(self):
+        form = PeriodForm(
+            data={
+                'start_date': '2026-02-01',
+                'end_date': '2026-02-28',
+                'status': 'on',
+                'minimum_threshold': '0',
+                'maximum_computable_days': '1',
+                'version_parameter': '2026',
+                'semaphore': 'SGR',
+            }
+        )
+
+        self.assertTrue(form.is_valid(), form.errors)
+        self.assertEqual(form.cleaned_data['maximum_computable_days'], 28)
+
+        period = form.save()
+        self.assertEqual(period.maximum_computable_days, 28)
+        self.assertEqual(period.computable_days, 28)
+
+    def test_one_day_period_has_one_computable_day(self):
+        form = PeriodForm(
+            data={
+                'start_date': '2026-02-01',
+                'end_date': '2026-02-01',
+                'status': 'on',
+                'minimum_threshold': '0',
+                'maximum_computable_days': '20',
+                'version_parameter': '2026',
+                'semaphore': 'SGR',
+            }
+        )
+
+        self.assertTrue(form.is_valid(), form.errors)
+        self.assertEqual(form.save().maximum_computable_days, 1)

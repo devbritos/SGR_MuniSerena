@@ -17,9 +17,9 @@
     <a class="btn btn-outline-success text-nowrap" href="{{ request.path }}?{{ query_params }}{% if query_params %}&{% endif %}export=xlsx"><i class="bi bi-file-earmark-excel"></i> Exportar a Excel</a>
 </div>
 {% include "_list_sort_controls.html" %}
-<table class="table table-striped" data-list-modal-table>
+<table class="table table-striped">
     <thead>
-        <tr><th>Evidencia</th><th>Actividad vinculada</th><th>Subida por</th><th>Estado</th><th></th></tr>
+        <tr><th>Evidencia</th><th>Actividad vinculada</th><th>Subida por</th><th>Estado</th><th>Acciones</th></tr>
     </thead>
     <tbody>
         {% for e in evidences %}
@@ -46,7 +46,9 @@
                 {% if e.validity_state == 'PENDING' and e.is_latest %}
                 {% if user.is_staff or user.is_superuser or user.functionary.is_verifier %}
                     {% if user.is_staff or user.is_superuser or user.functionary.is_admin or user.functionary != e.functionary %}
-                <a href="{% url 'activities:evidence_validate' e.pk %}" class="btn btn-sm btn-outline-primary">Validar</a>
+                <a href="{% url 'activities:evidence_validate' e.pk %}" class="btn btn-sm btn-evidence-validate px-3" aria-label="Validar evidencia" title="Validar evidencia">
+                    <i class="bi bi-patch-check me-1" aria-hidden="true"></i>Validar
+                </a>
                     {% else %}
                 <span class="small text-muted">No puedes validar tu propia evidencia</span>
                     {% endif %}

@@ -214,6 +214,22 @@
             border-radius: 0.65rem;
             font-weight: 600;
         }
+        .btn-evidence-validate {
+            border: 0;
+            background: linear-gradient(135deg, #ad0000, #7a2021);
+            color: #fff;
+            box-shadow: 0 0.35rem 0.8rem rgba(122, 32, 33, 0.24);
+            font-weight: 700;
+            white-space: nowrap;
+            transition: background 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease;
+        }
+        .btn-evidence-validate:hover,
+        .btn-evidence-validate:focus-visible {
+            background: linear-gradient(135deg, #8e0000, #641a1b);
+            color: #fff;
+            box-shadow: 0 0.45rem 1rem rgba(122, 32, 33, 0.32);
+            transform: translateY(-1px);
+        }
         @media (max-width: 575.98px) {
             .active-delegation {
                 max-width: 43vw;
@@ -784,6 +800,7 @@
             const modalStyles = [];
             let refreshInProgress = false;
             let pendingPageRefresh = null;
+            const measuringModalBackdropClass = 'measuring-create-backdrop';
 
             function shouldDeferRefresh() {
                 const activeElement = document.activeElement;
@@ -1010,6 +1027,48 @@
                 }
             }
 
+            function initializeMeasuringCreateModal(measuringModal) {
+                if (measuringModal.dataset.initialized === 'true') {
+                    return;
+                }
+                measuringModal.dataset.initialized = 'true';
+                measuringModal.addEventListener('shown.bs.modal', function () {
+                    const backdrops = document.querySelectorAll('.modal-backdrop');
+                    const backdrop = backdrops[backdrops.length - 1];
+                    if (backdrop) {
+                        backdrop.classList.add(measuringModalBackdropClass);
+                    }
+                    document.body.classList.add('modal-open');
+                });
+                measuringModal.addEventListener('hidden.bs.modal', function () {
+                    if (modalElement.classList.contains('show')) {
+                        document.body.classList.add('modal-open');
+                    }
+                    const instance = bootstrap.Modal.getInstance(measuringModal);
+                    if (instance) {
+                        instance.dispose();
+                    }
+                    modalBody.append(measuringModal);
+                    modalBody.querySelector('[data-open-measuring-modal]')?.focus();
+                });
+            }
+
+            document.addEventListener('click', function (event) {
+                const trigger = event.target.closest('[data-open-measuring-modal]');
+                if (!trigger) {
+                    return;
+                }
+                event.preventDefault();
+                const measuringModal = modalBody.querySelector('#measuringCreateModal');
+                if (!measuringModal) {
+                    console.error('No se encontró el modal de creación del ítem de medición.');
+                    return;
+                }
+                document.body.append(measuringModal);
+                initializeMeasuringCreateModal(measuringModal);
+                bootstrap.Modal.getOrCreateInstance(measuringModal).show();
+            });
+
             document.addEventListener('click', function (event) {
                 const link = event.target.closest('a[href]');
                 if (
@@ -1047,6 +1106,72 @@
 
             document.addEventListener('submit', async function (event) {
                 const form = event.target;
+                if (form.matches('[data-measuring-create-form]')) {
+                    event.preventDefault();
+                    const submitButton = form.querySelector('button[type="submit"]');
+                    const errorBox = form.querySelector('[data-measuring-create-errors]');
+                    const measuringSelect = modalBody.querySelector('#id_measuring');
+                    const feedback = modalBody.querySelector('#measuringCreateFeedback');
+                    submitButton.disabled = true;
+                    submitButton.innerHTML = '<span class="spinner-border spinner-border-sm me-2" aria-hidden="true"></span>Creando ítem...';
+                    errorBox.classList.add('d-none');
+                    errorBox.textContent = '';
+                    feedback.replaceChildren();
+
+                    try {
+                        const response = await fetch(form.action, {
+                            method: 'POST',
+                            body: new FormData(form),
+                            headers: {
+                                'X-Requested-With': 'XMLHttpRequest',
+                                'Accept': 'application/json'
+                            },
+                            credentials: 'same-origin'
+                        });
+                        if (
+                            response.redirected
+                            && new URL(response.url).pathname.includes('/accounts/login')
+                        ) {
+                            window.location.assign(response.url);
+                            return;
+                        }
+                        const result = await response.json();
+                        if (!response.ok) {
+                            const messages = Object.values(result.errors || {})
+                                .flat()
+                                .map(function (error) { return error.message; });
+                            if (!messages.length) {
+                                throw new Error('No se pudo crear el ítem. Revisa los datos e inténtalo nuevamente.');
+                            }
+                            errorBox.textContent = messages.join(' ');
+                            errorBox.classList.remove('d-none');
+                            return;
+                        }
+
+                        measuringSelect.add(
+                            new Option(result.label, result.id, true, true)
+                        );
+                        measuringSelect.dispatchEvent(
+                            new Event('change', { bubbles: true })
+                        );
+                        const successMessage = document.createElement('div');
+                        successMessage.className = 'alert alert-success py-2 mb-0';
+                        successMessage.setAttribute('role', 'status');
+                        successMessage.textContent = 'Ítem creado y asociado al compromiso.';
+                        feedback.replaceChildren(successMessage);
+                        form.reset();
+                        bootstrap.Modal.getInstance(form.closest('.modal')).hide();
+                    } catch (error) {
+                        console.error('Error al crear el ítem de medición:', error);
+                        errorBox.textContent = error.message
+                            || 'No se pudo crear el ítem. Inténtalo nuevamente.';
+                        errorBox.classList.remove('d-none');
+                    } finally {
+                        submitButton.disabled = false;
+                        submitButton.innerHTML = '<i class="bi bi-check-lg me-1" aria-hidden="true"></i>Crear y asociar ítem';
+                    }
+                    return;
+                }
                 if (!form.matches('#listActionModalBody form') || form.method.toUpperCase() !== 'POST') {
                     return;
                 }
@@ -1190,6 +1315,16 @@
 
             modalElement.addEventListener('hidden.bs.modal', function () {
                 clearModalStyles();
+                const measuringModal = document.getElementById('measuringCreateModal');
+                if (measuringModal) {
+                    const instance = bootstrap.Modal.getInstance(measuringModal);
+                    if (instance) {
+                        instance.dispose();
+                    }
+                    measuringModal.remove();
+                }
+                document.querySelectorAll(`.modal-backdrop.${measuringModalBackdropClass}`)
+                    .forEach(function (backdrop) { backdrop.remove(); });
                 flushPendingRefresh();
             });
         });

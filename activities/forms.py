@@ -251,6 +251,15 @@ class EvidenceValidationForm(forms.ModelForm):
     class Meta:
         model = Evidence
         fields = ['validity_state', 'observations_validity']
+        labels = {
+            'validity_state': 'Decisión de validación',
+            'observations_validity': 'Observaciones de validación',
+        }
+        help_texts = {
+            'observations_validity': (
+                'Indica el motivo si rechazas la evidencia.'
+            ),
+        }
         widgets = {
             'validity_state': forms.Select(attrs={'class': 'form-select'}),
             'observations_validity': forms.Textarea(attrs={'class': 'form-control', 'rows': 2}),
@@ -259,12 +268,8 @@ class EvidenceValidationForm(forms.ModelForm):
     def __init__(self, *args, verificator=None, **kwargs):
         super().__init__(*args, **kwargs)
         self.fields['validity_state'].choices = [
-            choice
-            for choice in Evidence.Validity.choices
-            if choice[0] in {
-                Evidence.Validity.APPROVED,
-                Evidence.Validity.REJECTED,
-            }
+            (Evidence.Validity.APPROVED, 'Aprobar evidencia'),
+            (Evidence.Validity.REJECTED, 'Rechazar evidencia'),
         ]
         if self.instance:
             self.instance.verificator = verificator
