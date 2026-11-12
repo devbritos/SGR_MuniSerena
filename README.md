@@ -155,7 +155,27 @@ python manage.py collectstatic --noinput
 daphne -b 0.0.0.0 -p 8000 config.asgi:application
 ```
 
-Ejecuta Daphne como servicio detrás de un proxy web (por ejemplo, Nginx) configurado para permitir la conexión WebSocket, y permite en el grupo de seguridad solo el tráfico necesario. Redis debe estar disponible para todas las instancias de la aplicación; en AWS puedes usar un servicio administrado y mantenerlo en una red privada. WhiteNoise sirve los archivos estáticos recopilados por `collectstatic`, incluidos los logos y recursos de la interfaz. Las evidencias subidas se guardan en `MEDIA_ROOT`; en AWS configura almacenamiento persistente o un servicio de objetos como S3 y sirve esos archivos de forma segura.
+Ejecuta Daphne como servicio ASGI (no `gunicorn config.wsgi:application`) detrás de un proxy web, por ejemplo Nginx. Si Nginx termina TLS y reenvía el tráfico a Daphne en el puerto 8000, configura tanto el sitio HTTP como la actualización de WebSocket:
+
+```nginx
+location /ws/ {
+    proxy_pass http://127.0.0.1:8000;
+    proxy_http_version 1.1;
+    proxy_set_header Upgrade $http_upgrade;
+    proxy_set_header Connection "upgrade";
+    proxy_set_header Host $host;
+    proxy_read_timeout 86400;
+}
+
+location / {
+    proxy_pass http://127.0.0.1:8000;
+    proxy_set_header Host $host;
+    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    proxy_set_header X-Forwarded-Proto $scheme;
+}
+```
+
+La regla `/ws/` debe estar en el mismo `server` que sirve la aplicación y llegar al mismo servicio Daphne que las páginas HTTP. No expongas Daphne directamente a Internet: permite el tráfico público solo al proxy en el grupo de seguridad. Redis debe estar disponible para todas las instancias de la aplicación; en AWS puedes usar un servicio administrado y mantenerlo en una red privada. WhiteNoise sirve los archivos estáticos recopilados por `collectstatic`, incluidos los logos y recursos de la interfaz. Las evidencias subidas se guardan en `MEDIA_ROOT`; en AWS configura almacenamiento persistente o un servicio de objetos como S3 y sirve esos archivos de forma segura.
 
 No actives `SECURE_SSL_REDIRECT`, `SESSION_COOKIE_SECURE`, `CSRF_COOKIE_SECURE` ni HSTS mientras el sitio solo use HTTP. Una vez configurado y probado HTTPS, habilita esas opciones en el `.env` y aumenta `SECURE_HSTS_SECONDS` gradualmente.
 
