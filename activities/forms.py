@@ -29,7 +29,10 @@ class ActivityForm(forms.ModelForm):
             'enters_pipe',
         ]
         widgets = {
-            'date': forms.DateInput(attrs={'type': 'date', 'class': 'form-control', 'required': True}),
+            'date': forms.DateInput(
+                format='%Y-%m-%d',
+                attrs={'type': 'date', 'class': 'form-control', 'required': True},
+            ),
             'measuring': forms.Select(attrs={'class': 'form-select', 'required': True}),
             'application': forms.TextInput(
                 attrs={
@@ -83,18 +86,20 @@ class ActivityForm(forms.ModelForm):
             'enters_pipe': '¿Ingresa al Tubo de Trabajo?',
         }
         help_texts = {
+            'date': 'Se completa automáticamente con la fecha de hoy en Chile y no se puede cambiar.',
             'quantity': 'Indica cuántas personas o atenciones representa este registro (mínimo 1).'
         }
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        self.fields['date'].disabled = True
         if self.instance.pk:
             self.fields.pop('upload_evidence')
-            self.fields['date'].disabled = True
             self.fields['date'].help_text = (
                 'La fecha original del registro no se puede cambiar al editar.'
             )
         else:
+            self.initial['date'] = timezone.localdate()
             self.fields['submission_key'] = forms.UUIDField(
                 initial=uuid.uuid4,
                 widget=forms.HiddenInput,

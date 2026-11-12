@@ -1,6 +1,10 @@
+from datetime import datetime, timezone as datetime_timezone
+from io import BytesIO
+
 from django.contrib.auth.models import User
 from django.test import TestCase
 from django.urls import reverse
+from openpyxl import load_workbook
 
 from personal.models import (
     Delegation,
@@ -238,13 +242,23 @@ class CitizenAttentionTests(TestCase):
         self.assertNotIn(inactive.pk, result_ids)
 
     def test_attention_list_is_scoped_and_exports_to_excel(self):
-        Attention.objects.create(
+        own_attention = Attention.objects.create(
             requester_name='Vecino de mi delegación',
             attention_type=self.attention_type,
             sub_attention=self.sub_attention,
             description='Solicitud propia.',
             delegation=self.delegation,
             functionary=self.functionary,
+        )
+        Attention.objects.filter(pk=own_attention.pk).update(
+            created_at=datetime(
+                2026,
+                1,
+                1,
+                1,
+                30,
+                tzinfo=datetime_timezone.utc,
+            )
         )
         other_delegation = Delegation.objects.create(
             code='D-OTHER',
@@ -276,16 +290,22 @@ class CitizenAttentionTests(TestCase):
         self.assertContains(response, 'Registrar atención')
         self.assertContains(response, 'Vecino de mi delegación')
         self.assertContains(response, 'Editar atención de Vecino de mi delegación')
+        self.assertContains(response, '31/12/2025 22:30')
         self.assertNotContains(response, 'Vecino de otra delegación')
 
         export = self.client.get(
             reverse('atenciones:attention_list'),
-            {'export': 'xlsx'},
+            {'export': 'xlsx', 'q': 'Vecino de mi delegación'},
         )
         self.assertEqual(export.status_code, 200)
         self.assertEqual(
             export['Content-Type'],
             'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        )
+        workbook = load_workbook(BytesIO(export.content), read_only=True)
+        self.assertEqual(
+            workbook.active['A2'].value,
+            '31/12/2025 22:30',
         )
 
 

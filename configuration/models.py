@@ -61,6 +61,7 @@ class Goal(BaseModel):
     position = models.ForeignKey('personal.Position', on_delete=models.PROTECT, related_name='goals')
     period = models.ForeignKey('Period', on_delete=models.PROTECT, related_name='goals')
     measuring = models.ForeignKey('Measuring', on_delete=models.PROTECT, related_name='goals')
+    group_id = models.UUIDField(null=True, blank=True, db_index=True, editable=False)
 
     class Meta:
         verbose_name = 'Meta'
@@ -76,8 +77,12 @@ class Goal(BaseModel):
         super().clean()
         if self.position_id and self.period_id:
             otras_metas = Goal.objects.filter(
-                position=self.position, period=self.period
+                position=self.position,
+                period=self.period,
+                deleted_at__isnull=True,
             ).exclude(pk=self.pk)
+            if self.group_id:
+                otras_metas = otras_metas.exclude(group_id=self.group_id)
             suma_actual = sum(g.weight for g in otras_metas) + (self.weight or Decimal('0'))
             if suma_actual > Decimal('100'):
                 raise ValidationError(

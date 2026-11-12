@@ -563,16 +563,6 @@
                 <i class="bi bi-stoplights" aria-hidden="true"></i> Semáforo
             </a>
             {% endif %}
-            {% if user.functionary.is_active and not user.functionary.deleted_at %}
-            <a href="{% url 'atenciones:attention_list' %}" class="sidebar-link {% if 'atenciones' in request.path %}active{% endif %}">
-                <i class="bi bi-chat-left-text-fill" aria-hidden="true"></i> Atención ciudadana
-            </a>
-            {% if not user.functionary.delegation.deleted_at %}
-            <a href="{% url 'personal:delegation_chat' %}" class="sidebar-link sidebar-link-chat {% if request.resolver_match.url_name == 'delegation_chat' %}active{% endif %}" {% if request.resolver_match.url_name == 'delegation_chat' %}aria-current="page"{% endif %}>
-                <i class="bi bi-chat-dots-fill" aria-hidden="true"></i> Chat de delegación
-            </a>
-            {% endif %}
-            {% endif %}
             {% if user.is_staff or user.is_superuser or user.functionary.is_active and not user.functionary.deleted_at %}
             <a href="{% url 'agenda:commitment_list' %}" class="sidebar-link {% if 'agenda' in request.path or 'commitment' in request.path %}active{% endif %}">
                 <i class="bi bi-calendar-check-fill" aria-hidden="true"></i> Compromisos
@@ -583,6 +573,16 @@
             <a href="{% url 'activities:evidence_list' %}" class="sidebar-link {% if 'evidencias' in request.path %}active{% endif %}">
                 <i class="bi bi-file-earmark-image-fill" aria-hidden="true"></i> Evidencias
             </a>
+            {% endif %}
+            {% if user.functionary.is_active and not user.functionary.deleted_at %}
+            <a href="{% url 'atenciones:attention_list' %}" class="sidebar-link {% if 'atenciones' in request.path %}active{% endif %}">
+                <i class="bi bi-chat-left-text-fill" aria-hidden="true"></i> Atención ciudadana
+            </a>
+            {% if not user.functionary.delegation.deleted_at %}
+            <a href="{% url 'personal:delegation_chat' %}" class="sidebar-link sidebar-link-chat {% if request.resolver_match.url_name == 'delegation_chat' %}active{% endif %}" {% if request.resolver_match.url_name == 'delegation_chat' %}aria-current="page"{% endif %}>
+                <i class="bi bi-chat-dots-fill" aria-hidden="true"></i> Chat de delegación
+            </a>
+            {% endif %}
             {% endif %}
 
             {% if user.is_superuser or user.functionary.is_admin and user.functionary.is_active and not user.functionary.deleted_at %}
@@ -727,6 +727,34 @@
                 });
             }
 
+            function initializePeriodComputableDays(root) {
+                const startDateInput = root.querySelector('#id_start_date');
+                const endDateInput = root.querySelector('#id_end_date');
+                const maximumDaysInput = root.querySelector('#id_maximum_computable_days');
+                if (!startDateInput || !endDateInput || !maximumDaysInput) {
+                    return;
+                }
+
+                function updateMaximumComputableDays() {
+                    const startDate = startDateInput.value;
+                    const endDate = endDateInput.value;
+                    if (!startDate || !endDate || endDate < startDate) {
+                        maximumDaysInput.value = '';
+                        return;
+                    }
+
+                    const start = Date.parse(`${startDate}T00:00:00Z`);
+                    const end = Date.parse(`${endDate}T00:00:00Z`);
+                    maximumDaysInput.value = String((end - start) / 86400000 + 1);
+                }
+
+                startDateInput.addEventListener('input', updateMaximumComputableDays);
+                startDateInput.addEventListener('change', updateMaximumComputableDays);
+                endDateInput.addEventListener('input', updateMaximumComputableDays);
+                endDateInput.addEventListener('change', updateMaximumComputableDays);
+                updateMaximumComputableDays();
+            }
+
             function associateFormErrors(root) {
                 root.querySelectorAll('form [id$="_error"]').forEach(function (error) {
                     const fieldId = error.id.slice(0, -6);
@@ -793,6 +821,7 @@
 
             associateFormErrors(pageContent);
             initializeChileanDatePickers(pageContent);
+            initializePeriodComputableDays(pageContent);
 
             const modal = bootstrap.Modal.getOrCreateInstance(modalElement);
             const actionPath = /\/(?:new|nuevo|nueva|create|crear|edit|editar|delete|eliminar|desactivar|deactivate|validar)\/?$/i;
@@ -867,6 +896,7 @@
                             : scrollAnchorTop;
                         pageContent.innerHTML = content.innerHTML;
                         associateFormErrors(pageContent);
+                        initializePeriodComputableDays(pageContent);
                         pageContent.dataset.hasUnsavedChanges = 'false';
                         document.dispatchEvent(new CustomEvent('sgr:page-updated'));
                         window.requestAnimationFrame(function () {
@@ -995,6 +1025,7 @@
                 modalBody.innerHTML = content.innerHTML;
                 associateFormErrors(modalBody);
                 initializeChileanDatePickers(modalBody);
+                initializePeriodComputableDays(modalBody);
                 return parsed;
             }
 

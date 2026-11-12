@@ -252,7 +252,9 @@ class AttentionListView(ListControlsMixin, LoginRequiredMixin, FunctionaryRequir
                 ],
                 (
                     [
-                        attention.created_at.strftime('%d/%m/%Y %H:%M'),
+                        timezone.localtime(attention.created_at).strftime(
+                            '%d/%m/%Y %H:%M'
+                        ),
                         attention.requester_name,
                         attention.requester_contact,
                         attention.attention_type.name,

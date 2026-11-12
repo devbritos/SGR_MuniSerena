@@ -1,8 +1,9 @@
 from django.contrib.auth.decorators import login_required
 from django.core.exceptions import PermissionDenied
+from django.http import Http404
 from django.core.paginator import Paginator
 from django.db.models import Count, Q
-from django.shortcuts import redirect, render
+from django.shortcuts import get_object_or_404, redirect, render
 from personal.models import Delegation, Functionary
 from agenda.models import Commitment
 from activities.models import Activity
@@ -103,7 +104,16 @@ def delegation_dashboard(request):
     ):
         raise PermissionDenied
 
-    period = Period.objects.filter(status=True).order_by('-start_date').first()
+    periods = Period.objects.filter(
+        deleted_at__isnull=True,
+    ).order_by('-start_date', '-pk')
+    requested_period = request.GET.get('period', '').strip()
+    if requested_period:
+        if not requested_period.isdecimal():
+            raise Http404
+        period = get_object_or_404(periods, pk=int(requested_period))
+    else:
+        period = periods.filter(status=True).first() or periods.first()
     delegations = Delegation.objects.filter(
         deleted_at__isnull=True,
     ).annotate(
@@ -140,9 +150,11 @@ def delegation_dashboard(request):
         request.GET.get('page')
     )
     delegation_summaries = []
+    expected_percentage = (
+        calcular_porcentaje_esperado(period) if period else None
+    )
 
     if period:
-        expected_percentage = calcular_porcentaje_esperado(period)
         for delegation in page_obj.object_list:
             functionaries = list(
                 Functionary.objects.filter(
@@ -170,11 +182,25 @@ def delegation_dashboard(request):
                 if measured_percentages
                 else None
             )
+            if average_percentage is None:
+                status = 'no_goal'
+                status_label = 'Sin metas activas'
+            elif average_percentage - expected_percentage >= -5:
+                status = 'green'
+                status_label = 'En línea con lo esperado'
+            elif average_percentage - expected_percentage >= -15:
+                status = 'yellow'
+                status_label = 'Atención'
+            else:
+                status = 'red'
+                status_label = 'Bajo lo esperado'
             delegation_summaries.append({
                 'delegation': delegation,
                 'average_percentage': average_percentage,
                 'functionary_count': delegation.functionary_count,
                 'measured_functionary_count': len(measured_percentages),
+                'status': status,
+                'status_label': status_label,
             })
     else:
         delegation_summaries = [
@@ -183,6 +209,8 @@ def delegation_dashboard(request):
                 'average_percentage': None,
                 'functionary_count': delegation.functionary_count,
                 'measured_functionary_count': 0,
+                'status': 'no_period',
+                'status_label': 'Sin período activo',
             }
             for delegation in page_obj.object_list
         ]
@@ -196,6 +224,13 @@ def delegation_dashboard(request):
         {
             'delegation_summaries': delegation_summaries,
             'period': period,
+            'periods': periods,
+            'selected_period_id': period.pk if period else None,
+            'expected_percentage': (
+                round(expected_percentage, 1)
+                if expected_percentage is not None
+                else None
+            ),
             'page_obj': page_obj,
             'page_size_options': (1, 3),
             'selected_page_size': page_size,

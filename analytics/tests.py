@@ -122,12 +122,42 @@ class DashboardTests(TestCase):
         self.assertContains(response, 'id="sidebarPinToggle"')
         self.assertContains(response, 'Actividad por validar')
         self.assertContains(response, 'Atención territorial')
-        self.assertContains(response, 'images/serena.png')
+        self.assertContains(response, 'images/laserena.png')
+        self.assertContains(response, 'dashboard-shortcut')
+        self.assertContains(response, 'dashboard-priority')
+        self.assertContains(response, 'dashboard-goal-card')
         self.assertContains(response, 'Menú de Panel Prueba')
         self.assertContains(
             response,
             '<span class="d-none d-sm-inline user-display-name">Panel Prueba</span>',
         )
+
+    def test_user_goal_cards_only_show_the_assigned_position(self):
+        other_position = Position.objects.create(name='Cargo no asignado')
+        other_measuring = Measuring.objects.create(
+            service='Atención exclusiva de otro cargo',
+            measurable_item='Atenciones',
+        )
+        Goal.objects.create(
+            target_value=4,
+            weight=100,
+            unity='atenciones',
+            validity=True,
+            position=other_position,
+            period=self.period,
+            measuring=other_measuring,
+        )
+        self.client.force_login(self.user)
+
+        response = self.client.get(reverse('user_dashboard'))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(
+            [item['measuring'] for item in response.context['indicador']['items']],
+            [self.measuring],
+        )
+        self.assertContains(response, self.measuring.service)
+        self.assertNotContains(response, other_measuring.service)
 
     def test_site_root_redirects_functionary_to_dashboard(self):
         self.client.force_login(self.user)
@@ -278,9 +308,14 @@ class DashboardTests(TestCase):
             summaries[self.delegation.pk]['measured_functionary_count'],
             2,
         )
+        self.assertEqual(summaries[self.delegation.pk]['status'], 'red')
         self.assertIsNone(
             summaries[other_delegation.pk]['average_percentage'],
         )
+        self.assertEqual(summaries[other_delegation.pk]['status'], 'no_goal')
+        self.assertContains(dashboard_response, 'delegation-card--red')
+        self.assertContains(dashboard_response, 'delegation-card--no_goal')
+        self.assertContains(dashboard_response, 'delegation-progress-marker')
         self.assertContains(
             dashboard_response,
             reverse(
@@ -307,6 +342,56 @@ class DashboardTests(TestCase):
         )
         self.assertNotContains(detail_response, other_functionary.full_name)
         self.assertContains(detail_response, 'Volver a delegaciones')
+
+    def test_delegation_dashboard_can_select_a_historical_period(self):
+        today = timezone.localdate()
+        historical_period = Period.objects.create(
+            start_date=today - timedelta(days=35),
+            end_date=today - timedelta(days=25),
+            computable_days=11,
+            status=False,
+            version_parameter='0',
+            minimum_threshold=0,
+            maximum_computable_days=11,
+            semaphore='SGR',
+        )
+        Goal.objects.create(
+            target_value=10,
+            weight=100,
+            unity='atenciones',
+            validity=True,
+            position=self.position,
+            period=historical_period,
+            measuring=self.measuring,
+        )
+        self.client.force_login(self.staff)
+
+        response = self.client.get(
+            reverse('dashboard_redirect'),
+            {'period': historical_period.pk},
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.context['period'], historical_period)
+        self.assertContains(
+            response,
+            f'value="{historical_period.pk}" selected',
+        )
+        self.assertContains(
+            response,
+            f'{reverse("dashboard_delegation_detail", args=[self.delegation.pk])}?period={historical_period.pk}',
+        )
+
+        detail_response = self.client.get(
+            reverse(
+                'dashboard_delegation_detail',
+                args=[self.delegation.pk],
+            ),
+            {'period': historical_period.pk},
+        )
+
+        self.assertEqual(detail_response.status_code, 200)
+        self.assertEqual(detail_response.context['period'], historical_period)
 
     def test_delegation_dashboard_orders_filters_and_paginates(self):
         larger_delegation = Delegation.objects.create(

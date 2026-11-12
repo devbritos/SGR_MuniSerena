@@ -452,7 +452,18 @@ class TrafficLightView(
             )
             context['delegation'] = delegation
 
-        period = Period.objects.filter(status=True).order_by('-start_date').first()
+        periods = Period.objects.filter(
+            deleted_at__isnull=True,
+        ).order_by('-start_date', '-pk')
+        requested_period = self.request.GET.get('period', '').strip()
+        if requested_period:
+            if not requested_period.isdecimal():
+                raise Http404
+            period = get_object_or_404(periods, pk=int(requested_period))
+        else:
+            period = periods.filter(status=True).first() or periods.first()
+        context['periods'] = periods
+        context['selected_period_id'] = period.pk if period else None
 
         if not period:
             context['error'] = "No hay un período de medición activo configurado."

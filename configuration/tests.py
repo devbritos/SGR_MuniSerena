@@ -1,3 +1,5 @@
+import uuid
+
 from django.test import TestCase
 from django.contrib.auth.models import User
 from django.urls import reverse
@@ -141,6 +143,7 @@ class GoalFormTests(TestCase):
         self.client.force_login(self.admin)
         self.position_one = Position.objects.create(name='Cargo uno')
         self.position_two = Position.objects.create(name='Cargo dos')
+        self.position_three = Position.objects.create(name='Cargo tres')
         self.measuring = Measuring.objects.create(
             code='META-01',
             service='Atención vecinal',
@@ -172,8 +175,76 @@ class GoalFormTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, 'Metas y ponderaciones por cargo')
         self.assertContains(response, 'Ítem de medición')
-        self.assertContains(response, 'Valor objetivo')
-        self.assertContains(response, 'Ponderación')
+        self.assertContains(response, 'Meta a alcanzar')
+        self.assertContains(response, 'Ponderación de la meta')
+        self.assertContains(response, 'Aporte al total del cargo')
+
+    def test_goal_card_groups_related_positions_and_keeps_them_when_searching(self):
+        group_id = uuid.uuid4()
+        for position in (self.position_one, self.position_two):
+            Goal.objects.create(
+                position=position,
+                measuring=self.measuring,
+                period=self.period,
+                weight=30,
+                validity=True,
+                target_value=120,
+                unity='atenciones',
+                group_id=group_id,
+            )
+
+        response = self.client.get(reverse('configuration:goal_list'))
+
+        self.assertEqual(response.status_code, 200)
+        cards = response.context['resumen']
+        self.assertEqual(len(cards), 1)
+        self.assertEqual(cards[0]['measuring'], self.measuring)
+        self.assertEqual(cards[0]['period'], self.period)
+        self.assertSetEqual(
+            {cargo['position'].pk for cargo in cards[0]['positions']},
+            {self.position_one.pk, self.position_two.pk},
+        )
+        self.assertContains(response, 'Cargos vinculados')
+
+        response = self.client.get(
+            reverse('configuration:goal_list'),
+            {'q': self.position_one.name},
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(len(response.context['resumen']), 1)
+        self.assertSetEqual(
+            {
+                cargo['position'].pk
+                for cargo in response.context['resumen'][0]['positions']
+            },
+            {self.position_one.pk, self.position_two.pk},
+        )
+
+    def test_goal_deactivation_applies_to_all_grouped_positions(self):
+        group_id = uuid.uuid4()
+        goals = [
+            Goal.objects.create(
+                position=position,
+                measuring=self.measuring,
+                period=self.period,
+                weight=30,
+                validity=True,
+                target_value=120,
+                unity='atenciones',
+                group_id=group_id,
+            )
+            for position in (self.position_one, self.position_two)
+        ]
+
+        response = self.client.post(
+            reverse('configuration:goal_deactivate', args=[goals[0].pk])
+        )
+
+        self.assertRedirects(response, reverse('configuration:goal_list'))
+        self.assertFalse(
+            Goal.objects.filter(group_id=group_id, validity=True).exists()
+        )
 
     def test_goal_form_renders_spanish_labels_and_updated_layout(self):
         response = self.client.get(reverse('configuration:goal_create'))
@@ -227,6 +298,103 @@ class GoalFormTests(TestCase):
             ),
             {self.position_one.pk, self.position_two.pk},
         )
+        group_ids = set(
+            Goal.objects.filter(
+                measuring=self.measuring,
+                period=self.period,
+            ).values_list('group_id', flat=True)
+        )
+        self.assertEqual(len(group_ids), 1)
+        self.assertIsNotNone(next(iter(group_ids)))
+
+    def test_goal_edit_restores_and_updates_all_grouped_positions(self):
+        group_id = uuid.uuid4()
+        goal_one = Goal.objects.create(
+            position=self.position_one,
+            measuring=self.measuring,
+            period=self.period,
+            weight=30,
+            validity=True,
+            target_value=120,
+            unity='atenciones',
+            group_id=group_id,
+        )
+        Goal.objects.create(
+            position=self.position_two,
+            measuring=self.measuring,
+            period=self.period,
+            weight=30,
+            validity=True,
+            target_value=120,
+            unity='atenciones',
+            group_id=group_id,
+        )
+
+        edit_url = reverse('configuration:goal_update', args=[goal_one.pk])
+        response = self.client.get(edit_url)
+
+        self.assertEqual(response.status_code, 200)
+        self.assertSetEqual(
+            {int(position_id) for position_id in response.context['form']['positions'].value()},
+            {self.position_one.pk, self.position_two.pk},
+        )
+
+        response = self.client.post(
+            edit_url,
+            {
+                'positions': [self.position_two.pk, self.position_three.pk],
+                'measuring': self.measuring.pk,
+                'period': self.period.pk,
+                'weight': '40',
+                'validity': 'on',
+                'target_value': '150',
+                'unity': 'atenciones',
+            },
+        )
+
+        self.assertRedirects(response, reverse('configuration:goal_list'))
+        grouped_goals = Goal.objects.filter(group_id=group_id)
+        self.assertSetEqual(
+            set(grouped_goals.values_list('position_id', flat=True)),
+            {self.position_two.pk, self.position_three.pk},
+        )
+        self.assertEqual(grouped_goals.count(), 2)
+        self.assertTrue(
+            all(
+                goal.weight == 40 and goal.target_value == 150
+                for goal in grouped_goals
+            )
+        )
+        goal_one.refresh_from_db()
+        self.assertFalse(goal_one.validity)
+        self.assertIsNotNone(goal_one.deleted_at)
+        self.assertIsNone(goal_one.group_id)
+
+        response = self.client.post(
+            reverse(
+                'configuration:goal_update',
+                args=[grouped_goals.get(position=self.position_two).pk],
+            ),
+            {
+                'positions': [self.position_one.pk, self.position_two.pk],
+                'measuring': self.measuring.pk,
+                'period': self.period.pk,
+                'weight': '40',
+                'validity': 'on',
+                'target_value': '150',
+                'unity': 'atenciones',
+            },
+        )
+
+        self.assertRedirects(response, reverse('configuration:goal_list'))
+        grouped_goals = Goal.objects.filter(group_id=group_id)
+        self.assertSetEqual(
+            set(grouped_goals.values_list('position_id', flat=True)),
+            {self.position_one.pk, self.position_two.pk},
+        )
+        goal_one.refresh_from_db()
+        self.assertIsNone(goal_one.deleted_at)
+        self.assertTrue(goal_one.validity)
 
     def test_goal_form_requires_at_least_one_position(self):
         response = self.client.post(

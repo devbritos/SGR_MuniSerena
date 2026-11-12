@@ -2,149 +2,246 @@
 
 {% block extra_head %}
 <style>
-    .traffic-light-indicator {
-        display: inline-block;
-        width: 1rem;
-        height: 1rem;
-        border-radius: 50%;
-        box-shadow: 0 .125rem .25rem rgba(0, 0, 0, .2);
-        vertical-align: middle;
+    .traffic-light-page { max-width: 1480px; }
+    .traffic-hero { position: relative; overflow: hidden; color: #fff; background: linear-gradient(115deg, #d51f25 0%, #ad0000 48%, #7a2021 100%); }
+    .traffic-hero::after { position: absolute; inset: 0; background: radial-gradient(circle at 85% 20%, rgba(255, 255, 255, .18), transparent 34%), linear-gradient(90deg, rgba(0, 0, 0, .12), transparent 65%); content: ""; pointer-events: none; }
+    .traffic-hero-content { position: relative; z-index: 1; }
+    .traffic-hero-icon { display: inline-flex; width: 3.25rem; height: 3.25rem; align-items: center; justify-content: center; border: 1px solid rgba(255, 255, 255, .35); border-radius: 1rem; background: rgba(255, 255, 255, .12); font-size: 1.5rem; }
+    .traffic-period-picker { border: 1px solid #ece8e6; border-radius: 1rem; background: linear-gradient(110deg, #fff, #fff8f8); box-shadow: 0 .4rem 1.2rem rgba(35, 38, 42, .05); }
+    .traffic-period-picker-icon { display: inline-flex; flex: 0 0 2.8rem; width: 2.8rem; height: 2.8rem; align-items: center; justify-content: center; border-radius: .85rem; background: #fff1f1; color: #ad0000; font-size: 1.2rem; }
+    .traffic-card { position: relative; height: 100%; overflow: hidden; border: 1px solid #e8e7e5; border-top: 4px solid #adb5bd; border-radius: 1rem; background: linear-gradient(145deg, #fff 25%, #f8f9fa); box-shadow: 0 .4rem 1.2rem rgba(35, 38, 42, .05); transition: transform .18s ease, box-shadow .18s ease; }
+    .traffic-card:hover { transform: translateY(-3px); box-shadow: 0 .9rem 1.8rem rgba(35, 38, 42, .1); }
+    .traffic-card--green { border-top-color: #198754; background: linear-gradient(145deg, #fff 25%, #eff8f2); }
+    .traffic-card--yellow { border-top-color: #d99a00; background: linear-gradient(145deg, #fff 25%, #fff8e6); }
+    .traffic-card--red { border-top-color: #dc3545; background: linear-gradient(145deg, #fff 25%, #fff1f1); }
+    .traffic-card--no_goal { border-top-color: #6c757d; }
+    .traffic-avatar { display: inline-flex; flex: 0 0 2.8rem; width: 2.8rem; height: 2.8rem; align-items: center; justify-content: center; border-radius: .9rem; background: #fff; color: #7a2021; font-weight: 800; box-shadow: inset 0 0 0 1px rgba(122, 32, 33, .1); }
+    .traffic-status { display: inline-flex; align-items: center; gap: .4rem; border-radius: 999px; padding: .35rem .65rem; font-size: .75rem; font-weight: 700; white-space: nowrap; }
+    .traffic-status--green { background: #d1e7dd; color: #0f5132; }
+    .traffic-status--yellow { background: #fff0c2; color: #664d03; }
+    .traffic-status--red { background: #f8d7da; color: #842029; }
+    .traffic-status--no_goal { background: #e9ecef; color: #495057; }
+    .traffic-light-indicator { display: inline-block; width: .55rem; height: .55rem; border-radius: 50%; box-shadow: 0 0 0 .15rem rgba(255, 255, 255, .6); vertical-align: middle; }
+    .traffic-light-indicator--green { background-color: #198754; }
+    .traffic-light-indicator--yellow { background-color: #e0a800; }
+    .traffic-light-indicator--red { background-color: #dc3545; }
+    .traffic-light-indicator--unavailable { background-color: #6c757d; }
+    .traffic-metric { border: 1px solid rgba(33, 37, 41, .07); border-radius: .8rem; background: rgba(255, 255, 255, .8); padding: .75rem; }
+    .traffic-metric-value { display: block; font-size: 1.35rem; font-weight: 800; line-height: 1.1; }
+    .traffic-progress { position: relative; height: .7rem; overflow: visible; border-radius: 999px; background: #e9ecef; }
+    .traffic-progress-bar { height: 100%; border-radius: inherit; transition: width .4s ease; }
+    .traffic-progress-marker { position: absolute; top: -.2rem; z-index: 1; width: .18rem; height: 1.1rem; border-radius: 1rem; background: #343a40; box-shadow: 0 0 0 2px #fff; transform: translateX(-50%); }
+    .traffic-period-card { border: 1px solid #ece8e6; border-radius: 1rem; background: #fff; }
+    .traffic-period-progress { height: .55rem; border-radius: 999px; background: #f0ecea; }
+    .traffic-empty { border: 1px dashed #d4d7da; border-radius: 1rem; background: #fff; }
+    @media (max-width: 767.98px) {
+        .traffic-hero { border-radius: 1rem !important; }
+        .traffic-hero-actions { width: 100%; }
+        .traffic-hero-actions .btn { flex: 1 1 auto; }
     }
-    .traffic-light-indicator--green { background-color: var(--bs-success); }
-    .traffic-light-indicator--yellow { background-color: var(--bs-warning); }
-    .traffic-light-indicator--red { background-color: var(--bs-danger); }
-    .traffic-light-indicator--unavailable { background-color: #adb5bd; }
+    @media (prefers-reduced-motion: reduce) {
+        .traffic-card, .traffic-progress-bar { transition: none; }
+    }
 </style>
 {% endblock %}
 
 {% block content %}
-<div class="container-fluid mt-4 px-4">
-    {% if delegation %}
-    <div class="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-4">
-        <h2 class="mb-0 text-dark fw-bold">
-            <i class="bi bi-stoplights text-primary"></i>
-            Semáforo · {{ delegation.name }}
-        </h2>
-        <a class="btn btn-outline-secondary" href="{% url 'dashboard_redirect' %}">
-            <i class="bi bi-arrow-left me-1" aria-hidden="true"></i>Volver a delegaciones
-        </a>
-    </div>
-    {% else %}
-    <h2 class="mb-4 text-dark fw-bold">
-        <i class="bi bi-stoplights text-primary"></i> Semáforo · Seguimiento de avance al día
-    </h2>
+<main class="container-fluid traffic-light-page py-4 px-3 px-lg-4">
+    <header class="traffic-hero rounded-4 p-4 p-lg-5 mb-4 shadow-sm">
+        <div class="traffic-hero-content d-flex flex-wrap align-items-center justify-content-between gap-4">
+            <div class="d-flex align-items-start gap-3">
+                <span class="traffic-hero-icon" aria-hidden="true"><i class="bi bi-stoplights"></i></span>
+                <div>
+                    <p class="small text-white-50 fw-semibold text-uppercase mb-2">
+                        Seguimiento de avance · Hoy {% now "d/m/Y" %}
+                    </p>
+                    <h1 class="h2 fw-bold mb-2">
+                        {% if delegation %}Semáforo · {{ delegation.name }}{% else %}Semáforo de avance{% endif %}
+                    </h1>
+                    <p class="mb-0 text-white-50">
+                        Compara el avance validado con el ritmo esperado del período.
+                    </p>
+                </div>
+            </div>
+            <div class="traffic-hero-actions">
+                <a class="btn btn-light text-danger fw-semibold" href="{% url 'dashboard_redirect' %}{% if delegation and period %}?period={{ period.pk }}{% endif %}">
+                    <i class="bi bi-arrow-left me-2" aria-hidden="true"></i>{% if delegation %}Volver a delegaciones{% else %}Volver al panel{% endif %}
+                </a>
+            </div>
+        </div>
+    </header>
+
+    {% if periods %}
+    <form method="get" class="traffic-period-picker d-flex flex-wrap align-items-end gap-3 p-3 p-lg-4 mb-4">
+        <span class="traffic-period-picker-icon align-self-center" aria-hidden="true"><i class="bi bi-calendar-range"></i></span>
+        <div class="flex-grow-1">
+            <label for="traffic-period-select" class="form-label fw-bold mb-1">Período de medición</label>
+            <select id="traffic-period-select" name="period" class="form-select form-select-lg">
+                {% for period_option in periods %}
+                <option value="{{ period_option.pk }}" {% if period_option.pk == period.pk %}selected{% endif %}>
+                    {{ period_option.start_date|date:"d/m/Y" }} al {{ period_option.end_date|date:"d/m/Y" }} · {% if period_option.status %}Vigente{% else %}Histórico{% endif %}
+                </option>
+                {% endfor %}
+            </select>
+            <div class="form-text">Elige un período para actualizar las metas y el avance mostrado.</div>
+        </div>
+        <button type="submit" class="btn btn-primary btn-lg px-4">Ver período</button>
+    </form>
     {% endif %}
 
     {% if unmatched_validated_activity_count %}
-    <div class="alert alert-warning d-flex align-items-start gap-2" role="alert">
+    <div class="alert alert-warning d-flex align-items-start gap-2 rounded-4 shadow-sm" role="alert">
         <i class="bi bi-exclamation-triangle-fill mt-1" aria-hidden="true"></i>
         <div>
             <strong>{{ unmatched_validated_activity_count }} actividad(es) validada(s) no se están contabilizando.</strong>
-            No coinciden con una meta activa del mismo cargo, ítem y período. Revisa
-            <strong>Administración → Metas y ponderaciones</strong> y confirma que
-            la meta corresponda al cargo y al ítem usados en las actividades.
+            No coinciden con una meta activa del mismo cargo, ítem y período.
+            {% if request.user.is_staff or request.user.is_superuser or request.user.functionary.is_admin %}
+                Revisa <strong>Administración → Metas y ponderaciones</strong> y confirma que la meta corresponda al cargo y al ítem usados.
+            {% else %}
+                Informa a administración para que revise la meta correspondiente a tu cargo e ítem.
+            {% endif %}
         </div>
     </div>
     {% endif %}
-    
-    <div class="row">
-        <!-- Tabla principal del semáforo -->
-        <div class="col-lg-8 mb-4">
-            <div class="card shadow-sm border-0">
-                <div class="card-body p-0 table-responsive">
-                    <table class="table table-hover align-middle mb-0">
-                        <thead class="table-dark">
-                            <tr>
-                                <th class="ps-4 py-3">Área / Cargo</th>
-                                <th class="py-3">Responsable</th>
-                                <th class="text-center py-3">Objetivo al día</th>
-                                <th class="text-center py-3">Avance logrado</th>
-                                <th class="text-center py-3">Estado</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {% for item in traffic_light_data %}
-                            <tr>
-                                <td class="ps-4 fw-semibold text-secondary">{{ item.functionary.position.name }}</td>
-                                <!-- Se corrige la llamada al nombre usando los campos de tu modelo -->
-                                <td>{{ item.functionary.names|default:"-" }} {{ item.functionary.lastnames|default:"" }}</td>
-                                <td class="text-center">{{ item.expected_percentage|floatformat:1 }}%</td>
-                                <td class="text-center fw-bold">
-                                    {% if item.has_active_goals %}
-                                        {{ item.achieved_percentage|floatformat:1 }}%
-                                    {% else %}
-                                        —
-                                    {% endif %}
-                                    {% if not item.has_active_goals %}
-                                    <small class="d-block text-muted fw-normal">Sin meta activa para este cargo</small>
-                                    {% elif not item.has_matched_activities %}
-                                    <small class="d-block text-muted fw-normal">Sin actividades validadas para sus metas</small>
-                                    {% endif %}
-                                </td>
-                                <td class="text-center">
-                                    {% if item.status == 'green' %}
-                                        <span class="traffic-light-indicator traffic-light-indicator--green" role="img" aria-label="{{ item.label }}" title="{{ item.label }}"><span class="visually-hidden">{{ item.label }}</span></span>
-                                    {% elif item.status == 'yellow' %}
-                                        <span class="traffic-light-indicator traffic-light-indicator--yellow" role="img" aria-label="{{ item.label }}" title="{{ item.label }}"><span class="visually-hidden">{{ item.label }}</span></span>
-                                    {% elif item.status == 'red' %}
-                                        <span class="traffic-light-indicator traffic-light-indicator--red" role="img" aria-label="{{ item.label }}" title="{{ item.label }}"><span class="visually-hidden">{{ item.label }}</span></span>
-                                    {% else %}
-                                        <span class="traffic-light-indicator traffic-light-indicator--unavailable" role="img" aria-label="{{ item.label }}" title="{{ item.label }}"><span class="visually-hidden">{{ item.label }}</span></span>
-                                    {% endif %}
-                                </td>
-                            </tr>
-                            {% empty %}
-                            <tr>
-                                <td colspan="5" class="text-center text-muted py-5">
-                                    <i class="bi bi-info-circle fs-3 d-block mb-2"></i>
-                                    No hay datos de funcionarios para este período.
-                                </td>
-                            </tr>
-                            {% endfor %}
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-        </div>
 
-        <!-- Cuadro resumen del período -->
-        <div class="col-lg-4">
-            <div class="card shadow-sm border-0">
-                <div class="card-header bg-white border-bottom-0 pt-4 pb-2">
-                    <h5 class="card-title fw-bold text-secondary mb-0">
-                        <i class="bi bi-calendar3"></i> Resumen del período
-                    </h5>
+    {% if period %}
+    <div class="row g-4">
+        <section class="col-12 col-xl-8" aria-labelledby="traffic-cards-title">
+            <div class="d-flex flex-wrap align-items-end justify-content-between gap-2 mb-3">
+                <div>
+                    <h2 id="traffic-cards-title" class="h5 fw-bold mb-1">Avance por funcionario</h2>
+                    <p class="small text-muted mb-0">{{ traffic_light_data|length }} seguimiento(s) en este período</p>
                 </div>
-                <div class="card-body pt-0">
-                    <ul class="list-group list-group-flush">
-                        <li class="list-group-item d-flex justify-content-between align-items-center px-0 py-3">
-                            <span class="text-muted">Fecha de hoy:</span>
-                            <span class="fw-semibold">{{ today|date:"d/m/Y" }}</span>
-                        </li>
-                        <li class="list-group-item d-flex justify-content-between align-items-center px-0 py-3">
-                            <span class="text-muted">Fecha de inicio:</span>
-                            <span class="fw-semibold">{{ period.start_date|date:"d/m/Y" }}</span>
-                        </li>
-                        <li class="list-group-item d-flex justify-content-between align-items-center px-0 py-3">
-                            <span class="text-muted">Fecha de término:</span>
-                            <span class="fw-semibold">{{ period.end_date|date:"d/m/Y" }}</span>
-                        </li>
-                        <li class="list-group-item d-flex justify-content-between align-items-center px-0 py-3">
-                            <span class="text-muted">Días totales:</span>
-                            <span class="fw-semibold">{{ total_days }}</span>
-                        </li>
-                        <li class="list-group-item d-flex justify-content-between align-items-center px-0 py-3">
-                            <span class="text-muted">Días de avance:</span>
-                            <span class="fw-semibold">{{ elapsed_days }}</span>
-                        </li>
-                        <li class="list-group-item d-flex justify-content-between align-items-center px-3 py-3 bg-light rounded border-0 mt-3 shadow-sm">
-                            <span class="fw-bold text-dark mb-0">% Diario esperado:</span>
-                            <span class="fw-bold text-primary fs-5 mb-0">{{ expected_percentage|floatformat:1 }}%</span>
-                        </li>
-                    </ul>
+                <div class="d-flex flex-wrap gap-2 small" aria-label="Leyenda del semáforo">
+                    <span class="traffic-status traffic-status--green"><span class="traffic-light-indicator traffic-light-indicator--green" aria-hidden="true"></span>En línea</span>
+                    <span class="traffic-status traffic-status--yellow"><span class="traffic-light-indicator traffic-light-indicator--yellow" aria-hidden="true"></span>Atención</span>
+                    <span class="traffic-status traffic-status--red"><span class="traffic-light-indicator traffic-light-indicator--red" aria-hidden="true"></span>Bajo lo esperado</span>
+                    <span class="traffic-status traffic-status--no_goal"><span class="traffic-light-indicator traffic-light-indicator--unavailable" aria-hidden="true"></span>Sin meta</span>
                 </div>
             </div>
-        </div>
+
+            <div class="row g-3">
+                {% for item in traffic_light_data %}
+                <div class="col-12 col-md-6">
+                    <article class="traffic-card traffic-card--{{ item.status }} p-3 p-lg-4">
+                        <div class="d-flex align-items-start justify-content-between gap-2 mb-3">
+                            <div class="d-flex align-items-center gap-3 min-w-0">
+                                <span class="traffic-avatar" aria-hidden="true">{{ item.functionary.names|slice:":1"|upper }}{{ item.functionary.lastnames|slice:":1"|upper }}</span>
+                                <div class="min-w-0">
+                                    <h3 class="h6 fw-bold mb-1 text-truncate">{{ item.functionary.full_name }}</h3>
+                                    <p class="small text-muted mb-0 text-truncate">{{ item.functionary.position.name }}{% if item.functionary.delegation %} · {{ item.functionary.delegation.name }}{% endif %}</p>
+                                </div>
+                            </div>
+                            <span class="traffic-status traffic-status--{{ item.status }}" aria-label="{{ item.label }}">
+                                {% if item.status == 'green' %}
+                                    <span class="traffic-light-indicator traffic-light-indicator--green" aria-hidden="true"></span>
+                                {% elif item.status == 'yellow' %}
+                                    <span class="traffic-light-indicator traffic-light-indicator--yellow" aria-hidden="true"></span>
+                                {% elif item.status == 'red' %}
+                                    <span class="traffic-light-indicator traffic-light-indicator--red" aria-hidden="true"></span>
+                                {% else %}
+                                    <span class="traffic-light-indicator traffic-light-indicator--unavailable" aria-hidden="true"></span>
+                                {% endif %}
+                                {{ item.label }}
+                            </span>
+                        </div>
+
+                        {% if item.has_active_goals %}
+                        <div class="row g-2 mb-3">
+                            <div class="col-6">
+                                <div class="traffic-metric h-100">
+                                    <span class="small text-muted d-block mb-1">Avance logrado</span>
+                                    <strong class="traffic-metric-value">{{ item.achieved_percentage|floatformat:1 }}%</strong>
+                                </div>
+                            </div>
+                            <div class="col-6">
+                                <div class="traffic-metric h-100">
+                                    <span class="small text-muted d-block mb-1">Objetivo al día</span>
+                                    <strong class="traffic-metric-value">{{ item.expected_percentage|floatformat:1 }}%</strong>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="d-flex justify-content-between small fw-semibold mb-2">
+                            <span>Avance validado</span>
+                            <span>{{ item.achieved_percentage|floatformat:1 }}%</span>
+                        </div>
+                        <div class="traffic-progress" role="progressbar" aria-label="Avance de {{ item.functionary.full_name }}" aria-valuenow="{{ item.achieved_percentage|floatformat:0 }}" aria-valuemin="0" aria-valuemax="100">
+                            <div class="traffic-progress-bar {% if item.status == 'green' %}bg-success{% elif item.status == 'yellow' %}bg-warning{% else %}bg-danger{% endif %}" style="width: {% if item.achieved_percentage > 100 %}100{% else %}{{ item.achieved_percentage|floatformat:1 }}{% endif %}%"></div>
+                            <span class="traffic-progress-marker" style="left: {{ item.expected_percentage|floatformat:1 }}%" title="Objetivo esperado {{ item.expected_percentage|floatformat:1 }}%" aria-hidden="true"></span>
+                        </div>
+                        <p class="small text-muted mt-2 mb-0"><i class="bi bi-grip-vertical me-1" aria-hidden="true"></i>La marca indica el objetivo esperado a la fecha.</p>
+                        {% if not item.has_matched_activities %}
+                        <p class="small text-muted border-top pt-3 mt-3 mb-0"><i class="bi bi-info-circle me-1" aria-hidden="true"></i>Sin actividades validadas para sus metas.</p>
+                        {% endif %}
+                        {% else %}
+                        <div class="traffic-empty text-center p-3">
+                            <i class="bi bi-clipboard2-x fs-4 text-secondary d-block mb-2" aria-hidden="true"></i>
+                            <strong class="d-block">Sin meta activa</strong>
+                            <span class="small text-muted">No hay objetivos configurados para este cargo en el período.</span>
+                        </div>
+                        {% endif %}
+                    </article>
+                </div>
+                {% empty %}
+                <div class="col-12">
+                    <div class="traffic-empty text-center p-5">
+                        <i class="bi bi-people fs-2 text-secondary d-block mb-2" aria-hidden="true"></i>
+                        <h3 class="h6 fw-bold">No hay funcionarios para mostrar</h3>
+                        <p class="text-muted mb-0">No se encontraron datos para este período o alcance.</p>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </section>
+
+        <aside class="col-12 col-xl-4" aria-labelledby="traffic-period-title">
+            <section class="traffic-period-card p-3 p-lg-4">
+                <div class="d-flex align-items-center gap-3 mb-3">
+                    <span class="traffic-hero-icon bg-danger-subtle text-danger border-0"><i class="bi bi-calendar-range" aria-hidden="true"></i></span>
+                    <div>
+                        <h2 id="traffic-period-title" class="h5 fw-bold mb-1">Resumen del período</h2>
+                        <p class="small text-muted mb-0">Ritmo esperado hasta hoy</p>
+                    </div>
+                </div>
+
+                <div class="rounded-4 bg-light text-center p-3 mb-3">
+                    <span class="small text-muted d-block">Objetivo esperado a la fecha</span>
+                    <strong class="display-5 fw-bold text-danger">{{ expected_percentage|floatformat:1 }}%</strong>
+                    <div class="progress traffic-period-progress mt-2" role="progressbar" aria-label="Porcentaje transcurrido del período" aria-valuenow="{{ expected_percentage|floatformat:0 }}" aria-valuemin="0" aria-valuemax="100">
+                        <div class="progress-bar bg-danger rounded-pill" style="width: {% if expected_percentage > 100 %}100{% else %}{{ expected_percentage|floatformat:1 }}{% endif %}%"></div>
+                    </div>
+                </div>
+
+                <dl class="row g-2 mb-0">
+                    <div class="col-6">
+                        <div class="traffic-metric h-100">
+                            <dt class="small text-muted fw-normal mb-1">Fecha de hoy</dt>
+                            <dd class="fw-bold mb-0">{{ today|date:"d/m/Y" }}</dd>
+                        </div>
+                    </div>
+                    <div class="col-6">
+                        <div class="traffic-metric h-100">
+                            <dt class="small text-muted fw-normal mb-1">Días transcurridos</dt>
+                            <dd class="fw-bold mb-0">{{ elapsed_days }} de {{ total_days }}</dd>
+                        </div>
+                    </div>
+                    <div class="col-12">
+                        <div class="traffic-metric">
+                            <dt class="small text-muted fw-normal mb-1">Vigencia</dt>
+                            <dd class="fw-bold mb-0">{{ period.start_date|date:"d/m/Y" }} <span class="text-muted fw-normal mx-1">al</span> {{ period.end_date|date:"d/m/Y" }}</dd>
+                        </div>
+                    </div>
+                </dl>
+                <p class="small text-muted mt-3 mb-0"><i class="bi bi-lightbulb me-1" aria-hidden="true"></i>El avance considera solo actividades validadas asociadas a metas activas.</p>
+            </section>
+        </aside>
     </div>
-</div>
+    {% else %}
+    <section class="traffic-empty text-center p-4 p-lg-5 shadow-sm" role="status">
+        <i class="bi bi-calendar-x fs-1 text-secondary d-block mb-3" aria-hidden="true"></i>
+        <h2 class="h5 fw-bold">No hay períodos disponibles</h2>
+        <p class="text-muted mb-0">El semáforo estará disponible cuando se configure un período de medición.</p>
+    </section>
+    {% endif %}
+</main>
 {% endblock %}

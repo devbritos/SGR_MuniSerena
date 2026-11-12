@@ -1,4 +1,5 @@
 from django import forms
+from django.db.models import Q
 
 from personal.models import Position
 
@@ -63,8 +64,8 @@ class GoalForm(forms.ModelForm):
         queryset=Position.objects.none(),
         label='Cargos responsables',
         help_text=(
-            'Selecciona uno o más cargos. Se creará una meta independiente '
-            'para cada cargo seleccionado.'
+            'Los cargos marcados comparten esta meta. En edición se cargan '
+            'automáticamente los cargos asociados.'
         ),
         widget=forms.CheckboxSelectMultiple(
             attrs={
@@ -144,13 +145,18 @@ class GoalForm(forms.ModelForm):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        positions = Position.objects.filter(
-            validity=True,
-            deleted_at__isnull=True,
-        ).order_by('name')
-        self.fields['positions'].queryset = positions
+        position_ids = []
         if self.instance.pk:
-            self.fields['positions'].initial = [self.instance.position_id]
+            grouped_goals = (
+                Goal.objects.filter(group_id=self.instance.group_id)
+                if self.instance.group_id
+                else Goal.objects.filter(pk=self.instance.pk)
+            )
+            position_ids = list(grouped_goals.values_list('position_id', flat=True))
+            self.fields['positions'].initial = position_ids
+        self.fields['positions'].queryset = Position.objects.filter(
+            Q(validity=True, deleted_at__isnull=True) | Q(pk__in=position_ids)
+        ).order_by('name')
         active_measuring = Measuring.objects.filter(
             validity=True,
             deleted_at__isnull=True,
@@ -174,12 +180,22 @@ class GoalForm(forms.ModelForm):
         if not positions or not measuring or not period or weight is None:
             return cleaned_data
 
+        if self.instance.pk:
+            grouped_goals = (
+                Goal.objects.filter(group_id=self.instance.group_id)
+                if self.instance.group_id
+                else Goal.objects.filter(pk=self.instance.pk)
+            )
+        else:
+            grouped_goals = Goal.objects.none()
+
         for position in positions:
             existing_goals = Goal.objects.filter(
                 position=position,
                 measuring=measuring,
                 period=period,
-            ).exclude(pk=self.instance.pk)
+                deleted_at__isnull=True,
+            ).exclude(pk__in=grouped_goals.values('pk'))
             if existing_goals.exists():
                 self.add_error(
                     'positions',
@@ -194,7 +210,8 @@ class GoalForm(forms.ModelForm):
                 Goal.objects.filter(
                     position=position,
                     period=period,
-                ).exclude(pk=self.instance.pk).values_list('weight', flat=True)
+                    deleted_at__isnull=True,
+                ).exclude(pk__in=grouped_goals.values('pk')).values_list('weight', flat=True)
             )
             if existing_weight + weight > 100:
                 self.add_error(

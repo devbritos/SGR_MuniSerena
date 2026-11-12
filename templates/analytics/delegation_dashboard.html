@@ -2,32 +2,94 @@
 
 {% block title %}Semáforo por delegación — SGR{% endblock %}
 
+{% block extra_head %}
+<style>
+    .delegation-dashboard { max-width: 1480px; }
+    .delegation-hero { position: relative; overflow: hidden; color: #fff; background: linear-gradient(115deg, #d51f25 0%, #ad0000 48%, #7a2021 100%); }
+    .delegation-hero::after { position: absolute; inset: 0; background: radial-gradient(circle at 85% 20%, rgba(255, 255, 255, .18), transparent 34%), linear-gradient(90deg, rgba(0, 0, 0, .12), transparent 65%); content: ""; pointer-events: none; }
+    .delegation-hero-content { position: relative; z-index: 1; }
+    .delegation-hero-icon { display: inline-flex; flex: 0 0 3.25rem; width: 3.25rem; height: 3.25rem; align-items: center; justify-content: center; border: 1px solid rgba(255, 255, 255, .35); border-radius: 1rem; background: rgba(255, 255, 255, .12); font-size: 1.5rem; }
+    .delegation-period-picker { border: 1px solid #ece8e6; border-radius: 1rem; background: linear-gradient(110deg, #fff, #fff8f8); box-shadow: 0 .4rem 1.2rem rgba(35, 38, 42, .05); }
+    .delegation-period-icon { display: inline-flex; width: 2.8rem; height: 2.8rem; align-items: center; justify-content: center; border-radius: .85rem; background: #fff1f1; color: #ad0000; font-size: 1.2rem; }
+    .delegation-filter { border: 1px solid #ece8e6; border-radius: 1rem; }
+    .delegation-card { position: relative; height: 100%; overflow: hidden; border: 1px solid #e8e7e5; border-top: 4px solid #adb5bd; border-radius: 1rem; background: linear-gradient(145deg, #fff 25%, #f8f9fa); box-shadow: 0 .4rem 1.2rem rgba(35, 38, 42, .05); transition: transform .18s ease, box-shadow .18s ease; }
+    .delegation-card:hover { transform: translateY(-3px); box-shadow: 0 .9rem 1.8rem rgba(35, 38, 42, .1); }
+    .delegation-card--green { border-top-color: #198754; background: linear-gradient(145deg, #fff 25%, #eff8f2); }
+    .delegation-card--yellow { border-top-color: #d99a00; background: linear-gradient(145deg, #fff 25%, #fff8e6); }
+    .delegation-card--red { border-top-color: #dc3545; background: linear-gradient(145deg, #fff 25%, #fff1f1); }
+    .delegation-card--no_goal { border-top-color: #6c757d; }
+    .delegation-card--no_period { border-top-color: #6c757d; }
+    .delegation-status { display: inline-flex; align-items: center; gap: .4rem; border-radius: 999px; padding: .35rem .65rem; font-size: .75rem; font-weight: 700; }
+    .delegation-status--green { background: #d1e7dd; color: #0f5132; }
+    .delegation-status--yellow { background: #fff0c2; color: #664d03; }
+    .delegation-status--red { background: #f8d7da; color: #842029; }
+    .delegation-status--no_goal, .delegation-status--no_period { background: #e9ecef; color: #495057; }
+    .delegation-icon { display: inline-flex; flex: 0 0 2.8rem; width: 2.8rem; height: 2.8rem; align-items: center; justify-content: center; border-radius: .9rem; background: rgba(255, 255, 255, .9); color: #7a2021; font-size: 1.2rem; box-shadow: inset 0 0 0 1px rgba(122, 32, 33, .1); }
+    .delegation-metric { border: 1px solid rgba(33, 37, 41, .07); border-radius: .8rem; background: rgba(255, 255, 255, .8); padding: .75rem; }
+    .delegation-progress { position: relative; height: .7rem; overflow: visible; border-radius: 999px; background: #e9ecef; }
+    .delegation-progress-bar { height: 100%; border-radius: inherit; }
+    .delegation-progress-marker { position: absolute; top: -.2rem; z-index: 1; width: .18rem; height: 1.1rem; border-radius: 1rem; background: #343a40; box-shadow: 0 0 0 2px #fff; transform: translateX(-50%); }
+    .delegation-empty { border: 1px dashed #d4d7da; border-radius: 1rem; background: rgba(255, 255, 255, .75); }
+    @media (max-width: 767.98px) { .delegation-hero { border-radius: 1rem !important; } }
+    @media (prefers-reduced-motion: reduce) { .delegation-card { transition: none; } }
+</style>
+{% endblock %}
+
 {% block content %}
-<main class="container-fluid py-4 px-3 px-lg-4">
-    <header class="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-4">
-        <div>
-            <p class="text-uppercase text-muted small fw-semibold mb-1">Tablero de control</p>
-            <h1 class="h2 fw-bold mb-1">Semáforo por delegación</h1>
-            {% if period %}
-            <p class="text-muted mb-0">
-                Resumen del período {{ period.start_date|date:"d/m/Y" }} al
-                {{ period.end_date|date:"d/m/Y" }}.
-            </p>
-            {% else %}
-            <p class="text-muted mb-0">No hay un período de medición activo configurado.</p>
-            {% endif %}
+<main class="container-fluid delegation-dashboard py-4 px-3 px-lg-4">
+    <header class="delegation-hero rounded-4 p-4 p-lg-5 mb-4 shadow-sm">
+        <div class="delegation-hero-content d-flex flex-wrap align-items-center justify-content-between gap-4">
+            <div class="d-flex align-items-start gap-3">
+                <span class="delegation-hero-icon" aria-hidden="true"><i class="bi bi-diagram-3"></i></span>
+                <div>
+                    <p class="small text-white-50 fw-semibold text-uppercase mb-2">Tablero de control · Avance institucional</p>
+                    <h1 class="h2 fw-bold mb-2">Semáforo por delegación</h1>
+                    {% if period %}
+                    <p class="mb-0 text-white-50">Revisa las metas y el avance ponderado de cada delegación.</p>
+                    {% else %}
+                    <p class="mb-0 text-white-50">No hay un período de medición activo configurado.</p>
+                    {% endif %}
+                </div>
+            </div>
         </div>
     </header>
 
+    {% if periods %}
+    <form method="get" class="delegation-period-picker card mb-4">
+        {% if search_query %}<input type="hidden" name="q" value="{{ search_query }}">{% endif %}
+        {% if functionary_filter %}<input type="hidden" name="funcionarios" value="{{ functionary_filter }}">{% endif %}
+        <div class="card-body d-flex flex-wrap align-items-end gap-3 p-3 p-lg-4">
+            <span class="delegation-period-icon align-self-center" aria-hidden="true"><i class="bi bi-calendar-range"></i></span>
+            <div class="flex-grow-1">
+                <label for="delegation-period-select" class="form-label fw-bold mb-1">Período de medición</label>
+                <select id="delegation-period-select" name="period" class="form-select form-select-lg">
+                    {% for period_option in periods %}
+                    <option value="{{ period_option.pk }}" {% if period_option.pk == period.pk %}selected{% endif %}>
+                        {{ period_option.start_date|date:"d/m/Y" }} al {{ period_option.end_date|date:"d/m/Y" }} · {% if period_option.status %}Vigente{% else %}Histórico{% endif %}
+                    </option>
+                    {% endfor %}
+                </select>
+                <div class="form-text">Elige un período para actualizar las metas y el avance.</div>
+            </div>
+            <div class="d-flex align-items-center gap-3">
+                <span class="small text-muted text-nowrap">Objetivo esperado: <strong>{{ expected_percentage|floatformat:1 }}%</strong></span>
+                <button type="submit" class="btn btn-primary px-4">Ver período</button>
+            </div>
+        </div>
+    </form>
+    {% endif %}
+
     {% if not period %}
-    <div class="alert alert-warning" role="alert">
-        Configura un período activo para calcular el rendimiento de las delegaciones.
+    <div class="alert alert-warning d-flex align-items-start gap-2 rounded-4 shadow-sm" role="alert">
+        <i class="bi bi-calendar-x mt-1" aria-hidden="true"></i>
+        <span>Configura un período activo para calcular el rendimiento de las delegaciones.</span>
     </div>
     {% endif %}
 
-    <form method="get" class="card border-0 shadow-sm mb-4" role="search">
+    <form method="get" class="delegation-filter card shadow-sm mb-4" role="search">
         <div class="card-body">
             <div class="row g-3 align-items-end">
+                {% if period %}<input type="hidden" name="period" value="{{ period.pk }}">{% endif %}
                 <div class="col-md-6">
                     <label for="delegation-search" class="form-label">Buscar delegación</label>
                     <input
@@ -57,46 +119,90 @@
         </div>
     </form>
 
-    <div class="row g-4">
+    <div class="d-flex flex-wrap justify-content-between align-items-end gap-2 mb-3">
+        <div>
+            <h2 class="h5 fw-bold mb-1">Delegaciones</h2>
+            <p class="small text-muted mb-0">{{ page_obj.paginator.count }} delegación(es) · Selecciona una tarjeta para ver el detalle.</p>
+        </div>
+        {% if period %}
+        <div class="d-flex flex-wrap gap-2 small" aria-label="Leyenda del semáforo">
+            <span class="delegation-status delegation-status--green">En línea</span>
+            <span class="delegation-status delegation-status--yellow">Atención</span>
+            <span class="delegation-status delegation-status--red">Bajo lo esperado</span>
+            <span class="delegation-status delegation-status--no_goal">Sin metas</span>
+        </div>
+        {% endif %}
+    </div>
+
+    <div class="row g-3">
         {% for summary in delegation_summaries %}
         <div class="col-sm-6 col-xl-4">
-            <section class="card h-100 border-0 shadow-sm">
-                <div class="card-body d-flex flex-column p-4">
-                    <div class="d-flex justify-content-between align-items-start gap-3 mb-3">
-                        <h2 class="h5 fw-bold mb-0">{{ summary.delegation.name }}</h2>
-                        <span class="badge text-bg-light border">
-                            {{ summary.functionary_count }} funcionario(s)
-                        </span>
+            <article class="delegation-card delegation-card--{{ summary.status }} p-3 p-lg-4">
+                <div class="d-flex align-items-start justify-content-between gap-3 mb-4">
+                    <div class="d-flex align-items-center gap-3 min-w-0">
+                        <span class="delegation-icon" aria-hidden="true"><i class="bi bi-building"></i></span>
+                        <div class="min-w-0">
+                            <h3 class="h5 fw-bold mb-1 text-truncate">{{ summary.delegation.name }}</h3>
+                            {% if summary.delegation.code %}<span class="small text-muted">{{ summary.delegation.code }}</span>{% endif %}
+                        </div>
                     </div>
-                    <p class="text-muted small mb-2">Promedio global de cumplimiento</p>
-                    <p class="display-6 fw-bold text-primary mb-2">
-                        {% if summary.average_percentage is not None %}
-                            {{ summary.average_percentage|floatformat:1 }}%
-                        {% else %}
-                            —
-                        {% endif %}
-                    </p>
-                    {% if period %}
-                    <p class="text-muted small mb-4">
-                        Promedio sobre {{ summary.measured_functionary_count }} funcionario(s)
-                        con metas activas.
-                    </p>
-                    {% else %}
-                    <p class="text-muted small mb-4">Sin período para calcular el promedio.</p>
-                    {% endif %}
-                    <a
-                        class="btn btn-primary mt-auto"
-                        href="{% url 'dashboard_delegation_detail' summary.delegation.pk %}"
-                    >
-                        Ver Funcionarios
-                    </a>
+                    <span class="delegation-status delegation-status--{{ summary.status }}">
+                        <i class="bi {% if summary.status == 'green' %}bi-check-circle-fill{% elif summary.status == 'yellow' %}bi-exclamation-circle-fill{% elif summary.status == 'red' %}bi-exclamation-triangle-fill{% else %}bi-dash-circle-fill{% endif %}" aria-hidden="true"></i>
+                        {{ summary.status_label }}
+                    </span>
                 </div>
-            </section>
+
+                <div class="row g-2 mb-3">
+                    <div class="col-6">
+                        <div class="delegation-metric h-100">
+                            <span class="small text-muted d-block mb-1">Avance promedio</span>
+                            <strong class="fs-3 fw-bold">
+                                {% if summary.average_percentage is not None %}{{ summary.average_percentage|floatformat:1 }}%{% else %}—{% endif %}
+                            </strong>
+                        </div>
+                    </div>
+                    <div class="col-6">
+                        <div class="delegation-metric h-100">
+                            <span class="small text-muted d-block mb-1">Funcionarios</span>
+                            <strong class="fs-3 fw-bold">{{ summary.functionary_count }}</strong>
+                            <span class="small text-muted d-block">{{ summary.measured_functionary_count }} con metas</span>
+                        </div>
+                    </div>
+                </div>
+
+                {% if period and summary.average_percentage is not None %}
+                <div class="d-flex justify-content-between small fw-semibold mb-2">
+                    <span>Avance ponderado</span>
+                    <span>{{ summary.average_percentage|floatformat:1 }}%</span>
+                </div>
+                <div class="delegation-progress mb-2" role="progressbar" aria-label="Avance promedio de {{ summary.delegation.name }}" aria-valuenow="{{ summary.average_percentage|floatformat:0 }}" aria-valuemin="0" aria-valuemax="100">
+                    <div class="delegation-progress-bar {% if summary.status == 'green' %}bg-success{% elif summary.status == 'yellow' %}bg-warning{% else %}bg-danger{% endif %}" style="width: {% if summary.average_percentage > 100 %}100{% else %}{{ summary.average_percentage|floatformat:1 }}{% endif %}%"></div>
+                    <span class="delegation-progress-marker" style="left: {{ expected_percentage|floatformat:1 }}%" title="Objetivo esperado {{ expected_percentage|floatformat:1 }}%" aria-hidden="true"></span>
+                </div>
+                <p class="small text-muted mb-4">La marca indica el objetivo esperado a la fecha ({{ expected_percentage|floatformat:1 }}%).</p>
+                {% elif period %}
+                <div class="delegation-empty text-center p-3 mb-4">
+                    <i class="bi bi-clipboard2-x text-secondary fs-4 d-block mb-2" aria-hidden="true"></i>
+                    <span class="small text-muted">Aún no hay metas activas para calcular el promedio.</span>
+                </div>
+                {% else %}
+                <div class="delegation-empty text-center p-3 mb-4">
+                    <i class="bi bi-calendar-x text-secondary fs-4 d-block mb-2" aria-hidden="true"></i>
+                    <span class="small text-muted">Sin período activo para calcular el avance.</span>
+                </div>
+                {% endif %}
+
+                <a class="btn btn-primary w-100" href="{% url 'dashboard_delegation_detail' summary.delegation.pk %}{% if period %}?period={{ period.pk }}{% endif %}">
+                    Ver funcionarios <i class="bi bi-arrow-up-right ms-1" aria-hidden="true"></i>
+                </a>
+            </article>
         </div>
         {% empty %}
         <div class="col-12">
-            <div class="alert alert-info mb-0" role="status">
-                No se encontraron delegaciones con esos filtros.
+            <div class="delegation-empty text-center p-5" role="status">
+                <i class="bi bi-search fs-2 text-secondary d-block mb-2" aria-hidden="true"></i>
+                <h3 class="h6 fw-bold">No se encontraron delegaciones</h3>
+                <p class="text-muted mb-0">Prueba con otros filtros de búsqueda.</p>
             </div>
         </div>
         {% endfor %}

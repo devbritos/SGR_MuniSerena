@@ -152,6 +152,25 @@ class FormAccessibilityTests(SimpleTestCase):
         self.assertIn('id="id_username_error"', rendered)
 
 
+class LoginPagePresentationTests(TestCase):
+    def test_login_centers_municipal_logo_without_promotional_copy(self):
+        response = self.client.get(reverse('login'))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'login-centered-logo')
+        self.assertContains(
+            response,
+            'alt="Logo de la Ilustre Municipalidad de La Serena"',
+        )
+        self.assertContains(response, 'Inicia sesión')
+        self.assertNotContains(response, 'Bienvenido/a')
+        self.assertNotContains(response, 'Gestión pública con resultados.')
+        self.assertNotContains(
+            response,
+            'Ingresa tus credenciales institucionales para continuar.',
+        )
+
+
 @override_settings(DEBUG=False)
 class ErrorPageTests(TestCase):
     def test_not_found_uses_custom_page_and_back_button(self):

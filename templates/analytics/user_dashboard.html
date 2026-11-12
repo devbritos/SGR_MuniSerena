@@ -5,30 +5,46 @@
 
 {% block extra_head %}
 <style>
-    .dashboard-wrap { max-width: 1400px; }
-    .dashboard-welcome { position: relative; min-height: 320px; overflow: hidden; color: #fff; background: linear-gradient(115deg, #d51f25 0%, #ad0000 48%, #7a2021 100%); }
+    .dashboard-wrap { max-width: 1480px; }
+    .dashboard-welcome { position: relative; min-height: 285px; overflow: hidden; color: #fff; background: linear-gradient(115deg, #d51f25 0%, #ad0000 48%, #7a2021 100%); }
     .dashboard-welcome::after { position: absolute; inset: 0; z-index: 0; background: linear-gradient(90deg, rgba(0, 0, 0, .08) 0%, rgba(0, 0, 0, .03) 42%, transparent 72%); content: ""; pointer-events: none; }
-    .dashboard-welcome-lighthouse { position: absolute; top: 50%; right: 0; z-index: 1; width: 61.5%; height: auto; object-fit: contain; object-position: right center; opacity: .9; filter: drop-shadow(0 0 1.5rem rgba(255, 255, 255, .2)) brightness(1.08); transform: translateY(-50%); pointer-events: none; }
-    .dashboard-welcome-content { position: relative; z-index: 2; max-width: 37%; }
+    .dashboard-welcome-lighthouse { position: absolute; inset: 0 0 0 auto; z-index: 1; width: 76%; height: 100%; object-fit: cover; object-position: right center; opacity: .9; mix-blend-mode: screen; -webkit-mask-image: linear-gradient(to right, transparent, #000 22%); mask-image: linear-gradient(to right, transparent, #000 22%); filter: drop-shadow(0 0 1.5rem rgba(255, 255, 255, .2)) brightness(1.08); pointer-events: none; }
+    .dashboard-welcome-content { position: relative; z-index: 2; max-width: 48%; }
     .dashboard-welcome-actions { margin-top: 1.5rem; }
-    .dashboard-stat { border: 1px solid #ece8e6; border-radius: 1rem; height: 100%; }
+    .dashboard-stat { border: 1px solid #ece8e6; border-radius: 1rem; height: 100%; transition: transform .18s ease, box-shadow .18s ease; }
+    .dashboard-stat--commitments { background: linear-gradient(145deg, #fff 25%, #fff8e9); }
+    .dashboard-stat--overdue { background: linear-gradient(145deg, #fff 25%, #fff1f0); }
+    .dashboard-stat--activities { background: linear-gradient(145deg, #fff 25%, #eff8f1); }
+    .dashboard-stat--attentions { background: linear-gradient(145deg, #fff 25%, #f5f1fa); }
+    .dashboard-stat:hover { transform: translateY(-2px); box-shadow: 0 .75rem 1.7rem rgba(40, 25, 25, .08); }
     .dashboard-stat-icon { width: 2.65rem; height: 2.65rem; display: inline-flex; align-items: center; justify-content: center; border-radius: .8rem; font-size: 1.15rem; }
     .dashboard-section { border: 1px solid #ece8e6; border-radius: 1rem; }
     .dashboard-section .card-header { background: #fff; border-bottom: 1px solid #f0ecea; }
     .dashboard-table > :not(caption) > * > * { padding: .8rem .75rem; vertical-align: middle; }
     .dashboard-table tbody tr:hover > * { background-color: #fff8f8; }
-    .goal-row + .goal-row { border-top: 1px solid #f0ecea; }
+    .dashboard-goal-card { margin: 1rem; border: 1px solid #ece8e6; border-radius: .85rem; background: linear-gradient(145deg, #fff 25%, #f5f6ff); }
     .goal-progress { height: .55rem; background: #f0ecea; }
+    .dashboard-shortcut { display: flex; align-items: center; gap: .75rem; min-height: 4.25rem; height: 100%; padding: .8rem 1rem; border: 1px solid #ece8e6; border-radius: .85rem; color: #343a40; text-decoration: none; transition: border-color .15s ease, box-shadow .15s ease, transform .15s ease; }
+    .dashboard-shortcut:nth-child(6n + 1) { background: #f5f6ff; }
+    .dashboard-shortcut:nth-child(6n + 2) { background: #f0f8fb; }
+    .dashboard-shortcut:nth-child(6n + 3) { background: #fff8eb; }
+    .dashboard-shortcut:nth-child(6n + 4) { background: #f1f8f2; }
+    .dashboard-shortcut:hover { border-color: #c98b8d; box-shadow: 0 .4rem 1rem rgba(40, 25, 25, .07); color: #7a2021; transform: translateY(-2px); }
+    .dashboard-shortcut:focus-visible { outline: 3px solid #005fcc; outline-offset: 3px; }
+    .dashboard-shortcut-icon { display: inline-flex; flex: 0 0 2.4rem; align-items: center; justify-content: center; width: 2.4rem; height: 2.4rem; border-radius: .75rem; background: #fff1f1; color: #ad0000; font-size: 1.1rem; }
+    .dashboard-priority { border: 1px solid #f0d7d7; border-left: .3rem solid #ad0000; border-radius: .85rem; background: #fff; }
+    .dashboard-priority--clear { border-color: #cce8d7; border-left-color: #198754; }
     @media (min-width: 768px) and (max-width: 991.98px) {
-        .dashboard-welcome-lighthouse { width: 54%; }
-        .dashboard-welcome-content { max-width: 45%; }
+        .dashboard-welcome-lighthouse { width: 70%; }
+        .dashboard-welcome-content { max-width: 54%; }
     }
     @media (max-width: 767.98px) {
         .dashboard-welcome { min-height: 0; }
         .dashboard-welcome::after { background: linear-gradient(90deg, rgba(0, 0, 0, .12), rgba(0, 0, 0, .05) 62%, transparent); }
         .dashboard-welcome-content { max-width: 100%; }
-        .dashboard-welcome-lighthouse { position: relative; display: block; top: auto; right: auto; bottom: auto; width: 112%; max-width: 112%; margin: 1.25rem -6% -0.5rem; opacity: .75; transform: none; }
+        .dashboard-welcome-lighthouse { position: static; display: block; inset: auto; width: 100%; max-width: 100%; height: auto; margin: 1.25rem 0 0; object-fit: contain; opacity: .75; -webkit-mask-image: none; mask-image: none; }
     }
+    @media (prefers-reduced-motion: reduce) { .dashboard-stat, .dashboard-shortcut { transition: none; } }
 </style>
 {% endblock %}
 
@@ -55,30 +71,85 @@
                 </a>
             </div>
         </div>
-        <img class="dashboard-welcome-lighthouse" src="{% static 'images/serena.png' %}" alt="" aria-hidden="true">
+        <img class="dashboard-welcome-lighthouse" src="{% static 'images/laserena.png' %}" alt="" aria-hidden="true">
     </header>
+
+    <section aria-labelledby="dashboard-shortcuts-title" class="mb-4">
+        <div class="d-flex flex-wrap justify-content-between align-items-end gap-2 mb-3">
+            <div>
+                <h2 id="dashboard-shortcuts-title" class="h5 fw-bold mb-1">Accesos rápidos</h2>
+                <p class="text-muted small mb-0">Llega a tus tareas más utilizadas en un clic.</p>
+            </div>
+            <span class="small text-muted"><i class="bi bi-keyboard me-1" aria-hidden="true"></i>También disponibles en el menú lateral</span>
+        </div>
+        <div class="row g-3">
+            <div class="col-6 col-md-4 col-xl-3">
+                <a class="dashboard-shortcut" href="{% url 'activities:traffic_light' %}">
+                    <span class="dashboard-shortcut-icon"><i class="bi bi-stoplights" aria-hidden="true"></i></span>
+                    <span class="fw-semibold">Mi semáforo</span>
+                    <i class="bi bi-arrow-up-right ms-auto text-muted" aria-hidden="true"></i>
+                </a>
+            </div>
+            <div class="col-6 col-md-4 col-xl-3">
+                <a class="dashboard-shortcut" href="{% url 'activities:activity_create' %}">
+                    <span class="dashboard-shortcut-icon"><i class="bi bi-clipboard-data" aria-hidden="true"></i></span>
+                    <span class="fw-semibold">Registrar actividad</span>
+                    <i class="bi bi-arrow-up-right ms-auto text-muted" aria-hidden="true"></i>
+                </a>
+            </div>
+            <div class="col-6 col-md-4 col-xl-3">
+                <a class="dashboard-shortcut" href="{% url 'agenda:commitment_list' %}">
+                    <span class="dashboard-shortcut-icon"><i class="bi bi-calendar2-check" aria-hidden="true"></i></span>
+                    <span class="fw-semibold">Compromisos</span>
+                    <i class="bi bi-arrow-up-right ms-auto text-muted" aria-hidden="true"></i>
+                </a>
+            </div>
+            <div class="col-6 col-md-4 col-xl-3">
+                <a class="dashboard-shortcut" href="{% url 'atenciones:attention_list' %}">
+                    <span class="dashboard-shortcut-icon"><i class="bi bi-chat-left-text" aria-hidden="true"></i></span>
+                    <span class="fw-semibold">Atenciones</span>
+                    <i class="bi bi-arrow-up-right ms-auto text-muted" aria-hidden="true"></i>
+                </a>
+            </div>
+        </div>
+    </section>
+
+    <section aria-labelledby="dashboard-priority-title" class="dashboard-priority {% if not compromisos_vencidos %}dashboard-priority--clear{% endif %} d-flex flex-wrap align-items-center justify-content-between gap-3 p-3 p-lg-4 mb-4">
+        <div class="d-flex align-items-center gap-3">
+            <span class="dashboard-stat-icon {% if compromisos_vencidos %}bg-warning-subtle text-warning-emphasis{% else %}bg-success-subtle text-success{% endif %}">
+                <i class="bi {% if compromisos_vencidos %}bi-bell{% else %}bi-check-lg{% endif %}" aria-hidden="true"></i>
+            </span>
+            <div>
+                <h2 id="dashboard-priority-title" class="h6 fw-bold mb-1">{% if compromisos_vencidos %}Compromisos que requieren atención{% else %}Todo al día{% endif %}</h2>
+                <p class="small text-muted mb-0">{% if compromisos_vencidos %}Tienes {{ compromisos_vencidos }} compromiso(s) vencido(s).{% else %}No tienes compromisos vencidos.{% endif %}</p>
+            </div>
+        </div>
+        {% if compromisos_vencidos %}
+        <a href="{% url 'agenda:commitment_list' %}" class="btn btn-outline-danger btn-sm">Revisar compromisos <i class="bi bi-arrow-right ms-1" aria-hidden="true"></i></a>
+        {% endif %}
+    </section>
 
     <section aria-label="Mis indicadores" class="row g-3 mb-4">
         <div class="col-6 col-xl">
-            <article class="dashboard-stat card p-3 p-lg-4">
+            <article class="dashboard-stat dashboard-stat--activities card p-3 p-lg-4">
                 <div class="d-flex justify-content-between align-items-start"><div><p class="small fw-semibold text-muted mb-2">Actividades este mes</p><p class="h2 fw-bold mb-0">{{ actividades_mes }}</p></div><span class="dashboard-stat-icon bg-success-subtle text-success"><i class="bi bi-list-check" aria-hidden="true"></i></span></div>
                 <a href="{% url 'activities:activity_list' %}" class="small text-decoration-none mt-3">Mis actividades <i class="bi bi-arrow-right" aria-hidden="true"></i></a>
             </article>
         </div>
         <div class="col-6 col-xl">
-            <article class="dashboard-stat card p-3 p-lg-4">
+            <article class="dashboard-stat dashboard-stat--commitments card p-3 p-lg-4">
                 <div class="d-flex justify-content-between align-items-start"><div><p class="small fw-semibold text-muted mb-2">Por validar</p><p class="h2 fw-bold mb-0">{{ actividades_por_validar }}</p></div><span class="dashboard-stat-icon bg-warning-subtle text-warning-emphasis"><i class="bi bi-hourglass-split" aria-hidden="true"></i></span></div>
                 <span class="small text-muted mt-3">Actividades pendientes</span>
             </article>
         </div>
         <div class="col-6 col-xl">
-            <article class="dashboard-stat card p-3 p-lg-4">
+            <article class="dashboard-stat dashboard-stat--overdue card p-3 p-lg-4">
                 <div class="d-flex justify-content-between align-items-start"><div><p class="small fw-semibold text-muted mb-2">Compromisos abiertos</p><p class="h2 fw-bold mb-0">{{ compromisos_abiertos }}</p></div><span class="dashboard-stat-icon bg-primary-subtle text-primary"><i class="bi bi-calendar2-check" aria-hidden="true"></i></span></div>
                 <a href="{% url 'agenda:commitment_list' %}" class="small text-decoration-none mt-3">Ver compromisos <i class="bi bi-arrow-right" aria-hidden="true"></i></a>
             </article>
         </div>
         <div class="col-6 col-xl">
-            <article class="dashboard-stat card p-3 p-lg-4">
+            <article class="dashboard-stat dashboard-stat--attentions card p-3 p-lg-4">
                 <div class="d-flex justify-content-between align-items-start"><div><p class="small fw-semibold text-muted mb-2">Compromisos vencidos</p><p class="h2 fw-bold mb-0 {% if compromisos_vencidos %}text-danger{% endif %}">{{ compromisos_vencidos }}</p></div><span class="dashboard-stat-icon {% if compromisos_vencidos %}bg-danger-subtle text-danger{% else %}bg-success-subtle text-success{% endif %}"><i class="bi bi-alarm" aria-hidden="true"></i></span></div>
                 <span class="small text-muted mt-3">Requieren seguimiento</span>
             </article>
@@ -102,7 +173,7 @@
                     {% if indicador.items %}
                     <div class="card-body p-0">
                         {% for item in indicador.items %}
-                        <div class="goal-row p-3 p-lg-4">
+                        <div class="dashboard-goal-card p-3 p-lg-4">
                             <div class="d-flex flex-column flex-sm-row justify-content-between gap-2 mb-2">
                                 <div><div class="fw-semibold">{{ item.measuring.service }}</div><small class="text-muted">{{ item.avance }} de {{ item.meta }} {{ item.measuring.measurable_item }}</small></div>
                                 <div class="text-sm-end">

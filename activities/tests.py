@@ -67,6 +67,43 @@ class StaffEvidenceAccessTests(TestCase):
         )
         self.client.force_login(self.staff_user)
 
+    def test_new_activity_defaults_registration_date_to_chile_today(self):
+        self.client.force_login(self.owner_user)
+
+        response = self.client.get(reverse('activities:activity_create'))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(
+            response,
+            f'value="{timezone.localdate().isoformat()}"',
+        )
+        self.assertRegex(
+            response.content.decode(),
+            r'<input[^>]*type="date"[^>]*disabled',
+        )
+
+    def test_new_activity_ignores_a_submitted_past_registration_date(self):
+        self.client.force_login(self.owner_user)
+        payload = {
+            'date': (timezone.localdate() - timedelta(days=1)).isoformat(),
+            'measuring': self.activity.measuring_id,
+            'application': 'Solicitud registrada hoy',
+            'taken_action': 'Gestión realizada',
+            'quantity': 1,
+            'name_contact': 'Contacto',
+            'telephone_contact': '12345678',
+            'submission_key': 'ab69c50d-37a0-4795-9d99-a29937f2b021',
+        }
+
+        response = self.client.post(
+            reverse('activities:activity_create'),
+            payload,
+        )
+
+        self.assertEqual(response.status_code, 302)
+        activity = Activity.objects.get(application='Solicitud registrada hoy')
+        self.assertEqual(activity.date, timezone.localdate())
+
     def test_staff_can_view_other_users_activities_and_evidences(self):
         activities_response = self.client.get(reverse('activities:activity_list'))
         evidences_response = self.client.get(reverse('activities:evidence_list'))
@@ -459,6 +496,52 @@ class ActivityValidationAndTrafficLightTests(TestCase):
             ],
             [self.functionary.pk],
         )
+        self.assertContains(response, 'traffic-card--red')
+        self.assertContains(response, 'traffic-progress-marker')
+        self.assertContains(response, 'Objetivo esperado a la fecha')
+
+    def test_traffic_light_can_select_a_historical_period(self):
+        today = timezone.localdate()
+        historical_period = Period.objects.create(
+            start_date=today - timedelta(days=35),
+            end_date=today - timedelta(days=25),
+            computable_days=11,
+            status=False,
+            version_parameter='0',
+            minimum_threshold=0,
+            maximum_computable_days=11,
+            semaphore='SGR',
+        )
+        Goal.objects.create(
+            target_value=10,
+            weight=100,
+            unity='atenciones',
+            validity=True,
+            position=self.position,
+            period=historical_period,
+            measuring=self.measuring,
+        )
+        self.client.force_login(self.functionary_user)
+
+        response = self.client.get(
+            reverse('activities:traffic_light'),
+            {'period': historical_period.pk},
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.context['period'], historical_period)
+        self.assertContains(response, 'Período de medición')
+        self.assertContains(response, 'Histórico')
+
+    def test_traffic_light_shows_empty_state_without_available_periods(self):
+        self.period.deleted_at = timezone.now()
+        self.period.save(update_fields=['deleted_at'])
+        self.client.force_login(self.functionary_user)
+
+        response = self.client.get(reverse('activities:traffic_light'))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'No hay períodos disponibles')
 
     def test_traffic_light_warns_when_validated_activity_has_no_matching_goal(self):
         Evidence.objects.create(

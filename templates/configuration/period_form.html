@@ -35,27 +35,4 @@
         </div>
     </section>
 </main>
-<script>
-    const startDateInput = document.getElementById('id_start_date');
-    const endDateInput = document.getElementById('id_end_date');
-    const maximumDaysInput = document.getElementById('id_maximum_computable_days');
-
-    function updateMaximumComputableDays() {
-        const startDate = startDateInput.value;
-        const endDate = endDateInput.value;
-
-        if (!startDate || !endDate || endDate < startDate) {
-            maximumDaysInput.value = '';
-            return;
-        }
-
-        const start = new Date(`${startDate}T00:00:00Z`);
-        const end = new Date(`${endDate}T00:00:00Z`);
-        maximumDaysInput.value = String((end - start) / 86400000 + 1);
-    }
-
-    startDateInput.addEventListener('change', updateMaximumComputableDays);
-    endDateInput.addEventListener('change', updateMaximumComputableDays);
-    updateMaximumComputableDays();
-</script>
 {% endblock content %}

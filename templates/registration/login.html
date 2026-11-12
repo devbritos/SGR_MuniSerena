@@ -323,47 +323,97 @@
             transform: none;
         }
     }
+
+    .login-shell {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        min-height: 100vh;
+        padding: 1.5rem;
+        background: #f4f6f8;
+    }
+
+    .login-brand-panel {
+        display: none;
+    }
+
+    .login-form-panel {
+        width: 100%;
+        min-height: 100vh;
+        padding: 1.5rem;
+        background: transparent;
+    }
+
+    .login-form-card {
+        width: min(100%, 27rem);
+        padding: clamp(1.75rem, 5vw, 2.5rem);
+        border: 1px solid #e9ecef;
+        border-radius: 1rem;
+        background: #fff;
+        box-shadow: 0 1rem 2.5rem rgba(32, 37, 43, 0.08);
+    }
+
+    .login-centered-logo {
+        display: flex;
+        justify-content: center;
+        margin-bottom: 1.75rem;
+    }
+
+    .login-centered-logo-surface {
+        display: flex;
+        width: min(100%, 18rem);
+        min-height: 4.5rem;
+        align-items: center;
+        justify-content: center;
+        padding: 0.6rem 1rem;
+        border-radius: 0.85rem;
+        background: #AD0000;
+        box-shadow: 0 0.5rem 1.2rem rgba(173, 0, 0, 0.16);
+    }
+
+    .login-centered-logo img {
+        display: block;
+        width: 100%;
+        max-height: 4rem;
+        object-fit: contain;
+    }
+
+    .login-form-card > .login-eyebrow,
+    .login-form-intro,
+    .login-mobile-brand {
+        display: none !important;
+    }
+
+    .login-form-heading {
+        margin-bottom: 1.5rem;
+        text-align: center;
+    }
+
+    @media (max-width: 700px) {
+        .login-shell {
+            display: flex;
+            padding: 1rem;
+        }
+
+        .login-form-panel {
+            min-height: 100vh;
+            padding: 1rem 0;
+        }
+    }
 </style>
 {% endblock %}
 
 {% block content %}
 <main class="login-shell">
-    <section class="login-brand-panel" aria-label="Sistema de Gestión de Resultados">
-        <div class="login-brand-content">
-            <img
-                src="{% static 'images/faroletras.png' %}"
-                alt="Municipalidad de La Serena"
-                class="login-brand-logo"
-            >
-            <p class="login-eyebrow">Municipalidad de La Serena</p>
-            <h1 class="login-brand-title">Gestión pública con resultados.</h1>
-            <p class="login-brand-description">
-                Accede al Sistema de Gestión de Resultados para dar seguimiento
-                a la planificación y el trabajo de los equipos municipales.
-            </p>
-            <ul class="login-benefits">
-                <li><i class="bi bi-bar-chart-line" aria-hidden="true"></i> Seguimiento de metas y actividades</li>
-                <li><i class="bi bi-people" aria-hidden="true"></i> Información organizada por equipos</li>
-                <li><i class="bi bi-shield-check" aria-hidden="true"></i> Acceso según tu perfil autorizado</li>
-            </ul>
-        </div>
-        <p class="login-brand-footer mb-0">
-            Sistema de Gestión de Resultados · Municipalidad de La Serena
-        </p>
-    </section>
-
     <section class="login-form-panel" aria-labelledby="login-heading">
         <div class="login-form-card">
-            <div class="login-mobile-brand">
-                <img src="{% static 'images/faroletras.png' %}" alt="" aria-hidden="true">
-                <span>SGR · La Serena</span>
+            <div class="login-centered-logo">
+                <div class="login-centered-logo-surface">
+                    <img src="{% static 'images/faroletras.png' %}" alt="Logo de la Ilustre Municipalidad de La Serena">
+                </div>
             </div>
 
-            <p class="login-eyebrow text-danger">Bienvenido/a</p>
-            <h2 id="login-heading" class="login-form-heading">Inicia sesión</h2>
-            <p class="login-form-intro">
-                Ingresa tus credenciales institucionales para continuar.
-            </p>
+            <h1 id="login-heading" class="login-form-heading">Inicia sesión</h1>
 
             {% if form.errors %}
             <div class="alert alert-danger d-flex align-items-start gap-2" role="alert">
