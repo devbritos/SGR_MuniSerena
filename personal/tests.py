@@ -138,7 +138,7 @@ class DelegationFormTests(TestCase):
     def test_form_rejects_case_insensitive_duplicate_names_and_codes(self):
         Delegation.objects.create(
             name='Delegación Central',
-            code='DEL-CENTRAL',
+            code='ABC1',
             address='Calle Uno 1',
             commune='Centro',
             state='ACTIVO',
@@ -151,7 +151,7 @@ class DelegationFormTests(TestCase):
             with self.subTest(field=field):
                 data = {
                     'name': 'Delegación Nueva',
-                    'code': 'DEL-NUEVA',
+                    'code': 'NUE1',
                     'address': 'Calle Dos 2',
                     'commune': 'Norte',
                     'state': 'ACTIVO',
@@ -162,6 +162,34 @@ class DelegationFormTests(TestCase):
 
                 self.assertFalse(form.is_valid())
                 self.assertIn(field, form.errors)
+
+    def test_form_accepts_three_letters_and_number_and_normalizes_case(self):
+        form = DelegationForm(data={
+            'name': 'Delegación Nueva',
+            'code': 'abc12',
+            'address': 'Calle Dos 2',
+            'commune': 'Norte',
+            'state': 'ACTIVO',
+            'field': 'RURAL',
+        })
+
+        self.assertTrue(form.is_valid(), form.errors)
+        self.assertEqual(form.cleaned_data['code'], 'ABC12')
+
+    def test_form_rejects_codes_without_three_letters_followed_by_numbers(self):
+        for code in ('AB1', 'ABCD1', 'ABC-', '12AB', 'ABC12X'):
+            with self.subTest(code=code):
+                form = DelegationForm(data={
+                    'name': 'Delegación Nueva',
+                    'code': code,
+                    'address': 'Calle Dos 2',
+                    'commune': 'Norte',
+                    'state': 'ACTIVO',
+                    'field': 'RURAL',
+                })
+
+                self.assertFalse(form.is_valid())
+                self.assertIn('code', form.errors)
 
     def test_form_rejects_missing_required_fields(self):
         form = DelegationForm(data={
@@ -429,8 +457,19 @@ class FunctionaryFormViewTests(TestCase):
         self.assertContains(response, 'Identificación')
         self.assertContains(response, 'Ubicación')
         self.assertContains(response, 'Configuración')
+        self.assertContains(response, 'id="navbarThemeToggle"')
         self.assertNotContains(response, '>State<')
         self.assertNotContains(response, '>Field<')
+
+    def test_navbar_highlights_the_logged_in_functionarys_delegation(self):
+        self.functionary.user = self.admin
+        self.functionary.save()
+
+        response = self.client.get(reverse('personal:delegation_create'))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'class="active-delegation-details"')
+        self.assertContains(response, 'Delegación activa')
 
     def test_create_form_is_presented_in_spanish(self):
         response = self.client.get(reverse('personal:functionary_create'))
@@ -500,7 +539,7 @@ class DelegationCRUDViewTests(TestCase):
     def _form_data(**overrides):
         data = {
             'name': 'Delegación Nueva',
-            'code': 'DEL-NUE',
+            'code': 'NUE1',
             'address': 'Calle Nueva 20',
             'commune': 'Norte',
             'state': 'ACTIVO',
@@ -516,7 +555,7 @@ class DelegationCRUDViewTests(TestCase):
             self._form_data(),
         )
         self.assertRedirects(create_response, list_url)
-        delegation = Delegation.objects.get(code='DEL-NUE')
+        delegation = Delegation.objects.get(code='NUE1')
 
         detail_response = self.client.get(
             reverse('personal:delegation_detail', args=[delegation.pk])
@@ -528,7 +567,7 @@ class DelegationCRUDViewTests(TestCase):
             reverse('personal:delegation_update', args=[delegation.pk]),
             self._form_data(
                 name='Delegación Actualizada',
-                code='DEL-ACT',
+                code='ACT1',
             ),
         )
         self.assertRedirects(update_response, list_url)
@@ -557,14 +596,14 @@ class DelegationCRUDViewTests(TestCase):
             reverse('personal:delegation_create'),
             self._form_data(
                 name='Delegación Inicial',
-                code='DEL-NUE',
+                code='NUE1',
             ),
         )
 
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, 'Ya existe una delegación con ese nombre')
-        self.assertContains(response, 'DEL-NUE')
-        self.assertFalse(Delegation.objects.filter(code='DEL-NUE').exists())
+        self.assertContains(response, 'NUE1')
+        self.assertFalse(Delegation.objects.filter(code='NUE1').exists())
 
     def test_delegation_archive_is_blocked_while_active_functionaries_remain(self):
         position = Position.objects.create(name='Cargo activo')

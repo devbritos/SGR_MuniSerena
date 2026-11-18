@@ -3,24 +3,126 @@
 
 {% block title %}Delegaciones — SGR{% endblock %}
 
+{% block extra_head %}
+<style>
+    .delegation-list-page {
+        max-width: 1440px;
+        margin: 0 auto;
+    }
+    .delegation-list-heading {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+    }
+    .delegation-list-icon {
+        display: grid;
+        width: 3.25rem;
+        height: 3.25rem;
+        flex: 0 0 3.25rem;
+        place-items: center;
+        border-radius: 1rem;
+        background: #fff0f0;
+        color: #8a0000;
+        font-size: 1.4rem;
+    }
+    .delegation-filter-card,
+    .delegation-table-card {
+        border: 1px solid #e8ebee;
+        border-radius: 0.9rem;
+        background: #fff;
+        box-shadow: 0 0.45rem 1.3rem rgba(35, 25, 25, 0.045);
+    }
+    .delegation-filter-card {
+        padding: 1rem;
+    }
+    .delegation-filter-card .form-label {
+        color: #343a40;
+    }
+    .delegation-filter-actions {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: flex-end;
+        gap: 0.5rem;
+    }
+    .delegation-code-badge {
+        display: inline-block;
+        padding: 0.3rem 0.55rem;
+        border: 1px solid #ead3d3;
+        border-radius: 0.45rem;
+        background: #fff5f5;
+        color: #7a2021;
+        font-size: 0.8rem;
+        font-weight: 700;
+        letter-spacing: 0.035em;
+    }
+    .delegation-name-link {
+        color: #343a40;
+        font-weight: 700;
+        text-decoration: none;
+    }
+    .delegation-name-link:hover {
+        color: #8a0000;
+        text-decoration: underline;
+        text-underline-offset: 0.15rem;
+    }
+    .delegation-table-card .table > :not(caption) > * > * {
+        padding-top: 0.85rem;
+        padding-bottom: 0.85rem;
+    }
+    .delegation-table-card thead th {
+        border-bottom: 0;
+        color: #fff;
+        font-size: 0.78rem;
+        font-weight: 700;
+        letter-spacing: 0.035em;
+        text-transform: uppercase;
+        white-space: nowrap;
+    }
+    .delegation-table-header {
+        background: #292524;
+    }
+    @media (max-width: 575.98px) {
+        .delegation-list-heading {
+            align-items: flex-start;
+        }
+        .delegation-list-icon {
+            width: 2.8rem;
+            height: 2.8rem;
+            flex-basis: 2.8rem;
+            border-radius: 0.85rem;
+        }
+        .delegation-filter-card {
+            padding: 0.8rem;
+        }
+    }
+</style>
+{% endblock %}
+
 {% block content %}
-<div class="d-flex justify-content-between align-items-center mb-4">
+<main class="delegation-list-page">
+<div class="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-4">
     <div>
-        <h1 class="h3 fw-bold mb-1"><i class="bi bi-geo-alt-fill text-primary me-2"></i>Delegaciones</h1>
-        <p class="text-muted mb-0">Administración de delegaciones municipales</p>
+        <div class="delegation-list-heading">
+            <div class="delegation-list-icon" aria-hidden="true"><i class="bi bi-geo-alt-fill"></i></div>
+            <div>
+                <h1 class="h3 fw-bold mb-1">Delegaciones</h1>
+                <p class="text-muted mb-0">Administra las delegaciones municipales y sus datos territoriales.</p>
+            </div>
+        </div>
     </div>
     {% if perms.personal.add_delegation or user.is_superuser or user.functionary.is_admin %}
-    <a href="{% url 'personal:delegation_create' %}" class="btn btn-primary">
+    <a href="{% url 'personal:delegation_create' %}" class="btn btn-primary px-3">
         <i class="bi bi-plus-lg me-1"></i>Nueva delegación
     </a>
     {% endif %}
 </div>
 
-<form method="get" class="row g-2 mb-3">
+<form method="get" class="delegation-filter-card mb-3">
     {% if showing_all %}<input type="hidden" name="all" value="1">{% endif %}
     {% if request.GET.sort %}<input type="hidden" name="sort" value="{{ request.GET.sort }}">{% endif %}
     {% if request.GET.per_page %}<input type="hidden" name="per_page" value="{{ request.GET.per_page }}">{% endif %}
-    <div class="col-md-5">
+    <div class="row g-3 align-items-end">
+    <div class="col-md-4">
         <label class="form-label small fw-semibold" for="delegation-search">Buscar delegaciones</label>
         <input id="delegation-search" class="form-control" type="search" name="q" value="{{ search_query }}" placeholder="Código, nombre, dirección o comuna">
     </div>
@@ -40,9 +142,12 @@
             <option value="RURAL" {% if selected_field == 'RURAL' %}selected{% endif %}>Rural</option>
         </select>
     </div>
-    <div class="col-auto"><button class="btn btn-outline-secondary" type="submit"><i class="bi bi-search" aria-hidden="true"></i> Buscar y filtrar</button></div>
-    <div class="col-auto"><a class="btn btn-outline-secondary" href="{{ request.path }}?clear=1"><i class="bi bi-x-circle" aria-hidden="true"></i> Limpiar</a></div>
-    <div class="col-auto"><a class="btn btn-outline-success" href="{{ request.path }}?{{ query_params }}{% if query_params %}&{% endif %}export=xlsx"><i class="bi bi-file-earmark-excel" aria-hidden="true"></i> Exportar a Excel</a></div>
+    <div class="col-md-4 delegation-filter-actions">
+        <button class="btn btn-outline-secondary" type="submit"><i class="bi bi-search me-1" aria-hidden="true"></i>Buscar</button>
+        <a class="btn btn-outline-secondary" href="{{ request.path }}?clear=1"><i class="bi bi-x-circle me-1" aria-hidden="true"></i>Limpiar</a>
+        <a class="btn btn-outline-success" href="{{ request.path }}?{{ query_params }}{% if query_params %}&{% endif %}export=xlsx"><i class="bi bi-file-earmark-excel me-1" aria-hidden="true"></i>Excel</a>
+    </div>
+    </div>
 </form>
 {% include "_list_sort_controls.html" %}
 
@@ -54,18 +159,18 @@
     {% endif %}
 </div>
 
-<div class="card border-0 shadow-sm">
+<div class="delegation-table-card">
     <div class="card-body p-0 table-responsive">
         <table class="table table-hover align-middle mb-0" data-list-modal-table>
-            <thead class="table-dark">
+            <thead class="delegation-table-header">
                 <tr><th class="ps-3">Código</th><th>Nombre</th><th>Dirección</th><th>Comuna</th><th>Estado</th><th>Ámbito</th><th class="text-end pe-3">Acciones</th></tr>
             </thead>
             <tbody>
                 {% for delegation in object_list %}
                 <tr>
-                    <td class="ps-3">{{ delegation.code|default:"—" }}</td>
-                    <td class="fw-semibold"><a href="{% url 'personal:delegation_detail' delegation.pk %}">{{ delegation.name }}</a></td>
-                    <td>{{ delegation.address|default:"—" }}</td>
+                    <td class="ps-3"><span class="delegation-code-badge">{{ delegation.code|default:"—" }}</span></td>
+                    <td><a class="delegation-name-link" href="{% url 'personal:delegation_detail' delegation.pk %}">{{ delegation.name }}</a></td>
+                    <td class="text-muted">{{ delegation.address|default:"—" }}</td>
                     <td>{{ delegation.commune|default:"—" }}</td>
                     <td>
                         {% if delegation.deleted_at %}
@@ -98,4 +203,5 @@
     </div>
 </div>
 {% include "_pagination.html" %}
+</main>
 {% endblock %}

@@ -141,7 +141,7 @@ class DelegationForm(forms.ModelForm):
             'field': 'Ámbito territorial',
         }
         help_texts = {
-            'code': 'Identificador único para reconocer esta delegación.',
+            'code': 'Ingresa 3 letras seguidas de un número (por ejemplo, ABC1 o LOV12).',
             'name': 'Usa el nombre oficial con el que se identifica la delegación.',
             'address': 'Ingresa la dirección donde funciona la delegación.',
             'commune': 'Comuna en la que se encuentra ubicada.',
@@ -151,8 +151,12 @@ class DelegationForm(forms.ModelForm):
         widgets = {
             'code': forms.TextInput(attrs={
                 'class': 'form-control',
-                'placeholder': 'Ej.: DEL-001',
+                'placeholder': 'Ej.: ABC1',
                 'autocomplete': 'off',
+                'maxlength': '20',
+                'minlength': '4',
+                'pattern': '[A-Za-z]{3}[0-9]+',
+                'title': 'Ingresa 3 letras seguidas de uno o más números.',
             }),
             'name': forms.TextInput(attrs={
                 'class': 'form-control',
@@ -192,6 +196,11 @@ class DelegationForm(forms.ModelForm):
         code = (self.cleaned_data.get('code') or '').strip()
         if not code:
             raise forms.ValidationError('Debe ingresar el código de la delegación.')
+        if not re.fullmatch(r'[A-Za-z]{3}\d+', code):
+            raise forms.ValidationError(
+                'El código debe tener 3 letras seguidas de uno o más números (por ejemplo, ABC1).'
+            )
+        code = code.upper()
         duplicates = Delegation.objects.filter(code__iexact=code)
         if self.instance.pk:
             duplicates = duplicates.exclude(pk=self.instance.pk)
