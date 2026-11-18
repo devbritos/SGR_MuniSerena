@@ -196,6 +196,7 @@ def _restore_list_state(request, module, sort_options):
         module,
         sort_options,
     )
+    export = request.GET.get('export')
     if request.GET.get('clear') == '1':
         params = QueryDict('', mutable=True)
         params['sort'] = 'recent'
@@ -211,14 +212,22 @@ def _restore_list_state(request, module, sort_options):
                     params.setlist(key, incoming.getlist(key))
         else:
             params = incoming
-            if _list_filter_values(params) != _list_filter_values(stored):
+            stored_filters = _list_filter_values(stored)
+            if (
+                stored_filters
+                and _list_filter_values(params) != stored_filters
+            ):
                 params['page'] = '1'
     else:
         params = stored.copy()
 
     params = _sanitize_list_params(params, module, sort_options)
+    if export:
+        params['export'] = export
     request.GET = params
-    request.session[state_key] = params.urlencode()
+    session_params = params.copy()
+    session_params.pop('export', None)
+    request.session[state_key] = session_params.urlencode()
     return state_key
 
 

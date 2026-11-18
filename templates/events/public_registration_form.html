@@ -1,0 +1,111 @@
+{% extends "base.html" %}
+
+{% block title %}Inscripción · {{ event.title }}{% endblock %}
+
+{% block content %}
+<main class="container py-4" style="max-width: 850px;">
+    <a class="small text-decoration-none" href="{% url 'events:public_list' %}">&larr; Volver a eventos</a>
+    <section class="card border-0 shadow-sm mt-3">
+        <div class="card-body p-4">
+            <span class="badge text-bg-light border mb-2">{{ event.delegation.name }}</span>
+            <h1 class="h3 fw-bold">{{ event.title }}</h1>
+            <p class="text-muted">{{ event.starts_at|date:"l d \d\e F \d\e Y, H:i" }} · {{ event.location }}</p>
+            <p>{{ event.description|linebreaksbr }}</p>
+
+            {% if email_error %}
+            <div class="alert alert-danger" role="alert">{{ email_error }}</div>
+            {% endif %}
+            <form method="post" novalidate>
+                {% csrf_token %}
+                {% if form.non_field_errors %}
+                <div class="alert alert-danger">{{ form.non_field_errors }}</div>
+                {% endif %}
+                <h2 class="h5 mt-4">Datos del adulto responsable</h2>
+                <p class="small text-muted">El correo se confirma mediante un enlace. El teléfono se valida por formato; no se envía un SMS.</p>
+                {% for field in form %}
+                    {% if field.name != 'consent' and field.name != 'adult_attends' %}
+                    <div class="mb-3">
+                        {{ field.label_tag }}
+                        {{ field }}
+                        {% if field.help_text %}<div class="form-text">{{ field.help_text }}</div>{% endif %}
+                        {% for error in field.errors %}<div class="text-danger small">{{ error }}</div>{% endfor %}
+                    </div>
+                    {% endif %}
+                {% endfor %}
+
+                <div class="form-check mb-3">
+                    {{ form.adult_attends }}
+                    {{ form.adult_attends.label_tag }}
+                    {% for error in form.adult_attends.errors %}<div class="text-danger small">{{ error }}</div>{% endfor %}
+                </div>
+
+                <div class="border rounded p-3 mb-3">
+                    <h2 class="h5">Menores a cargo</h2>
+                    <p class="small text-muted">Si inscribes a menores, el RUT de este adulto se comprobará de forma privada en el padrón de la delegación. Si no coincide, la inscripción quedará pendiente de revisión; no se mostrará el padrón.</p>
+                    {{ child_formset.management_form }}
+                    {% if child_formset.non_form_errors %}
+                    <div class="alert alert-danger">{{ child_formset.non_form_errors }}</div>
+                    {% endif %}
+                    <div id="children-forms">
+                        {% for child_form in child_formset %}
+                        <div class="child-row border rounded p-3 mb-2">
+                            {% for hidden in child_form.hidden_fields %}{{ hidden }}{% endfor %}
+                            <div class="mb-2">
+                                {{ child_form.full_name.label_tag }}
+                                {{ child_form.full_name }}
+                                {% for error in child_form.full_name.errors %}<div class="text-danger small">{{ error }}</div>{% endfor %}
+                            </div>
+                            <div class="form-check">
+                                {{ child_form.DELETE }}
+                                <label class="form-check-label" for="{{ child_form.DELETE.id_for_label }}">Quitar este menor</label>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                    <template id="child-template">
+                        <div class="child-row border rounded p-3 mb-2">
+                            {{ child_formset.empty_form.id }}
+                            <div class="mb-2">
+                                <label for="{{ child_formset.empty_form.full_name.id_for_label }}">Nombre completo del menor</label>
+                                {{ child_formset.empty_form.full_name }}
+                            </div>
+                            <div class="form-check">
+                                {{ child_formset.empty_form.DELETE }}
+                                <label class="form-check-label" for="{{ child_formset.empty_form.DELETE.id_for_label }}">Quitar este menor</label>
+                            </div>
+                        </div>
+                    </template>
+                    <button class="btn btn-outline-secondary btn-sm" type="button" id="add-child">Agregar otro menor</button>
+                </div>
+
+                <div class="form-check mb-4">
+                    {{ form.consent }}
+                    {{ form.consent.label_tag }}
+                    {% for error in form.consent.errors %}<div class="text-danger small">{{ error }}</div>{% endfor %}
+                    <p class="form-text">El RUT, teléfono y nombres de menores se usarán para gestionar esta inscripción y serán visibles para personal autorizado de la delegación.</p>
+                </div>
+
+                <button class="btn btn-primary" type="submit">Enviar inscripción</button>
+            </form>
+        </div>
+    </section>
+</main>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+(() => {
+    const addButton = document.getElementById('add-child');
+    const template = document.getElementById('child-template');
+    const container = document.getElementById('children-forms');
+    const totalForms = document.getElementById('id_children-TOTAL_FORMS');
+    if (!addButton || !template || !container || !totalForms) return;
+    addButton.addEventListener('click', () => {
+        const index = Number(totalForms.value);
+        const markup = template.innerHTML.replaceAll('__prefix__', String(index));
+        container.insertAdjacentHTML('beforeend', markup);
+        totalForms.value = String(index + 1);
+    });
+})();
+</script>
+{% endblock %}

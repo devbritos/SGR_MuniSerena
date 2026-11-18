@@ -1,0 +1,19 @@
+{% extends 'base.html' %}
+
+{% block title %}Archivar carta | SGR{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <div class="card border-0 shadow-sm mx-auto" style="max-width: 42rem;">
+        <div class="card-body p-4">
+            <h1 class="h4 fw-bold">Archivar seguimiento de carta</h1>
+            <p>La carta de <strong>{{ object.sender }}</strong>{% if object.registry_number %}, registro N.º {{ object.registry_number }}{% endif %} dejará de aparecer en el listado, pero se conservará en el historial.</p>
+            <form method="post">
+                {% csrf_token %}
+                <a class="btn btn-outline-secondary" href="{% url 'correspondence:letter_list' %}">Cancelar</a>
+                <button class="btn btn-danger" type="submit">Archivar carta</button>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

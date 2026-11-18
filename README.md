@@ -9,12 +9,14 @@ Este proyecto fue desarrollado para la asignatura Programación Back End (TI3041
 - Administración de funcionarios, delegaciones, cargos, roles y asignaciones de roles.
 - Registro y seguimiento de actividades y sus evidencias, con un flujo de validación.
 - Gestión de compromisos y sus fechas.
+- Seguimiento de cartas de Oficina de Partes, con derivaciones, responsables y estados.
+- Control de eventos comunitarios informativos o con inscripción, con imagen de portada, ficha modal de detalles, cupos y tutores de menores.
 - Configuración de períodos, mediciones y metas.
 - Registro e historial de atención ciudadana con tipo y subatención dependiente.
 - Paneles de seguimiento con indicadores para administración y funcionarios.
 - Actualización en tiempo real de las páginas abiertas cuando se modifican datos.
 - Inicio de sesión y permisos según la cuenta y el rol.
-- Páginas personalizadas para errores 403 y 404.
+- Páginas personalizadas para errores HTTP 400, 403, 404 y 500, también en desarrollo.
 
 ## Tecnologías
 
@@ -58,7 +60,7 @@ Este proyecto fue desarrollado para la asignatura Programación Back End (TI3041
    Copy-Item .env.example .env
    ```
 
-   Genera una clave secreta fuerte con `python -c "import secrets; print(secrets.token_urlsafe(50))"` y copia el resultado en `SECRET_KEY`. Completa las variables de base de datos. En desarrollo puedes poner `DEBUG=True`; en AWS debe quedar `DEBUG=False`. Para cargar las cuentas de prueba, define `SEED_USER_PASSWORD` con una contraseña robusta de al menos 16 caracteres. No compartas ni subas `.env` al repositorio.
+   Genera una clave secreta fuerte con `python -c "import secrets; print(secrets.token_urlsafe(50))"` y copia el resultado en `SECRET_KEY`. Completa las variables de base de datos. En desarrollo puedes dejar `DEBUG=True`; en AWS debe quedar `DEBUG=False`. `CUSTOM_ERROR_PAGES_IN_DEBUG=True` muestra las páginas del proyecto incluso en desarrollo; define `False` temporalmente si necesitas las páginas técnicas de Django. Los detalles de errores 500 permanecen en la consola del servidor y no se muestran al usuario. Para cargar las cuentas de prueba, define `SEED_USER_PASSWORD` con una contraseña robusta de al menos 16 caracteres. No compartas ni subas `.env` al repositorio.
 
    En desarrollo (`DEBUG=True`) las actualizaciones en tiempo real usan un canal en memoria. Para producción, configura `REDIS_URL` con la dirección de un Redis accesible por la aplicación, por ejemplo `redis://localhost:6379/0`.
 
@@ -101,6 +103,9 @@ La pantalla `¿Olvidaste tu contraseña?` mantiene la recuperación estándar de
 - Para enviar correo real, configura en `.env` `EMAIL_HOST`, `EMAIL_PORT`, `EMAIL_HOST_USER`, `EMAIL_HOST_PASSWORD`, `EMAIL_USE_TLS`, `EMAIL_USE_SSL` y `DEFAULT_FROM_EMAIL`. El backend SMTP se selecciona automáticamente al configurar `EMAIL_HOST`.
 - Para Gmail usa `smtp.gmail.com`, puerto `587`, TLS activado y una contraseña de aplicación de Google. No uses la contraseña normal de la cuenta. Otra opción es usar un proveedor SMTP transaccional.
 - Reinicia Django/Gunicorn después de modificar `.env`. No publiques credenciales de correo.
+- Las inscripciones a eventos verifican el correo con un enlace de 24 horas. En desarrollo el enlace aparece en la consola; en producción debe configurarse un SMTP real. El RUT se valida por formato y dígito verificador, y el teléfono solo por formato (no se envían SMS).
+- La cartelera pública está separada del menú interno y del inicio de sesión en `/eventos/`. Cada evento puede tener una imagen JPG, PNG o WebP de hasta 5 MiB, y una sección “Qué habrá”; el modal público muestra descripción, actividades, fecha, lugar, delegación, cupos y plazo de inscripción.
+- Cada evento puede ser “Requiere inscripción” o “Solo informativo”. Los informativos aparecen en la cartelera y en su modal, pero no muestran opciones para inscribirse; el servidor también rechaza el acceso directo al formulario.
 
 ## Secciones principales
 
@@ -109,6 +114,9 @@ La pantalla `¿Olvidaste tu contraseña?` mantiene la recuperación estándar de
 | Personal | `/personal/` | Funcionarios, delegaciones, cargos y roles |
 | Actividades | `/activities/` | Actividades, evidencias y validación |
 | Agenda | `/agenda/` | Compromisos |
+| Seguimiento de cartas | `/correspondencia/` | Cartas ingresadas por Oficina de Partes y su resolución |
+| Eventos públicos | `/eventos/` | Eventos publicados e inscripción de personas y familias |
+| Gestión de eventos | `/eventos/gestion/` | Eventos, padrón de personas e inscripciones de la delegación |
 | Configuración | `/configuration/` | Ítems de medición, metas y períodos |
 | Atención ciudadana | `/atenciones/` | Registro y consulta de atenciones y catálogos |
 | Paneles | `/dashboard/` | Redirección al panel correspondiente al usuario |
@@ -122,6 +130,8 @@ La pantalla `¿Olvidaste tu contraseña?` mantiene la recuperación estándar de
 | `personal` | Funcionarios, delegaciones, cargos, roles y sus asignaciones |
 | `activities` | Actividades y evidencias |
 | `agenda` | Compromisos |
+| `correspondence` | Seguimiento de cartas de Oficina de Partes |
+| `events` | Eventos comunitarios, padrón de personas e inscripciones |
 | `configuration` | Períodos, mediciones y metas |
 | `analytics` | Paneles e indicadores de seguimiento |
 | `atenciones` | Tipos, subatenciones y transacciones de atención ciudadana |
@@ -133,6 +143,17 @@ Ejecuta la suite de pruebas con:
 ```powershell
 python manage.py test
 ```
+
+Las pruebas específicas de cartas y eventos se pueden ejecutar con:
+
+```powershell
+python manage.py test correspondence
+python manage.py test events
+```
+
+El plan, los resultados y las limitaciones conocidas están en
+[`docs/plan_pruebas.md`](docs/plan_pruebas.md); la relación entre la rúbrica y
+la evidencia disponible está en [`docs/alineacion_rubrica.md`](docs/alineacion_rubrica.md).
 
 ## Configuración y despliegue
 
@@ -175,7 +196,7 @@ location / {
 }
 ```
 
-La regla `/ws/` debe estar en el mismo `server` que sirve la aplicación y llegar al mismo servicio Daphne que las páginas HTTP. No expongas Daphne directamente a Internet: permite el tráfico público solo al proxy en el grupo de seguridad. Redis debe estar disponible para todas las instancias de la aplicación; en AWS puedes usar un servicio administrado y mantenerlo en una red privada. WhiteNoise sirve los archivos estáticos recopilados por `collectstatic`, incluidos los logos y recursos de la interfaz. Las evidencias subidas se guardan en `MEDIA_ROOT`; en AWS configura almacenamiento persistente o un servicio de objetos como S3 y sirve esos archivos de forma segura.
+La regla `/ws/` debe estar en el mismo `server` que sirve la aplicación y llegar al mismo servicio Daphne que las páginas HTTP. No expongas Daphne directamente a Internet: permite el tráfico público solo al proxy en el grupo de seguridad. Redis debe estar disponible para todas las instancias de la aplicación; en AWS puedes usar un servicio administrado y mantenerlo en una red privada. WhiteNoise sirve los archivos estáticos recopilados por `collectstatic`, incluidos los logos y recursos de la interfaz. Las evidencias subidas se guardan en `MEDIA_ROOT`; en AWS configura almacenamiento persistente o un servicio de objetos como S3. Publica únicamente las imágenes de eventos desde `MEDIA_ROOT/event_images/`; no expongas el directorio completo de medios, porque contiene evidencias y otros archivos que requieren acceso controlado.
 
 No actives `SECURE_SSL_REDIRECT`, `SESSION_COOKIE_SECURE`, `CSRF_COOKIE_SECURE` ni HSTS mientras el sitio solo use HTTP. Una vez configurado y probado HTTPS, habilita esas opciones en el `.env` y aumenta `SECURE_HSTS_SECONDS` gradualmente.
 
@@ -187,9 +208,12 @@ core/            Componentes compartidos
 personal/        Gestión del personal municipal
 activities/      Actividades y evidencias
 agenda/          Compromisos
+correspondence/   Seguimiento de cartas de Oficina de Partes
+events/           Eventos comunitarios, padrón e inscripciones
 configuration/   Períodos, mediciones y metas
 analytics/       Paneles e indicadores
 atenciones/      Atención ciudadana y sus catálogos
 templates/       Plantillas HTML compartidas y páginas de error
 static/          Archivos estáticos
+docs/             Plan de pruebas y alineación con la rúbrica
 ```

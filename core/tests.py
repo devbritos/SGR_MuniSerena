@@ -15,6 +15,7 @@ from django.test import (
 from django.core.management import call_command
 from django.core.management.base import CommandError
 from django.core.paginator import Paginator
+from django.http import HttpResponse
 from django.template import Context, Template
 from django.template.loader import render_to_string
 from django.urls import reverse
@@ -225,6 +226,69 @@ class ErrorPageTests(TestCase):
         self.assertContains(response, 'problema temporal', status_code=500)
         self.assertContains(response, 'Inténtalo más tarde', status_code=500)
         self.assertNotContains(response, 'Traceback', status_code=500)
+
+
+@override_settings(DEBUG=True, CUSTOM_ERROR_PAGES_IN_DEBUG=True)
+class DebugErrorPageTests(TestCase):
+    def test_not_found_uses_custom_page_when_debug_is_enabled(self):
+        response = self.client.get('/missing-in-debug/')
+
+        self.assertEqual(response.status_code, 404)
+        self.assertContains(response, 'Página no encontrada', status_code=404)
+        self.assertNotContains(response, 'Page not found', status_code=404)
+
+    def test_forbidden_uses_custom_page_when_debug_is_enabled(self):
+        user = User.objects.create_user(username='debug_unauthorized_user')
+        self.client.force_login(user)
+
+        response = self.client.get('/activities/evidencias/1/validar/')
+
+        self.assertEqual(response.status_code, 403)
+        self.assertContains(response, 'Acceso denegado', status_code=403)
+        self.assertNotContains(response, 'Technical 403', status_code=403)
+
+    @override_settings(ALLOWED_HOSTS=['testserver'])
+    def test_bad_request_uses_custom_page_when_debug_is_enabled(self):
+        response = self.client.get(
+            '/missing/',
+            HTTP_HOST='invalid.example',
+        )
+
+        self.assertEqual(response.status_code, 400)
+        self.assertContains(response, 'Solicitud inválida', status_code=400)
+        self.assertNotContains(response, 'DisallowedHost', status_code=400)
+
+    def test_unhandled_exception_logs_details_but_returns_generic_500(self):
+        from .middleware import CustomErrorPagesMiddleware
+
+        def fail(_request):
+            raise RuntimeError('detalle técnico privado')
+
+        middleware = CustomErrorPagesMiddleware(fail)
+        request = RequestFactory().get('/fallo-interno/')
+
+        with self.assertLogs('core.middleware', level='ERROR') as logs:
+            response = middleware(request)
+
+        self.assertEqual(response.status_code, 500)
+        self.assertContains(response, 'problema temporal', status_code=500)
+        self.assertNotContains(response, 'detalle técnico privado', status_code=500)
+        self.assertIn('detalle técnico privado', '\n'.join(logs.output))
+
+    def test_technical_500_response_is_replaced_with_custom_page(self):
+        from .middleware import CustomErrorPagesMiddleware
+
+        middleware = CustomErrorPagesMiddleware(
+            lambda _request: HttpResponse(
+                'Technical traceback',
+                status=500,
+            )
+        )
+        response = middleware(RequestFactory().get('/fallo-interno/'))
+
+        self.assertEqual(response.status_code, 500)
+        self.assertContains(response, 'problema temporal', status_code=500)
+        self.assertNotContains(response, 'Technical traceback', status_code=500)
 
 
 @override_settings(

@@ -1,3 +1,7 @@
+from pathlib import Path
+
+from django.conf import settings
+from django.conf.urls.static import static
 from django.contrib import admin
 from django.urls import include, path
 from django.views.generic import RedirectView
@@ -46,6 +50,8 @@ urlpatterns = [
     path("dashboard/", include("analytics.urls")),
     path("activities/", include("activities.urls")),
     path("agenda/", include("agenda.urls")),
+    path("correspondencia/", include("correspondence.urls")),
+    path("eventos/", include("events.urls")),
     path("configuration/", include("configuration.urls")),
     path("atenciones/", include("atenciones.urls")),
 ]
@@ -54,3 +60,9 @@ handler400 = "core.error_views.handler400"
 handler403 = "core.error_views.handler403"
 handler404 = "core.error_views.handler404"
 handler500 = "core.error_views.handler500"
+
+if settings.DEBUG:
+    urlpatterns += static(
+        settings.MEDIA_URL + "event_images/",
+        document_root=Path(settings.MEDIA_ROOT) / "event_images",
+    )

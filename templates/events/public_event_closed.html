@@ -1,0 +1,15 @@
+{% extends "base.html" %}
+
+{% block title %}Inscripciones cerradas{% endblock %}
+
+{% block content %}
+<main class="container py-5" style="max-width: 720px;">
+    <div class="card border-0 shadow-sm">
+        <div class="card-body p-4">
+            <h1 class="h3">Inscripciones cerradas</h1>
+            <p>El evento <strong>{{ event.title }}</strong> no está recibiendo inscripciones.</p>
+            <a class="btn btn-primary" href="{% url 'events:public_list' %}">Ver otros eventos</a>
+        </div>
+    </div>
+</main>
+{% endblock %}

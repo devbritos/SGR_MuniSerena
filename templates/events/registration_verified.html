@@ -1,0 +1,20 @@
+{% extends "base.html" %}
+
+{% block title %}Inscripción verificada{% endblock %}
+
+{% block content %}
+<main class="container py-5" style="max-width: 720px;">
+    {% if pending_review %}
+    <div class="alert alert-warning">
+        <h1 class="h4">Correo verificado; inscripción en revisión</h1>
+        <p class="mb-0">La delegación revisará la asociación del tutor antes de confirmar la inscripción de los menores. No mostramos públicamente información del padrón.</p>
+    </div>
+    {% else %}
+    <div class="alert alert-success">
+        <h1 class="h4">Inscripción confirmada</h1>
+        <p class="mb-0">El correo fue verificado y tu inscripción a <strong>{{ registration.event.title }}</strong> está confirmada.</p>
+    </div>
+    {% endif %}
+    <a class="btn btn-outline-primary" href="{% url 'events:public_list' %}">Volver a eventos</a>
+</main>
+{% endblock %}

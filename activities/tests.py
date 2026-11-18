@@ -115,6 +115,7 @@ class StaffEvidenceAccessTests(TestCase):
         self.assertContains(activities_response, self.activity.application)
         self.assertContains(activities_response, 'Actividades')
         self.assertContains(activities_response, 'Tubo de Trabajo')
+        self.assertContains(activities_response, 'Seguimiento de cartas')
         self.assertContains(activities_response, 'Evidencias')
         self.assertEqual(activity_edit_response.status_code, 200)
         self.assertEqual(evidences_response.status_code, 200)

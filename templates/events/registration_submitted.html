@@ -1,0 +1,14 @@
+{% extends "base.html" %}
+
+{% block title %}Revisa tu correo{% endblock %}
+
+{% block content %}
+<main class="container py-5" style="max-width: 720px;">
+    <div class="alert alert-info shadow-sm">
+        <h1 class="h4">Revisa tu correo</h1>
+        <p class="mb-2">Si la inscripción se pudo registrar, recibirás un enlace para verificar el correo indicado. El enlace vence en 24 horas.</p>
+        <p class="mb-0">Si inscribiste menores, la confirmación puede quedar pendiente de revisión del tutor por la delegación.</p>
+    </div>
+    <a class="btn btn-outline-primary" href="{% url 'events:public_list' %}">Volver a eventos</a>
+</main>
+{% endblock %}

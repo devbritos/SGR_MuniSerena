@@ -618,14 +618,13 @@ class DelegationCRUDViewTests(TestCase):
             reverse('personal:delegation_delete', args=[self.delegation.pk])
         )
 
-        self.assertRedirects(response, reverse('personal:delegation_list'))
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(response['Location'], reverse('personal:delegation_list'))
         self.delegation.refresh_from_db()
         self.assertIsNone(self.delegation.deleted_at)
         self.assertEqual(self.delegation.state, 'ACTIVO')
-        self.assertContains(
-            self.client.get(reverse('personal:delegation_list')),
-            'No se puede archivar esta delegación',
-        )
+        response = self.client.get(response['Location'])
+        self.assertContains(response, 'No se puede archivar esta delegación')
 
     def test_delegation_list_restores_search_and_order_after_detail(self):
         list_url = reverse('personal:delegation_list')

@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+
+{% block title %}Verificar correo{% endblock %}
+
+{% block content %}
+<main class="container py-5" style="max-width: 720px;">
+    <div class="card border-0 shadow-sm">
+        <div class="card-body p-4">
+            {% if is_expired %}
+                <h1 class="h4">Enlace vencido o inválido</h1>
+                <p>Solicita una nueva inscripción para recibir otro enlace de verificación.</p>
+            {% elif registration.email_verified_at %}
+                <h1 class="h4">Correo ya verificado</h1>
+                <p>La verificación de esta inscripción ya fue procesada.</p>
+            {% elif registration %}
+                <h1 class="h4">Verifica tu correo</h1>
+                <p>Confirma el correo para continuar con la inscripción al evento <strong>{{ registration.event.title }}</strong>.</p>
+                <form method="post">
+                    {% csrf_token %}
+                    <button class="btn btn-primary" type="submit">Confirmar correo</button>
+                </form>
+            {% else %}
+                <h1 class="h4">Enlace inválido</h1>
+                <p>El enlace no corresponde a una solicitud de inscripción activa.</p>
+            {% endif %}
+            <a class="btn btn-link mt-2" href="{% url 'events:public_list' %}">Ir a eventos</a>
+        </div>
+    </div>
+</main>
+{% endblock %}

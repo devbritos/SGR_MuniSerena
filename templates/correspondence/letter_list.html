@@ -1,0 +1,131 @@
+{% extends 'base.html' %}
+
+{% block title %}Seguimiento de cartas | SGR{% endblock %}
+
+{% block content %}
+<div class="container-fluid pb-5">
+    <div class="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-4">
+        <div>
+            <h1 class="h3 fw-bold mb-1">Seguimiento de cartas</h1>
+            <p class="text-muted mb-0">Control de cartas ingresadas por Oficina de Partes y sus derivaciones.</p>
+        </div>
+        <a class="btn btn-primary" href="{% url 'correspondence:letter_create' %}">
+            <i class="bi bi-plus-lg me-1" aria-hidden="true"></i>Registrar carta
+        </a>
+    </div>
+
+    <div class="row g-3 mb-4">
+        <div class="col-sm-6">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-body">
+                    <span class="text-muted small">En proceso</span>
+                    <div class="fs-3 fw-bold text-primary">{{ in_progress_count }}</div>
+                </div>
+            </div>
+        </div>
+        <div class="col-sm-6">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-body">
+                    <span class="text-muted small">Cerradas o sin gestión pendiente</span>
+                    <div class="fs-3 fw-bold text-success">{{ finalized_count }}</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="card border-0 shadow-sm mb-3">
+        <div class="card-body">
+            <form method="get" class="row g-3 align-items-end">
+                <div class="col-xl-4 col-md-6">
+                    {{ filter_form.search.label_tag }}
+                    {{ filter_form.search }}
+                </div>
+                <div class="col-xl-2 col-md-6">
+                    {{ filter_form.state.label_tag }}
+                    {{ filter_form.state }}
+                </div>
+                <div class="col-xl-2 col-md-4">
+                    {{ filter_form.received_from.label_tag }}
+                    {{ filter_form.received_from }}
+                </div>
+                <div class="col-xl-2 col-md-4">
+                    {{ filter_form.received_to.label_tag }}
+                    {{ filter_form.received_to }}
+                </div>
+                <div class="col-xl-2 col-md-4 d-flex gap-2">
+                    <button class="btn btn-dark flex-grow-1" type="submit">Buscar</button>
+                    <a class="btn btn-outline-secondary" href="{% url 'correspondence:letter_list' %}" aria-label="Limpiar filtros" title="Limpiar filtros">
+                        <i class="bi bi-x-lg" aria-hidden="true"></i>
+                    </a>
+                    <a class="btn btn-outline-success" href="{{ request.path }}?{{ query_params }}{% if query_params %}&{% endif %}export=xlsx" aria-label="Exportar a Excel" title="Exportar a Excel">
+                        <i class="bi bi-file-earmark-excel" aria-hidden="true"></i>
+                    </a>
+                </div>
+                {% if filter_form.errors %}
+                <div class="col-12">
+                    <div class="alert alert-warning mb-0" role="alert">
+                        Corrige los filtros para consultar los resultados.
+                        {{ filter_form.errors }}
+                    </div>
+                </div>
+                {% endif %}
+            </form>
+        </div>
+    </div>
+
+    {% include "_list_sort_controls.html" with sort_heading="Ordenar cartas" %}
+
+    <div class="card border-0 shadow-sm overflow-hidden">
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+                <thead class="table-dark">
+                    <tr>
+                        <th>Fecha / N.º</th>
+                        <th>Remite / Tema</th>
+                        <th>Destinatario</th>
+                        <th>Encargado</th>
+                        <th>Estado</th>
+                        <th>Derivación</th>
+                        <th class="text-end">Acciones</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for letter in letters %}
+                    <tr>
+                        <td class="text-nowrap">
+                            {{ letter.received_at|date:"d/m/Y" }}
+                            <br><small class="text-muted">N.º {{ letter.registry_number|default:"Sin número" }}</small>
+                        </td>
+                        <td>
+                            <strong>{{ letter.sender }}</strong>
+                            <div class="small text-muted">{{ letter.subject|truncatechars:100 }}</div>
+                        </td>
+                        <td>{{ letter.recipient }}</td>
+                        <td>{{ letter.responsible.full_name }}</td>
+                        <td><span class="badge {% if letter.state == 'IN_PROGRESS' %}text-bg-warning{% elif letter.state == 'FINALIZED' %}text-bg-success{% else %}text-bg-secondary{% endif %}">{{ letter.get_state_display }}</span></td>
+                        <td>{{ letter.referred_to|default:"—" }}</td>
+                        <td class="text-end text-nowrap">
+                            <a class="btn btn-sm btn-outline-primary" href="{% url 'correspondence:letter_update' letter.pk %}" aria-label="Editar carta {{ letter.registry_number|default:letter.pk }}">
+                                <i class="bi bi-pencil" aria-hidden="true"></i>
+                            </a>
+                            {% if can_delete_letters %}
+                            <a class="btn btn-sm btn-outline-danger" href="{% url 'correspondence:letter_delete' letter.pk %}" aria-label="Archivar carta {{ letter.registry_number|default:letter.pk }}">
+                                <i class="bi bi-archive" aria-hidden="true"></i>
+                            </a>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="7" class="text-center py-5">
+                            {% include "_list_empty_state.html" with empty_message="No hay cartas registradas." %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% include "_pagination.html" %}
+{% endblock %}

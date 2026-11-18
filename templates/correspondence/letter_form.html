@@ -1,0 +1,38 @@
+{% extends 'base.html' %}
+
+{% block title %}{% if object %}Editar{% else %}Registrar{% endif %} carta | SGR{% endblock %}
+
+{% block content %}
+<div class="container pb-5">
+    <div class="mb-4">
+        <a href="{% url 'correspondence:letter_list' %}" class="text-decoration-none">
+            <i class="bi bi-arrow-left me-1" aria-hidden="true"></i>Volver a cartas
+        </a>
+        <h1 class="h3 fw-bold mt-3">{% if object %}Actualizar seguimiento de carta{% else %}Registrar carta{% endif %}</h1>
+        <p class="text-muted">Registra su ingreso, responsable, estado y derivaciones.</p>
+    </div>
+
+    <form method="post" class="card border-0 shadow-sm">
+        {% csrf_token %}
+        <div class="card-body p-4">
+            {% if form.non_field_errors %}
+            <div class="alert alert-danger" role="alert">{{ form.non_field_errors }}</div>
+            {% endif %}
+            <div class="row g-3">
+                {% for field in form %}
+                <div class="{% if field.name == 'subject' or field.name == 'observation' %}col-12{% else %}col-md-6{% endif %}">
+                    <label class="form-label fw-semibold" for="{{ field.id_for_label }}">{{ field.label }}</label>
+                    {{ field }}
+                    {% if field.help_text %}<div class="form-text">{{ field.help_text }}</div>{% endif %}
+                    {% for error in field.errors %}<div class="invalid-feedback d-block">{{ error }}</div>{% endfor %}
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+        <div class="card-footer bg-white d-flex justify-content-end gap-2 p-3">
+            <a href="{% url 'correspondence:letter_list' %}" class="btn btn-outline-secondary">Cancelar</a>
+            <button type="submit" class="btn btn-primary">Guardar seguimiento</button>
+        </div>
+    </form>
+</div>
+{% endblock %}

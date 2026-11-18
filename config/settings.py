@@ -29,7 +29,12 @@ if not SECRET_KEY:
     )
  
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = config('DEBUG', default=True, cast=bool)
+DEBUG = config('DEBUG', default=False, cast=bool)
+CUSTOM_ERROR_PAGES_IN_DEBUG = config(
+    'CUSTOM_ERROR_PAGES_IN_DEBUG',
+    default=True,
+    cast=bool,
+)
 SEED_USER_PASSWORD = config('SEED_USER_PASSWORD', default='')
  
 ALLOWED_HOSTS = config(
@@ -72,9 +77,12 @@ INSTALLED_APPS = [
     "analytics",
     "configuration",
     "atenciones",
+    "correspondence",
+    "events",
 ]
  
 MIDDLEWARE = [
+    'core.middleware.CustomErrorPagesMiddleware',
     'django.middleware.security.SecurityMiddleware',
     'whitenoise.middleware.WhiteNoiseMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
