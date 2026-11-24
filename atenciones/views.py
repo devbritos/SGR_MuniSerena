@@ -342,31 +342,67 @@ class AttentionCreateView(
     template_name = 'atenciones/attention_form.html'
     success_url = reverse_lazy('atenciones:attention_list')
 
+    def get_source_organization(self):
+        if not hasattr(self, '_source_organization'):
+            from organizations.views import visible_organizations, can_manage
+            from django.core.exceptions import PermissionDenied
+            self._source_organization = None
+            source_id = self.request.GET.get('organization')
+            if source_id:
+                if not can_manage(self.request.user):
+                    raise PermissionDenied('Tu rol permite consultar las organizaciones.')
+                self._source_organization = get_object_or_404(
+                    visible_organizations(self.request.user).filter(status__in=[Organization.Status.ACTIVE, Organization.Status.FORMING]),
+                    pk=int(source_id) if source_id.isdecimal() else 0,
+                )
+        return self._source_organization
+
     def get_form_kwargs(self):
         kwargs = super().get_form_kwargs()
         kwargs['user'] = self.request.user
+        source = self.get_source_organization()
+        if source:
+            kwargs['delegation'] = source.delegation
         return kwargs
 
     def get_initial(self):
         initial = super().get_initial()
-        organization_id = self.request.GET.get('organization')
-        if organization_id and organization_id.isdigit():
-            functionary = _active_functionary(self.request.user)
-            organization = Organization.objects.filter(
-                pk=organization_id,
-                delegation_id=functionary.delegation_id,
-                deleted_at__isnull=True,
-            ).first()
-            if organization:
-                initial['organization'] = organization.pk
+        organization = self.get_source_organization()
+        if organization:
+            initial.update(organization=organization.pk, requester_name=organization.name,
+                           requester_contact=organization.phone or organization.email)
         return initial
 
+    def get_form(self, form_class=None):
+        form = super().get_form(form_class)
+        if self.get_source_organization():
+            form.fields['organization'].disabled = True
+        return form
+
+    def get_success_url(self):
+        if self.object.organization_id:
+            return reverse_lazy('atenciones:attention_detail', kwargs={'pk': self.object.pk})
+        return super().get_success_url()
+
+    @transaction.atomic
     def form_valid(self, form):
         functionary = self.request.user.functionary
+        if form.cleaned_data.get('organization'):
+            from organizations.views import can_manage
+            if not can_manage(self.request.user):
+                form.add_error('organization', 'Tu rol permite consultar las organizaciones, pero no vincular atenciones.')
+                return self.form_invalid(form)
         form.instance.functionary = functionary
-        form.instance.delegation = functionary.delegation
-        form.instance.followup_responsible = functionary
+        source = self.get_source_organization()
+        form.instance.delegation = source.delegation if source else functionary.delegation
+        form.instance.followup_responsible = functionary if functionary.delegation_id == form.instance.delegation_id else None
         response = super().form_valid(form)
+        if form.instance.organization_id:
+            AttentionFollowUp.objects.create(
+                attention=self.object, author=functionary, status=self.object.status,
+                responsible=self.object.followup_responsible,
+                note=f'Atención registrada para la organización #{self.object.organization_id}: {self.object.organization.name}.',
+            )
         messages.success(self.request, 'Atención ciudadana registrada correctamente.')
         return response
 
@@ -390,8 +426,25 @@ class AttentionUpdateView(
         kwargs['user'] = self.request.user
         return kwargs
 
+    @transaction.atomic
     def form_valid(self, form):
+        previous = Attention.objects.select_for_update().get(pk=self.object.pk)
+        organization_changed = previous.organization_id != form.instance.organization_id
+        if organization_changed:
+            from organizations.views import can_manage
+            if not can_manage(self.request.user):
+                form.add_error('organization', 'Tu rol no permite modificar el vínculo con organizaciones.')
+                return self.form_invalid(form)
         response = super().form_valid(form)
+        if organization_changed:
+            destination = f'#{self.object.organization_id}: {self.object.organization.name}' if self.object.organization_id else 'Sin organización vinculada'
+            AttentionFollowUp.objects.create(
+                attention=self.object, author=self.request.user.functionary,
+                note=f'Se actualizó el vínculo de organización desde #{previous.organization_id or "sin vínculo"} a {destination}.',
+                status=self.object.status, responsible=self.object.followup_responsible,
+                next_action=self.object.next_action, next_contact_date=self.object.next_contact_date,
+                closure_outcome=self.object.closure_outcome, closure_details=self.object.closure_details,
+            )
         messages.success(self.request, 'Atención ciudadana actualizada correctamente.')
         return response
 

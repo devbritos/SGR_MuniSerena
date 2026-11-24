@@ -137,6 +137,10 @@ python manage.py migrate atenciones
 
 ## Secciones principales
 
+En **Control de eventos → Organizaciones**, selecciona agrupaciones activas o en formación de la delegación del evento para registrar su convocatoria. Cada organización aparece una sola vez por evento. Puedes actualizar su estado a **Invitada**, **Asistencia confirmada**, **Participó** o **No participará**, con observaciones. La participación se confirma manualmente desde la fecha de inicio. Las convocatorias aparecen también en la ficha de la organización; no envían correos, no reservan cupos y no reemplazan las inscripciones individuales. Los eventos cancelados conservan sus convocatorias para consulta. Los roles de consulta no pueden modificarlas. La tabla se agrega con la migración `events.0004`.
+
+En **Organizaciones comunitarias → Ver ficha → Vincular atención existente**, busca por número de atención, solicitante, contacto, descripción o fechas. Se ofrecen únicamente atenciones accesibles de la misma delegación que no tienen otra organización asociada. El vínculo se registra en el historial y no cambia el estado, solicitante ni compromisos. Reenviar la misma selección no duplica registros. Las fichas paginan las atenciones vinculadas y respetan sus permisos de consulta. La opción **Registrar atención** sigue disponible para organizaciones activas o en formación, con nombre y contacto precargados. Los vínculos históricos se conservan al editar atenciones de organizaciones inactivas.
+
 Al iniciar sesión se activa el tema blanco y rojo y, en escritorio, el menú queda fijado. Puedes desfijarlo o cambiar el tema; la elección se conserva al navegar durante esa sesión. Un nuevo inicio de sesión restablece la presentación inicial. En pantallas pequeñas el menú permanece deslizable y no modifica la preferencia de escritorio. Las tarjetas del dashboard usan fondos blancos y acentos suaves en rojo, conservando los colores de alerta en los indicadores.
 
 | Sección | Ruta local | Descripción |

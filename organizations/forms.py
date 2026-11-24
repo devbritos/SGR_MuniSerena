@@ -56,3 +56,23 @@ class LeaderForm(StyledForm):
         model = OrganizationLeader
         fields = ['name', 'position', 'phone', 'email', 'starts_on', 'ends_on', 'is_active', 'observations']
         widgets = {name: forms.DateInput(format='%Y-%m-%d', attrs={'type': 'date'}) for name in ['starts_on', 'ends_on']}
+
+
+class ExistingAttentionForm(forms.Form):
+    attention = forms.ModelChoiceField(queryset=None, label='Atención existente')
+
+    def __init__(self, *args, queryset, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields['attention'].queryset = queryset
+
+
+class AttentionSearchForm(forms.Form):
+    q = forms.CharField(required=False, label='Número, solicitante, contacto o descripción', widget=forms.TextInput(attrs={'class': 'form-control', 'type': 'search'}))
+    date_from = forms.DateField(required=False, label='Desde', widget=forms.DateInput(attrs={'class': 'form-control', 'type': 'date'}))
+    date_to = forms.DateField(required=False, label='Hasta', widget=forms.DateInput(attrs={'class': 'form-control', 'type': 'date'}))
+
+    def clean(self):
+        data = super().clean()
+        if data.get('date_from') and data.get('date_to') and data['date_from'] > data['date_to']:
+            self.add_error('date_to', 'La fecha final no puede ser anterior a la inicial.')
+        return data

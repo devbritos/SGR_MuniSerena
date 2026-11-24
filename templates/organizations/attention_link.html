@@ -1,0 +1,33 @@
+{% extends 'organizations/base.html' %}
+{% block title %}Vincular atención · {{ organization.name }}{% endblock %}
+{% block organization_content %}
+<div class="mx-auto pb-4" style="max-width: 920px;">
+ <a class="btn btn-outline-secondary mb-3" href="{% url 'organizations:detail' organization.pk %}">Volver a la organización</a>
+ <h1 class="h4">Vincular atención existente</h1>
+ <p class="text-muted">Busca la solicitud y revisa sus antecedentes antes de vincularla. Se muestran atenciones de la misma delegación a las que tienes acceso y que aún no pertenecen a una organización.</p>
+<div class="rounded border bg-light p-3 mb-4"><strong>{{ organization.name }}</strong><p class="small mb-0">{{ organization.delegation.name }}</p></div>
+ <form method="get" class="card card-body mb-3"><div class="row g-3 align-items-end">
+  <div class="col-lg-6">{{ search_form.q.label_tag }}{{ search_form.q }}</div>
+  <div class="col-sm-6 col-lg-3">{{ search_form.date_from.label_tag }}{{ search_form.date_from }}</div>
+  <div class="col-sm-6 col-lg-3">{{ search_form.date_to.label_tag }}{{ search_form.date_to }}</div>
+  <div class="col-12 d-flex gap-2"><button class="btn btn-outline-primary" type="submit">Buscar</button><a class="btn btn-outline-secondary" href="{% url 'organizations:attention_link' organization.pk %}">Limpiar</a></div>
+  {% if search_form.errors %}<div class="col-12"><div class="alert alert-warning mb-0">Corrige los filtros.{{ search_form.errors }}</div></div>{% endif %}
+ </div></form>
+ <form method="post" class="card shadow-sm">
+  {% csrf_token %}
+  <div class="card-body p-3 p-md-4">
+   {% if form.errors %}<div class="alert alert-danger" role="alert">Selecciona una atención de los resultados para vincularla.{{ form.non_field_errors }}{{ form.attention.errors }}</div>{% endif %}
+   <fieldset><legend class="h6">{{ page_obj.paginator.count }} resultado{{ page_obj.paginator.count|pluralize:'s' }} · Selecciona una atención</legend>
+   {% for candidate in page_obj %}
+    <div class="border rounded p-3 mb-2">
+     <div class="d-flex align-items-start gap-2"><input class="form-check-input mt-1 flex-shrink-0" type="radio" name="attention" value="{{ candidate.pk }}" id="candidate-{{ candidate.pk }}" required {% if selected_attention == candidate.pk %}checked{% endif %}><label class="form-check-label flex-grow-1" for="candidate-{{ candidate.pk }}"><strong>#{{ candidate.pk }} · {{ candidate.requester_name }}</strong><span class="d-block small text-muted">{{ candidate.created_at|date:'d/m/Y' }} · {{ candidate.attention_type.name }} / {{ candidate.sub_attention.name }}</span><span class="d-block my-2">{{ candidate.description|truncatechars:220 }}</span>{% include 'atenciones/_status_badge.html' with status=candidate.status label=candidate.get_status_display %}</label><a href="{% url 'atenciones:attention_detail' candidate.pk %}" target="_blank" rel="noopener" class="btn btn-sm btn-outline-secondary text-nowrap" aria-label="Revisar atención {{ candidate.pk }} en otra pestaña">Revisar <i class="bi bi-box-arrow-up-right" aria-hidden="true"></i></a></div>
+    </div>
+   {% empty %}<p class="text-muted">No hay atenciones disponibles que coincidan. Ajusta los filtros o vuelve a la organización para registrar una nueva atención.</p>{% endfor %}
+   </fieldset>
+   {% if page_obj.has_other_pages %}<nav class="d-flex justify-content-between align-items-center gap-2 my-3" aria-label="Páginas de atenciones"><span class="small">Página {{ page_obj.number }} de {{ page_obj.paginator.num_pages }}</span><div>{% if page_obj.has_previous %}<a class="btn btn-sm btn-outline-secondary" href="?{{ query_params }}{% if query_params %}&{% endif %}page={{ page_obj.previous_page_number }}">Anterior</a>{% endif %} {% if page_obj.has_next %}<a class="btn btn-sm btn-outline-secondary" href="?{{ query_params }}{% if query_params %}&{% endif %}page={{ page_obj.next_page_number }}">Siguiente</a>{% endif %}</div></nav>{% endif %}
+   <p class="small text-muted mt-3">La vinculación queda registrada en el historial. No cambia el estado de la atención, sus datos originales ni sus compromisos.</p>
+   <div class="d-flex flex-wrap justify-content-end gap-2 border-top pt-3"><a class="btn btn-outline-secondary" href="{% url 'organizations:detail' organization.pk %}">Cancelar</a>{% if page_obj.paginator.count %}<button class="btn btn-primary" type="submit">Vincular atención seleccionada</button>{% endif %}</div>
+  </div>
+ </form>
+</div>
+{% endblock %}

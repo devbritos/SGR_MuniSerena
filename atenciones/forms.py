@@ -80,11 +80,12 @@ class AttentionForm(forms.ModelForm):
 
     def __init__(self, *args, **kwargs):
         user = kwargs.pop('user', None)
+        delegation = kwargs.pop('delegation', None)
         super().__init__(*args, **kwargs)
-        delegation_id = None
+        delegation_id = delegation.pk if delegation else None
         if self.instance.pk:
             delegation_id = self.instance.delegation_id
-        elif user and getattr(user, 'functionary', None):
+        elif delegation is None and user and getattr(user, 'functionary', None):
             delegation_id = user.functionary.delegation_id
         organizations = Organization.objects.filter(
             deleted_at__isnull=True,
@@ -92,6 +93,10 @@ class AttentionForm(forms.ModelForm):
         )
         if delegation_id:
             organizations = organizations.filter(delegation_id=delegation_id)
+        if self.instance.pk and self.instance.organization_id:
+            organizations = Organization.objects.filter(
+                Q(pk__in=organizations.values('pk')) | Q(pk=self.instance.organization_id),
+            ).filter(delegation_id=self.instance.delegation_id)
         self.fields['organization'].queryset = organizations.select_related('delegation').order_by('name')
         self.fields['organization'].required = False
         self.fields['organization'].label = 'Organización comunitaria'

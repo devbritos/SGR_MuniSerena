@@ -102,6 +102,11 @@ class CommunityEventForm(forms.ModelForm):
             self.fields['delegation'].disabled = True
 
 
+        if self.instance.pk and self.instance.organization_invitations.exists():
+            self.fields['delegation'].disabled = True
+            self.fields['delegation'].help_text = 'La delegación se conserva porque el evento tiene organizaciones convocadas.'
+
+
 class DelegationPersonForm(forms.ModelForm):
     class Meta:
         model = DelegationPerson

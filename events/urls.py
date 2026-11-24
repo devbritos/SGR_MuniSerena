@@ -1,6 +1,7 @@
 from django.urls import path
 
 from . import views
+from .organization_views import EventOrganizationsView, ParticipationUpdateView
 
 app_name = 'events'
 
@@ -18,6 +19,8 @@ urlpatterns = [
     ),
     path('gestion/', views.EventManagementListView.as_view(), name='management_list'),
     path('gestion/nuevo/', views.EventCreateView.as_view(), name='event_create'),
+    path('gestion/<int:pk>/organizaciones/', EventOrganizationsView.as_view(), name='organization_invitations'),
+    path('gestion/<int:pk>/organizaciones/<int:invitation_pk>/editar/', ParticipationUpdateView.as_view(), name='organization_participation_update'),
     path(
         'gestion/<int:pk>/editar/',
         views.EventUpdateView.as_view(),

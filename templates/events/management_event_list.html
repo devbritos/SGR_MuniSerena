@@ -31,6 +31,7 @@
                         <td>{{ event.get_status_display }}</td>
                         <td>
                             <a class="btn btn-sm btn-outline-primary" href="{% url 'events:event_update' event.pk %}">Editar</a>
+                            <a class="btn btn-sm btn-outline-danger" href="{% url 'events:organization_invitations' event.pk %}">Organizaciones</a>
                             {% if event.status != 'CANCELLED' %}
                             <form method="post" action="{% url 'events:event_cancel' event.pk %}" class="d-inline">
                                 {% csrf_token %}

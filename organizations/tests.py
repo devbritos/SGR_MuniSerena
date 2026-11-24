@@ -57,6 +57,23 @@ class OrganizationTests(TestCase):
         leader = OrganizationLeader.objects.create(organization=self.org,name='Nombre',position='Cargo')
         other = Organization.objects.create(name='Otra',delegation=self.delegation,created_by=self.fn)
         self.assertEqual(self.client.get(reverse('organizations:leader_update',args=[other.pk,leader.pk])).status_code,404)
+
+    def test_repeated_leader_submission_creates_one_record(self):
+        url = reverse('organizations:leader_create', args=[self.org.pk])
+        data = {'name': 'Dirigente de prueba', 'position': 'Presidente', 'is_active': 'on', 'email': 'dirigente@example.com'}
+        for _ in range(3):
+            self.assertRedirects(self.client.post(url, data), reverse('organizations:detail', args=[self.org.pk]))
+        self.assertEqual(self.org.leaders.count(), 1)
+
+    def test_distinct_periods_and_organizations_are_not_treated_as_duplicates(self):
+        data = {'name': 'Dirigente de prueba', 'position': 'Presidente', 'is_active': 'on'}
+        url = reverse('organizations:leader_create', args=[self.org.pk])
+        self.client.post(url, {**data, 'starts_on': '2025-01-01', 'ends_on': '2025-12-31'})
+        self.client.post(url, {**data, 'starts_on': '2026-01-01', 'ends_on': '2026-12-31'})
+        other = Organization.objects.create(name='Otra agrupación', delegation=self.delegation, created_by=self.fn)
+        self.client.post(reverse('organizations:leader_create', args=[other.pk]), data)
+        self.assertEqual(self.org.leaders.count(), 2)
+        self.assertEqual(other.leaders.count(), 1)
     def test_rut_validation_and_duplicate(self):
         data = {'name':'Con RUT','status':'ACTIVE','rut':'12.345.678-5'}
         self.client.post(reverse('organizations:create'),data)

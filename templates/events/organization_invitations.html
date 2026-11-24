@@ -1,0 +1,19 @@
+{% extends 'organizations/base.html' %}
+{% block title %}Organizaciones · {{ event.title }}{% endblock %}
+{% block organization_content %}
+<a class="btn btn-outline-secondary mb-3" href="{% url 'events:management_list' %}">Volver a eventos</a>
+<h1 class="h3">Organizaciones del evento</h1>
+<div class="card p-3 mb-4"><strong>{{ event.title }}</strong><span class="text-muted">{{ event.starts_at|date:'d/m/Y H:i' }} · {{ event.delegation.name }} · {{ event.get_status_display }}</span><p class="small mb-0 mt-2">Las convocatorias de organizaciones no reservan cupos ni sustituyen las inscripciones individuales. Aquí se registra la convocatoria; no se envían invitaciones por correo.</p></div>
+<section class="card p-3 p-md-4 mb-4"><h2 class="h5">Organizaciones convocadas</h2>
+{% for invitation in invitations %}<article class="border rounded p-3 mb-2"><div class="d-flex flex-wrap justify-content-between gap-2"><div>{% if can_open_organization %}<a class="fw-semibold" href="{% url 'organizations:detail' invitation.organization_id %}">{{ invitation.organization.name }}</a>{% else %}<strong>{{ invitation.organization.name }}</strong>{% endif %}<p class="small mb-1">{{ invitation.get_status_display }}</p>{% if invitation.observations %}<p class="small mb-0">{{ invitation.observations|linebreaksbr }}</p>{% endif %}</div>{% if can_manage %}<a class="btn btn-sm btn-outline-danger align-self-start" href="{% url 'events:organization_participation_update' event.pk invitation.pk %}">Actualizar participación</a>{% endif %}</div></article>{% empty %}<p class="text-muted">Aún no hay organizaciones convocadas.</p>{% endfor %}
+{% if invitations.has_other_pages %}<nav aria-label="Páginas de convocatorias" class="d-flex flex-wrap gap-2 align-items-center"><span class="small">Página {{ invitations.number }} de {{ invitations.paginator.num_pages }}</span>{% if invitations.has_previous %}<a class="btn btn-sm btn-outline-secondary" href="?page={{ invitations.previous_page_number }}">Anterior</a>{% endif %}{% if invitations.has_next %}<a class="btn btn-sm btn-outline-secondary" href="?page={{ invitations.next_page_number }}">Siguiente</a>{% endif %}</nav>{% endif %}
+</section>
+{% if can_manage %}<section class="card p-3 p-md-4" data-live-invitations><h2 class="h5">Agregar organizaciones invitadas</h2><p class="small text-muted">Selecciona organizaciones activas o en formación de esta delegación. Las ya convocadas no se muestran de nuevo.</p>
+<form method="get" data-invitation-search class="d-flex flex-wrap gap-2 mb-3 align-items-end"><div class="flex-grow-1"><label class="form-label" for="invite-search">Buscar por nombre, RUT o sector</label><input class="form-control" type="search" name="q" id="invite-search" value="{{ search_query }}"></div><button type="submit" class="btn btn-outline-danger">Buscar</button><a class="btn btn-outline-secondary" data-clear-search href="{% url 'events:organization_invitations' event.pk %}">Limpiar</a></form>
+<form method="post" data-prevent-double-submit>{% csrf_token %}{% if form.errors %}<div class="alert alert-danger" role="alert">Selecciona organizaciones de los resultados.{{ form.errors }}</div>{% endif %}
+<div data-invitation-results>{% include 'events/_organization_candidates.html' %}</div>
+<div data-hidden-selections></div><div class="small mt-3" data-selected-summary role="status"></div><div class="d-flex flex-wrap gap-2 my-2" data-selected-tags></div>
+<button class="btn btn-danger mt-2" type="submit" data-invitation-save>Agregar organizaciones seleccionadas</button></form>
+
+</section>{% else %}<p class="text-muted">Las convocatorias están disponibles para consulta.{% if event.status == 'CANCELLED' %} El evento está cancelado.{% endif %}</p>{% endif %}
+{% endblock %}

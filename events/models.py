@@ -133,6 +133,10 @@ class CommunityEvent(BaseModel):
 
     def clean(self):
         super().clean()
+        if self.pk and self.organization_invitations.exclude(organization__delegation_id=self.delegation_id).exists():
+            raise ValidationError({'delegation': 'La delegación no puede cambiar mientras haya organizaciones convocadas de otra delegación.'})
+        if self.pk and self.starts_at and self.starts_at > timezone.now() and self.organization_invitations.filter(status='PARTICIPATED').exists():
+            raise ValidationError({'starts_at': 'El evento tiene participaciones registradas; no puede trasladarse al futuro.'})
         if self.capacity is not None and self.capacity < 1:
             raise ValidationError({
                 'capacity': 'Los cupos deben ser al menos uno.'
@@ -294,3 +298,31 @@ class RegistrationChild(BaseModel):
 
     def __str__(self):
         return self.full_name
+
+
+class EventOrganization(BaseModel):
+    class Status(models.TextChoices):
+        INVITED = 'INVITED', 'Invitada'
+        CONFIRMED = 'CONFIRMED', 'Asistencia confirmada'
+        PARTICIPATED = 'PARTICIPATED', 'Participó'
+        DECLINED = 'DECLINED', 'No participará'
+
+    event = models.ForeignKey(CommunityEvent, on_delete=models.PROTECT, related_name='organization_invitations')
+    organization = models.ForeignKey('organizations.Organization', on_delete=models.PROTECT, related_name='event_invitations')
+    status = models.CharField(max_length=20, choices=Status.choices, default=Status.INVITED, verbose_name='Participación')
+    observations = models.TextField(blank=True, verbose_name='Observaciones (opcional)')
+    invited_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT, related_name='+')
+    updated_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT, related_name='+')
+
+    class Meta:
+        ordering = ['-created_at', '-pk']
+        constraints = [models.UniqueConstraint(fields=['event', 'organization'], name='unique_event_organization')]
+        verbose_name = 'Convocatoria a organización'
+        verbose_name_plural = 'Convocatorias a organizaciones'
+
+    def clean(self):
+        super().clean()
+        if self.event_id and self.organization_id and self.event.delegation_id != self.organization.delegation_id:
+            raise ValidationError('El evento y la organización deben pertenecer a la misma delegación.')
+        if self.status == self.Status.PARTICIPATED and self.event_id and self.event.starts_at > timezone.now():
+            raise ValidationError({'status': 'La participación se registra desde la fecha de inicio del evento.'})

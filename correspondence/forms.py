@@ -15,7 +15,7 @@ class LetterAttentionCreateForm(AttentionForm):
         widgets = {**AttentionForm.Meta.widgets, 'followup_responsible': forms.Select(attrs={'class': 'form-select'})}
 
     def __init__(self, *args, delegation, **kwargs):
-        super().__init__(*args, **kwargs)
+        super().__init__(*args, delegation=delegation, **kwargs)
         self.fields['followup_responsible'].required = True
         self.fields['followup_responsible'].queryset = Functionary.objects.filter(
             delegation=delegation, is_active=True, deleted_at__isnull=True,

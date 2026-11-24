@@ -1418,17 +1418,21 @@
                 }
                 event.preventDefault();
 
-                const submitButtons = Array.from(form.querySelectorAll('button[type="submit"], input[type="submit"]'));
-                submitButtons.forEach(function (button) {
-                    button.disabled = true;
-                });
-
+                if (form.dataset.modalSubmitting === 'true') return;
+                form.dataset.modalSubmitting = 'true';
+                const submitButtons = Array.from(form.querySelectorAll('button[type="submit"], button:not([type]), input[type="submit"]'));
+                const buttonLabels = submitButtons.map(button => button.tagName === 'INPUT' ? button.value : button.innerHTML);
                 try {
+                    const formData = event.submitter ? new FormData(form, event.submitter) : new FormData(form);
+                    submitButtons.forEach(function (button) {
+                        button.disabled = true;
+                        button.setAttribute('aria-busy', 'true');
+                        if (button.tagName === 'INPUT') button.value = 'Guardando…';
+                        else button.innerHTML = '<span class="spinner-border spinner-border-sm me-2" aria-hidden="true"></span>Guardando…';
+                    });
                     const response = await fetch(form.action || window.location.href, {
                         method: 'POST',
-                        body: event.submitter
-                            ? new FormData(form, event.submitter)
-                            : new FormData(form),
+                        body: formData,
                         headers: {
                             'X-Requested-With': 'XMLHttpRequest',
                             'Accept': 'text/html'
@@ -1457,8 +1461,12 @@
                     console.error('Error al enviar el formulario del modal:', error);
                     showFormSubmitError(form);
                 } finally {
-                    submitButtons.forEach(function (button) {
+                    delete form.dataset.modalSubmitting;
+                    submitButtons.forEach(function (button, index) {
                         button.disabled = false;
+                        button.removeAttribute('aria-busy');
+                        if (button.tagName === 'INPUT') button.value = buttonLabels[index];
+                        else button.innerHTML = buttonLabels[index];
                     });
                 }
             });
@@ -1901,6 +1909,7 @@
     <script>{% include 'atenciones/_attention_form_script.js.html' %}</script>
     <script>{% include 'components/_state_select.js.html' %}</script>
     <script>{% include 'correspondence/_letter_form_script.js.html' %}</script>
+    <script>{% include 'events/_invitation_search.js.html' %}</script>
     {% block extra_scripts %}{% endblock %}
 </body>
 </html>

@@ -1,6 +1,7 @@
 {% extends 'organizations/base.html' %}
 {% block title %}{{ object.name }} · Organización{% endblock %}
 {% block organization_content %}
+<style>{% include 'organizations/_attention_buttons.css.html' %}</style>
 <a class="btn btn-outline-secondary mb-3" href="{% url 'organizations:list' %}">Volver a organizaciones</a>
 <div class="d-flex flex-wrap justify-content-between gap-3 mb-4">
   <div><h1 class="h3">{{ object.name }}</h1><p class="text-muted">{{ object.delegation.name }} · {{ object.get_status_display }}</p></div>
@@ -19,7 +20,10 @@
 <section class="card p-3 p-md-4 mb-4">
   <div class="d-flex flex-wrap justify-content-between gap-2 mb-3">
     <div><h2 class="h5">Atenciones vinculadas</h2><p class="text-muted small">Solicitudes registradas a nombre de esta organización.</p></div>
-    <a class="btn btn-outline-primary" href="{% url 'atenciones:attention_create' %}?organization={{ object.pk }}">Registrar atención</a>
+    {% if can_manage %}<div class="d-flex flex-wrap gap-2">
+      {% if object.status != 'INACTIVE' %}<a class="btn organization-attention-secondary" href="{% url 'atenciones:attention_create' %}?organization={{ object.pk }}">Registrar atención</a>{% endif %}
+      <a class="btn organization-attention-primary" href="{% url 'organizations:attention_link' object.pk %}"><i class="bi bi-link-45deg" aria-hidden="true"></i> Vincular atención existente</a>
+    </div>{% endif %}
   </div>
   {% for attention in attentions %}
   <article class="border rounded p-3 mb-2 d-flex flex-wrap justify-content-between gap-2">
@@ -27,8 +31,14 @@
     <a class="btn btn-sm btn-outline-secondary align-self-start" href="{% url 'atenciones:attention_detail' attention.pk %}">Abrir atención</a>
   </article>
   {% empty %}<p class="text-muted mb-0">No hay atenciones vinculadas a esta organización.</p>{% endfor %}
+  {% if attention_page.has_other_pages %}<nav class="d-flex justify-content-between align-items-center gap-2 mt-3" aria-label="Páginas de atenciones vinculadas"><span class="small">Página {{ attention_page.number }} de {{ attention_page.paginator.num_pages }}</span><div>{% if attention_page.has_previous %}<a class="btn btn-sm btn-outline-secondary" href="?attention_page={{ attention_page.previous_page_number }}">Anterior</a>{% endif %} {% if attention_page.has_next %}<a class="btn btn-sm btn-outline-secondary" href="?attention_page={{ attention_page.next_page_number }}">Siguiente</a>{% endif %}</div></nav>{% endif %}
 </section>
 <section class="card p-3 p-md-4">
+  <h2 class="h5">Eventos y convocatorias</h2>
+  {% for invitation in event_page %}<article class="border rounded p-3 mb-2 d-flex flex-wrap justify-content-between gap-2"><div><strong>{{ invitation.event.title }}</strong><p class="small mb-1">{{ invitation.event.starts_at|date:'d/m/Y H:i' }} · {{ invitation.event.location }}</p><span class="small">{{ invitation.get_status_display }}{% if invitation.event.status == 'CANCELLED' %} · Evento cancelado{% endif %}</span></div><a class="btn btn-sm btn-outline-danger align-self-start" href="{% url 'events:organization_invitations' invitation.event_id %}">Ver convocatoria</a></article>{% empty %}<p class="text-muted">Esta organización aún no tiene convocatorias registradas.</p>{% endfor %}
+  {% if event_page.has_other_pages %}<nav class="d-flex gap-2 align-items-center" aria-label="Páginas de eventos"><span class="small">Página {{ event_page.number }} de {{ event_page.paginator.num_pages }}</span>{% if event_page.has_previous %}<a class="btn btn-sm btn-outline-secondary" href="?event_page={{ event_page.previous_page_number }}">Anterior</a>{% endif %}{% if event_page.has_next %}<a class="btn btn-sm btn-outline-secondary" href="?event_page={{ event_page.next_page_number }}">Siguiente</a>{% endif %}</nav>{% endif %}
+</section>
+<section class="card p-3 p-md-4 mt-4">
   <div class="d-flex flex-wrap justify-content-between gap-2 mb-3">
     <div><h2 class="h5">Dirigentes y períodos</h2><p class="text-muted small">Las fechas describen el período registrado; no certifican la vigencia legal de la organización.</p></div>
     {% if can_manage %}<a class="btn btn-outline-primary align-self-start" href="{% url 'organizations:leader_create' object.pk %}">Agregar dirigente</a>{% endif %}
@@ -40,6 +50,7 @@
         <p class="small mb-1">{{ leader.phone|default:'Sin teléfono' }} · {{ leader.email|default:'Sin correo' }}</p>
         <p class="small mb-1">{{ leader.starts_on|date:'d/m/Y'|default:'Inicio sin registrar' }} · {{ leader.ends_on|date:'d/m/Y'|default:'Término sin registrar' }}</p>
         <span class="badge bg-light text-dark border">{{ leader.validity_label }}</span>
+        {% if leader.observations %}<p class="small mt-2 mb-0">{{ leader.observations|linebreaksbr }}</p>{% endif %}
       </div>
       {% if can_manage %}<a class="btn btn-sm btn-outline-secondary align-self-start" href="{% url 'organizations:leader_update' object.pk leader.pk %}">Editar dirigente</a>{% endif %}
     </div>

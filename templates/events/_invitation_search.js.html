@@ -1,0 +1,84 @@
+(function () {
+    function initializeInvitationSearch() {
+        document.querySelectorAll('[data-live-invitations]').forEach(function (root) {
+            if (root.dataset.searchBound) return;
+            root.dataset.searchBound = 'true';
+            const search = root.querySelector('[data-invitation-search]');
+            const input = search.querySelector('[name="q"]');
+            const results = root.querySelector('[data-invitation-results]');
+            const hidden = root.querySelector('[data-hidden-selections]');
+            const summary = root.querySelector('[data-selected-summary]');
+            const tags = root.querySelector('[data-selected-tags]');
+            const save = root.querySelector('[data-invitation-save]');
+            const selected = new Map();
+            let timer, controller, version = 0;
+
+            function remember() {
+                results.querySelectorAll('input[name="organizations"]').forEach(function (checkbox) {
+                    if (checkbox.checked) selected.set(checkbox.value, checkbox.closest('label').querySelector('strong').textContent);
+                    else selected.delete(checkbox.value);
+                });
+            }
+            function sync() {
+                hidden.replaceChildren(); tags.replaceChildren();
+                const visible = new Set();
+                results.querySelectorAll('input[name="organizations"]').forEach(function (checkbox) {
+                    visible.add(checkbox.value); checkbox.checked = selected.has(checkbox.value);
+                });
+                selected.forEach(function (name, id) {
+                    if (!visible.has(id)) {
+                        const field = document.createElement('input');
+                        field.type = 'hidden'; field.name = 'organizations'; field.value = id; hidden.append(field);
+                    }
+                    const button = document.createElement('button');
+                    button.type = 'button'; button.className = 'btn btn-sm btn-outline-danger';
+                    button.textContent = name + ' ×'; button.setAttribute('aria-label', 'Quitar ' + name);
+                    button.addEventListener('click', function () { selected.delete(id); sync(); }); tags.append(button);
+                });
+                summary.textContent = selected.size ? 'Organizaciones seleccionadas: ' + selected.size : '';
+                save.disabled = selected.size === 0;
+            }
+            async function load(url) {
+                clearTimeout(timer); remember();
+                const current = ++version;
+                if (controller) controller.abort();
+                controller = new AbortController();
+                results.setAttribute('aria-busy', 'true');
+                try {
+                    const response = await fetch(url, {headers: {'X-Organization-Search': '1'}, credentials: 'same-origin', signal: controller.signal});
+                    if (!response.ok || response.redirected) throw new Error('Search unavailable');
+                    const page = new DOMParser().parseFromString(await response.text(), 'text/html');
+                    const content = page.querySelector('[data-candidate-content]');
+                    if (!content) throw new Error('Invalid search response');
+                    if (current !== version) return;
+                    results.innerHTML = content.outerHTML;
+                    sync();
+                    root.querySelector('[data-search-error]')?.remove();
+                } catch (error) {
+                    if (error.name === 'AbortError' || current !== version) return;
+                    let alert = root.querySelector('[data-search-error]');
+                    if (!alert) {alert = document.createElement('p'); alert.dataset.searchError = 'true'; alert.className = 'text-danger small'; alert.setAttribute('role', 'alert'); search.after(alert);}
+                    alert.textContent = 'No se pudo actualizar la búsqueda. Conservamos tu selección; pulsa Buscar para reintentar.';
+                } finally {
+                    if (current === version) results.removeAttribute('aria-busy');
+                }
+            }
+            function searchUrl() {const url = new URL(search.action || location.href); url.searchParams.set('q', input.value); url.searchParams.delete('candidate_page'); return url;}
+            input.addEventListener('input', function () {
+                clearTimeout(timer); ++version; if (controller) controller.abort();
+                timer = setTimeout(function () { load(searchUrl()); }, 250);
+            });
+            search.addEventListener('submit', function (event) {event.preventDefault(); load(searchUrl());});
+            root.querySelector('[data-clear-search]').addEventListener('click', function (event) {event.preventDefault(); input.value = ''; load(searchUrl()); input.focus();});
+            results.addEventListener('change', function () {remember(); sync();});
+            results.addEventListener('click', function (event) {
+                const link = event.target.closest('a[href]');
+                if (!link || event.ctrlKey || event.metaKey || event.shiftKey) return;
+                event.preventDefault(); load(new URL(link.href));
+            });
+            remember(); sync();
+        });
+    }
+    document.addEventListener('DOMContentLoaded', initializeInvitationSearch);
+    document.addEventListener('sgr:page-updated', initializeInvitationSearch);
+}());
