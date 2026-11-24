@@ -198,10 +198,21 @@ class ErrorPageTests(TestCase):
     def test_csrf_failure_uses_the_custom_forbidden_page(self):
         client = Client(enforce_csrf_checks=True)
 
-        response = client.post(reverse('login'), {})
+        with self.assertLogs('core.error_views', level='WARNING') as captured:
+            response = client.post(reverse('login'), {})
 
         self.assertEqual(response.status_code, 403)
-        self.assertContains(response, 'Acceso denegado', status_code=403)
+        self.assertContains(
+            response,
+            'No se pudo validar la solicitud',
+            status_code=403,
+        )
+        self.assertContains(
+            response,
+            'Volver a iniciar sesión',
+            status_code=403,
+        )
+        self.assertIn('CSRF validation failed', captured.output[0])
 
     def test_bad_request_uses_custom_page_and_preserves_http_status(self):
         from .error_views import handler400

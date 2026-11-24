@@ -29,7 +29,7 @@
     <div class="card shadow-sm profile-photo-editor">
         <div class="card-body p-4">
             <h1 class="h3 mb-2">Editar mi perfil</h1>
-            <p class="text-muted mb-4">Selecciona y recorta una foto cuadrada para tu perfil.</p>
+            <p class="text-muted mb-4">Sube una foto vertical, horizontal o cuadrada. La ajustaremos automáticamente para tu perfil; también puedes elegir el recorte.</p>
 
             {% if messages %}
                 {% for message in messages %}
@@ -47,13 +47,16 @@
                     <div class="alert alert-danger" role="alert">{{ form.photo_upload.errors }}</div>
                 {% endif %}
                 <div class="text-center mb-4">
-                    {% if profile.photo %}
+                    {% if profile.has_photo %}
                         <img id="savedPhoto" class="profile-photo-preview" src="{% url 'personal:profile_photo' %}" alt="Foto de perfil actual">
                     {% else %}
                         <div id="savedPhotoPlaceholder" class="profile-photo-preview d-inline-flex align-items-center justify-content-center text-secondary" aria-label="Sin foto de perfil">
                             <i class="bi bi-person-fill fs-1" aria-hidden="true"></i>
                         </div>
                         <img id="savedPhoto" class="profile-photo-preview d-none" src="" alt="Foto de perfil actual">
+                        {% if profile.photo %}
+                        <p class="small text-warning mt-2 mb-0" role="status">No se encontró el archivo de la foto guardada. Sube una foto nueva.</p>
+                        {% endif %}
                     {% endif %}
                     <p class="small text-muted mt-2 mb-0">Vista previa guardada</p>
                 </div>
@@ -61,7 +64,7 @@
                 <div class="mb-3">
                     <label class="form-label fw-semibold" for="photoFile">Nueva foto</label>
                     <input class="form-control" type="file" id="photoFile" name="photo_upload" accept="image/jpeg,image/png" aria-describedby="photo-upload-help{% if form.photo_upload.errors %} id_photo_upload_error{% endif %}" {% if form.photo_upload.errors %}aria-invalid="true"{% endif %}>
-                    <div id="photo-upload-help" class="form-text">JPG o PNG; archivo de origen máximo 2 MiB y recorte final máximo 1,5 MiB. La imagen final será cuadrada.</div>
+                    <div id="photo-upload-help" class="form-text">JPG o PNG de hasta 10 MiB y 40 megapíxeles. No necesitas medidas exactas: adaptamos tu foto al guardarla. Puedes ajustar el recorte si lo deseas.</div>
                     {% if form.photo_upload.errors %}
                     <div id="id_photo_upload_error" class="invalid-feedback d-block">{{ form.photo_upload.errors }}</div>
                     {% endif %}
@@ -106,7 +109,8 @@ function initializeProfilePhotoForm() {
     let cropper = null;
     let sourceUrl = null;
     let renderSequence = 0;
-    const maxSourceBytes = 2 * 1024 * 1024;
+    const maxSourceBytes = 10 * 1024 * 1024;
+    const maxSourcePixels = 40000000;
     const maxCroppedBytes = 1536 * 1024;
     const allowedTypes = ['image/jpeg', 'image/png'];
 
@@ -191,6 +195,8 @@ function initializeProfilePhotoForm() {
 
     fileInput.addEventListener('change', function () {
         clearError();
+        ++renderSequence;
+        renderSequence += 1;
         const file = fileInput.files[0];
         destroyCropper();
         cropContainer.classList.add('d-none');
@@ -210,12 +216,20 @@ function initializeProfilePhotoForm() {
         }
         if (file.size > maxSourceBytes) {
             fileInput.value = '';
-            showError('La imagen seleccionada no puede superar 2 MiB.');
+            showError('La imagen seleccionada no puede superar 10 MiB.');
             return;
         }
 
         sourceUrl = URL.createObjectURL(file);
         cropImage.onload = function () {
+            if (cropImage.naturalWidth * cropImage.naturalHeight > maxSourcePixels) {
+                showError('La imagen supera 40 megapíxeles. Selecciona una versión de menor resolución.');
+                destroyCropper();
+                return;
+            }
+            // The server can produce a centered crop even without the cropper.
+            saveButton.disabled = false;
+            if (typeof Croppr !== 'function') return;
             cropContainer.classList.remove('d-none');
             window.requestAnimationFrame(function () {
                 cropper = new Croppr(cropImage, {
@@ -235,9 +249,9 @@ function initializeProfilePhotoForm() {
     });
 
     form.addEventListener('submit', function (event) {
-        if (!croppedField.value) {
+        if (!croppedField.value && !fileInput.files.length) {
             event.preventDefault();
-            showError('Selecciona y confirma un recorte antes de guardar.');
+            showError('Selecciona una foto antes de guardar.');
         }
     });
 }

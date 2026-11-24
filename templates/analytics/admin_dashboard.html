@@ -53,6 +53,7 @@
 {% endblock %}
 
 {% block content %}
+{% include 'components/_dashboard_theme.html' %}
 <main class="container-fluid dashboard-wrap py-4 px-3 px-lg-4">
     <header class="dashboard-welcome rounded-4 p-4 p-lg-5 mb-4 shadow-sm">
         <div class="dashboard-welcome-content">
@@ -67,7 +68,7 @@
                 <p class="text-white-50 mb-0">Este es el resumen de hoy. Usa los accesos rápidos para ir directo a lo que necesitas.</p>
             </div>
             <div class="dashboard-welcome-actions d-flex flex-wrap gap-2">
-                <a class="btn btn-light text-danger fw-semibold px-3" href="{% url 'dashboard_redirect' %}">
+                <a class="btn btn-light text-danger fw-semibold px-3" href="{% url 'delegation_dashboard' %}">
                     <i class="bi bi-diagram-3 me-2" aria-hidden="true"></i>Semáforo por delegación
                 </a>
             </div>
@@ -85,7 +86,7 @@
         </div>
         <div class="row g-3">
             <div class="col-6 col-md-4 col-xl-3">
-                <a class="dashboard-shortcut" href="{% url 'dashboard_redirect' %}">
+                <a class="dashboard-shortcut" href="{% url 'delegation_dashboard' %}">
                     <span class="dashboard-shortcut-icon"><i class="bi bi-stoplights" aria-hidden="true"></i></span>
                     <span class="fw-semibold">Semáforo</span>
                     <i class="bi bi-arrow-up-right ms-auto text-muted" aria-hidden="true"></i>

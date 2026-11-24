@@ -64,7 +64,7 @@
                 </div>
             </div>
             <div class="traffic-hero-actions">
-                <a class="btn btn-light text-danger fw-semibold" href="{% url 'dashboard_redirect' %}{% if delegation and period %}?period={{ period.pk }}{% endif %}">
+                <a class="btn btn-light text-danger fw-semibold" href="{% url 'delegation_dashboard' %}{% if delegation and period %}?period={{ period.pk }}{% endif %}">
                     <i class="bi bi-arrow-left me-2" aria-hidden="true"></i>{% if delegation %}Volver a delegaciones{% else %}Volver al panel{% endif %}
                 </a>
             </div>

@@ -1,5 +1,9 @@
 from django.contrib import messages
+import uuid
 from django.contrib.auth.mixins import LoginRequiredMixin
+from django.db import transaction, IntegrityError
+from django.db.models import Q, Count
+from django.core.paginator import Paginator
 from django.http import JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse_lazy
@@ -16,8 +20,10 @@ from core.lists import (
 )
 from core.mixins import _active_functionary
 
-from .forms import AttentionForm, AttentionTypeForm, SubAttentionForm
-from .models import Attention, AttentionType, SubAttention
+from .forms import AttentionForm, AttentionTypeForm, SubAttentionForm, AttentionFollowUpForm, AttentionCommitmentForm
+from .models import Attention, AttentionType, SubAttention, AttentionFollowUp
+from agenda.models import Commitment
+from organizations.models import Organization
 
 
 class AttentionTypeListView(ListControlsMixin, LoginRequiredMixin, AdminRequiredMixin, ListView):
@@ -238,7 +244,22 @@ class AttentionListView(ListControlsMixin, LoginRequiredMixin, FunctionaryRequir
             'delegation__name',
             'functionary__names',
             'functionary__lastnames',
+            'followup_responsible__names',
+            'followup_responsible__lastnames',
+            'next_action',
         )
+        status = self.request.GET.get('status', '')
+        if status in Attention.Status.values:
+            queryset = queryset.filter(status=status)
+        followup = self.request.GET.get('followup', '')
+        if followup == 'overdue':
+            queryset = queryset.exclude(status=Attention.Status.CLOSED).filter(next_contact_date__lt=timezone.localdate())
+        elif followup == 'today':
+            queryset = queryset.exclude(status=Attention.Status.CLOSED).filter(next_contact_date=timezone.localdate())
+        elif followup == 'mine':
+            queryset = queryset.exclude(status=Attention.Status.CLOSED).filter(followup_responsible=self.request.user.functionary)
+        elif followup == 'open':
+            queryset = queryset.filter(status__in=[Attention.Status.PENDING, Attention.Status.IN_PROGRESS])
         return apply_list_sort(queryset, self.request, self.sort_fields)
 
     def render_to_response(self, context, **response_kwargs):
@@ -249,6 +270,8 @@ class AttentionListView(ListControlsMixin, LoginRequiredMixin, FunctionaryRequir
                     'Fecha y hora', 'Solicitante', 'Contacto', 'Tipo',
                     'Subatención', 'Descripción', 'Delegación',
                     'Usuario responsable',
+                    'Estado', 'Responsable del seguimiento', 'Próxima acción',
+                    'Fecha de próxima acción', 'Resultado del cierre', 'Detalle del cierre', 'Fecha de cierre',
                 ],
                 (
                     [
@@ -262,6 +285,13 @@ class AttentionListView(ListControlsMixin, LoginRequiredMixin, FunctionaryRequir
                         attention.description,
                         attention.delegation.name,
                         attention.functionary.full_name,
+                        attention.get_status_display(),
+                        attention.followup_responsible.full_name if attention.followup_responsible else '',
+                        attention.next_action,
+                        attention.next_contact_date.strftime('%d/%m/%Y') if attention.next_contact_date else '',
+                        attention.get_closure_outcome_display(),
+                        attention.closure_details,
+                        timezone.localtime(attention.closed_at).strftime('%d/%m/%Y %H:%M') if attention.closed_at else '',
                     ]
                     for attention in self.get_queryset()
                 ),
@@ -270,6 +300,15 @@ class AttentionListView(ListControlsMixin, LoginRequiredMixin, FunctionaryRequir
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
+        context['status_choices'] = Attention.Status.choices
+        context['selected_status'] = self.request.GET.get('status', '')
+        context['selected_followup'] = self.request.GET.get('followup', '')
+        context['summary'] = visible_attentions(self.request.user).aggregate(
+            pending=Count('pk', filter=Q(status__in=[Attention.Status.PENDING, Attention.Status.IN_PROGRESS])),
+            overdue=Count('pk', filter=~Q(status=Attention.Status.CLOSED) & Q(next_contact_date__lt=timezone.localdate())),
+            today=Count('pk', filter=~Q(status=Attention.Status.CLOSED) & Q(next_contact_date=timezone.localdate())),
+            unclassified=Count('pk', filter=Q(status=Attention.Status.UNCLASSIFIED)),
+        )
         return add_list_context(self.request, context)
 
 
@@ -303,10 +342,30 @@ class AttentionCreateView(
     template_name = 'atenciones/attention_form.html'
     success_url = reverse_lazy('atenciones:attention_list')
 
+    def get_form_kwargs(self):
+        kwargs = super().get_form_kwargs()
+        kwargs['user'] = self.request.user
+        return kwargs
+
+    def get_initial(self):
+        initial = super().get_initial()
+        organization_id = self.request.GET.get('organization')
+        if organization_id and organization_id.isdigit():
+            functionary = _active_functionary(self.request.user)
+            organization = Organization.objects.filter(
+                pk=organization_id,
+                delegation_id=functionary.delegation_id,
+                deleted_at__isnull=True,
+            ).first()
+            if organization:
+                initial['organization'] = organization.pk
+        return initial
+
     def form_valid(self, form):
         functionary = self.request.user.functionary
         form.instance.functionary = functionary
         form.instance.delegation = functionary.delegation
+        form.instance.followup_responsible = functionary
         response = super().form_valid(form)
         messages.success(self.request, 'Atención ciudadana registrada correctamente.')
         return response
@@ -325,6 +384,11 @@ class AttentionUpdateView(
 
     def get_queryset(self):
         return visible_attentions(self.request.user)
+
+    def get_form_kwargs(self):
+        kwargs = super().get_form_kwargs()
+        kwargs['user'] = self.request.user
+        return kwargs
 
     def form_valid(self, form):
         response = super().form_valid(form)
@@ -363,6 +427,8 @@ def visible_attentions(user):
         'sub_attention',
         'delegation',
         'functionary',
+        'followup_responsible',
+        'organization',
     ).filter(deleted_at__isnull=True)
     if not user.is_staff and not user.is_superuser:
         if functionary.is_admin or functionary.has_global_scope:
@@ -370,8 +436,130 @@ def visible_attentions(user):
         elif functionary.is_delegate:
             queryset = queryset.filter(delegation=functionary.delegation)
         else:
-            queryset = queryset.filter(functionary=functionary)
+            queryset = queryset.filter(
+                Q(functionary=functionary) | Q(followup_responsible=functionary)
+                | Q(commitments__functionary=functionary, commitments__deleted_at__isnull=True)
+                | Q(office_letters__responsible=functionary, office_letters__deleted_at__isnull=True)
+            ).distinct()
     return queryset
+
+
+class AttentionDetailView(LoginRequiredMixin, FunctionaryRequiredMixin, View):
+    template_name = 'atenciones/attention_detail.html'
+
+    def render_detail(self, request, attention, form=None):
+        from correspondence.views import get_office_letter_scope
+        followups = attention.followups.select_related('author', 'responsible')
+        return render(request, self.template_name, {
+            'attention': attention,
+            'form': form if form is not None else AttentionFollowUpForm(attention=attention),
+            'history_page': Paginator(followups, 15).get_page(request.GET.get('page')),
+            'linked_commitments': attention.commitments.filter(deleted_at__isnull=True).select_related('functionary'),
+            'linked_letters': get_office_letter_scope(request.user).filter(attention=attention),
+        })
+
+    def get(self, request, pk):
+        return self.render_detail(request, get_object_or_404(visible_attentions(request.user), pk=pk))
+
+    def post(self, request, pk):
+        with transaction.atomic():
+            attention = get_object_or_404(
+                Attention.objects.select_for_update().filter(pk__in=visible_attentions(request.user).values('pk')), pk=pk,
+            )
+            form = AttentionFollowUpForm(request.POST, attention=attention)
+            valid = form.is_valid()
+            if attention.status == Attention.Status.CLOSED:
+                form.add_error(None, 'Esta atención ya está cerrada. Su historial se conserva para consulta.')
+                valid = False
+            elif form.cleaned_data.get('version') != attention.updated_at.isoformat():
+                form.add_error(None, 'Otra persona actualizó esta atención. Revisa los datos actuales y el historial de esta página. Conservamos lo que escribiste para que puedas ajustarlo y volver a guardar.')
+                form.data = form.data.copy()
+                form.data['version'] = attention.updated_at.isoformat()
+                valid = False
+            if valid:
+                data = form.cleaned_data
+                for field in ('status', 'followup_responsible', 'next_action', 'next_contact_date', 'closure_outcome', 'closure_details'):
+                    setattr(attention, field, data[field])
+                attention.closed_at = timezone.now() if attention.status == Attention.Status.CLOSED else None
+                attention.full_clean()
+                attention.save()
+                AttentionFollowUp.objects.create(
+                    attention=attention, author=request.user.functionary, note=data['note'],
+                    status=attention.status, responsible=attention.followup_responsible,
+                    next_action=attention.next_action, next_contact_date=attention.next_contact_date,
+                    closure_outcome=attention.closure_outcome, closure_details=attention.closure_details,
+                )
+                messages.success(request, 'Atención cerrada y resultado guardado.' if attention.status == Attention.Status.CLOSED else 'Seguimiento guardado. La próxima acción quedó registrada.')
+                return redirect('atenciones:attention_detail', pk=pk)
+        return self.render_detail(request, attention, form)
+
+
+class AttentionCommitmentCreateView(LoginRequiredMixin, FunctionaryRequiredMixin, View):
+    template_name = 'atenciones/attention_commitment_form.html'
+
+    def get_attention(self, request, pk, lock=False):
+        queryset = visible_attentions(request.user)
+        if lock:
+            queryset = Attention.objects.select_for_update().filter(pk__in=queryset.values('pk'))
+        return get_object_or_404(queryset, pk=pk)
+
+    def make_form(self, attention, data=None):
+        responsible = attention.followup_responsible or attention.functionary
+        return AttentionCommitmentForm(data, delegation=attention.delegation, initial={
+            'creation_token': uuid.uuid4(),
+            'applic_name': attention.requester_name,
+            'functionary': responsible.pk if responsible.is_active and responsible.deleted_at is None else None,
+            'observation': attention.description,
+        })
+
+    def render_form(self, request, attention, form):
+        return render(request, self.template_name, {'attention': attention, 'form': form})
+
+    def get(self, request, pk):
+        attention = self.get_attention(request, pk)
+        if attention.status == Attention.Status.CLOSED:
+            messages.info(request, 'La atención está cerrada. Puedes consultar sus compromisos desde la ficha.')
+            return redirect('atenciones:attention_detail', pk=pk)
+        return self.render_form(request, attention, self.make_form(attention))
+
+    def post(self, request, pk):
+        try:
+            with transaction.atomic():
+                attention = self.get_attention(request, pk, lock=True)
+                form = self.make_form(attention, request.POST)
+                valid = form.is_valid()
+                token = form.cleaned_data.get('creation_token')
+                existing = Commitment.objects.filter(submission_token=token).first() if token else None
+                if existing and existing.source_attention_id == attention.pk:
+                    messages.info(request, 'Este compromiso ya estaba guardado; no se creó un duplicado.')
+                    return redirect('atenciones:attention_detail', pk=pk)
+                if existing:
+                    form.add_error(None, 'Este formulario ya fue utilizado. Vuelve a abrir Crear compromiso desde la ficha.')
+                    valid = False
+                if attention.status == Attention.Status.CLOSED:
+                    form.add_error(None, 'La atención se cerró mientras completabas el formulario. No se creó el compromiso.')
+                    valid = False
+                if valid:
+                    commitment = form.save(commit=False)
+                    commitment.source_attention = attention
+                    commitment.submission_token = token
+                    commitment.origin = f'Atención ciudadana #{attention.pk}'
+                    commitment.support = attention.requester_contact
+                    commitment.full_clean()
+                    commitment.save()
+                    AttentionFollowUp.objects.create(
+                        attention=attention, author=request.user.functionary,
+                        note=f'Se creó el compromiso #{commitment.pk}: {commitment.observation}\nResponsable: {commitment.functionary.full_name}. Fecha de cumplimiento: {commitment.commitment_date:%d/%m/%Y}.',
+                        status=attention.status, responsible=attention.followup_responsible,
+                        next_action=attention.next_action, next_contact_date=attention.next_contact_date,
+                    )
+                    # Invalidate any older follow-up form so a parallel save cannot hide this new history entry.
+                    attention.save(update_fields=['updated_at'])
+                    messages.success(request, 'Compromiso creado y vinculado. La atención conserva su estado; ciérrala cuando corresponda.')
+                    return redirect('atenciones:attention_detail', pk=pk)
+        except IntegrityError:
+            form.add_error(None, 'No se pudo guardar. Revisa la ficha por si el compromiso ya fue registrado y vuelve a intentarlo.')
+        return self.render_form(request, attention, form)
 
 
 def subattention_options(request, type_id):

@@ -5,6 +5,7 @@ from .models import OfficeLetter
 
 @admin.register(OfficeLetter)
 class OfficeLetterAdmin(admin.ModelAdmin):
+    readonly_fields = ('attention',)
     list_display = (
         'registry_number',
         'received_at',

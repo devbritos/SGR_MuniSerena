@@ -58,7 +58,7 @@ class OfficeLetterWorkflowTests(TestCase):
             self._letter_data(),
         )
 
-        self.assertRedirects(response, reverse('correspondence:letter_list'))
+        self.assertRedirects(response, reverse('correspondence:letter_detail', args=[OfficeLetter.objects.get().pk]))
         letter = OfficeLetter.objects.get()
         self.assertEqual(letter.delegation, self.delegation)
         self.assertEqual(letter.responsible, self.functionary)
@@ -157,7 +157,7 @@ class OfficeLetterWorkflowTests(TestCase):
             ),
         )
 
-        self.assertRedirects(response, reverse('correspondence:letter_list'))
+        self.assertRedirects(response, reverse('correspondence:letter_detail', args=[OfficeLetter.objects.get().pk]))
         letter = OfficeLetter.objects.get()
         self.assertEqual(letter.delegation, outside_delegation)
         self.assertEqual(letter.registered_by, self.functionary)

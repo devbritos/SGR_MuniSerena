@@ -1,0 +1,5 @@
+<div class="rounded border bg-light p-3 mb-4">
+ <strong>Carta #{{ letter.pk }}{% if letter.registry_number %} · Registro {{ letter.registry_number }}{% endif %}</strong>
+ <p class="mb-1 mt-1">{{ letter.sender }} · {{ letter.delegation.name }}</p>
+ <p class="small text-muted mb-0">{{ letter.subject|truncatechars:240 }}</p>
+</div>

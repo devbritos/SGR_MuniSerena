@@ -241,6 +241,45 @@ class CitizenAttentionTests(TestCase):
         self.assertIn(self.sub_attention.pk, result_ids)
         self.assertNotIn(inactive.pk, result_ids)
 
+    def test_edit_form_preserves_linked_subattention_inside_modal(self):
+        attention = Attention.objects.create(
+            requester_name='Vecina modal', attention_type=self.attention_type,
+            sub_attention=self.sub_attention, description='Solicitud.',
+            delegation=self.delegation, functionary=self.functionary,
+        )
+        response = self.client.get(
+            reverse('atenciones:attention_update', args=[attention.pk]),
+            HTTP_X_REQUESTED_WITH='XMLHttpRequest',
+        )
+        self.assertEqual(response.status_code, 200)
+        form = response.context['form']
+        self.assertEqual(list(form.fields['sub_attention'].queryset), [self.sub_attention])
+        self.assertEqual(form['sub_attention'].value(), self.sub_attention.pk)
+        self.assertContains(response, f'value="{self.sub_attention.pk}" selected')
+
+    def test_attention_initializer_is_delivered_without_a_separate_static_request(self):
+        response = self.client.get(reverse('atenciones:attention_list'))
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'window.sgrInitializeAttentionForms = initializeAttentionForms;')
+        self.assertNotContains(response, 'src="/static/js/attention_form.js"')
+
+    def test_form_preloads_only_available_linked_subattentions(self):
+        SubAttention.objects.create(code='HIDDEN', name='Inactiva', attention_type=self.attention_type, is_active=False)
+        other_type = AttentionType.objects.create(code='DISABLED', name='Tipo inactivo', is_active=False)
+        SubAttention.objects.create(code='OTHER', name='De tipo inactivo', attention_type=other_type)
+        response = self.client.get(reverse('atenciones:attention_create'), HTTP_X_REQUESTED_WITH='XMLHttpRequest')
+        self.assertEqual(response.context['form'].subattention_catalog, {
+            str(self.attention_type.pk): [{'id': self.sub_attention.pk, 'name': self.sub_attention.name}],
+        })
+        self.assertContains(response, 'data-subattention-catalog')
+
+    def test_preloaded_catalog_preserves_inactive_selection_when_editing(self):
+        attention = Attention.objects.create(requester_name='Vecina', attention_type=self.attention_type, sub_attention=self.sub_attention, description='Solicitud', delegation=self.delegation, functionary=self.functionary)
+        self.sub_attention.is_active = False
+        self.sub_attention.save()
+        response = self.client.get(reverse('atenciones:attention_update', args=[attention.pk]))
+        self.assertEqual(response.context['form'].subattention_catalog[str(self.attention_type.pk)], [{'id': self.sub_attention.pk, 'name': self.sub_attention.name}])
+
     def test_attention_list_is_scoped_and_exports_to_excel(self):
         own_attention = Attention.objects.create(
             requester_name='Vecino de mi delegación',

@@ -1,0 +1,1 @@
+<span class="badge rounded-pill {% if status == 'CLOSED' or status == 'DONE' %}bg-success-subtle text-success-emphasis{% elif status == 'IN_PROGRESS' %}bg-primary-subtle text-primary-emphasis{% elif status == 'PENDING' or status == 'JOINED' %}bg-warning-subtle text-warning-emphasis{% else %}bg-secondary-subtle text-secondary-emphasis{% endif %}">{{ label }}</span>

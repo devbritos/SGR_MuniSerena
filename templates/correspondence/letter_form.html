@@ -1,38 +1,63 @@
 {% extends 'base.html' %}
-
+{% load crispy_forms_tags %}
 {% block title %}{% if object %}Editar{% else %}Registrar{% endif %} carta | SGR{% endblock %}
-
+{% block extra_head %}
+<style>
+ .letter-form-page {max-width: 920px; margin: auto; overflow-wrap: anywhere;}
+ .letter-form-page .card {border: 1px solid #e5e7eb; border-radius: 1rem; overflow: hidden;}
+ .letter-form-section {padding: clamp(1rem, 3vw, 1.75rem);}
+ .letter-form-section + .letter-form-section {border-top: 1px solid #edf0f2;}
+ .letter-form-heading {display: flex; align-items: start; gap: .75rem; margin-bottom: 1.25rem;}
+ .letter-form-heading > i {color: var(--municipal-red); font-size: 1.2rem;}
+ .letter-form-heading h2 {font-size: 1.05rem; font-weight: 700; margin-bottom: .3rem;}
+ .letter-form-heading p {font-size: .875rem; color: #68717a; margin: 0;}
+ .letter-form-page .form-control, .letter-form-page .form-select, .letter-form-page .btn {min-height: 2.75rem;}
+ .letter-form-context {background: #f5f7fa; border-radius: .75rem; padding: 1rem;}
+ .letter-form-page details summary {cursor: pointer; padding: 1rem 1.5rem; font-weight: 600; background: #f8f9fb;}
+ .letter-form-page details summary:focus-visible {outline: 3px solid #86b7fe; outline-offset: -3px;}
+ .letter-form-actions {padding: 1.25rem 1.75rem; background: #fafbfc; border-top: 1px solid #e5e7eb;}
+ @media (max-width: 575.98px) {.letter-form-actions .btn {width: 100%;}}
+</style>
+{% endblock %}
 {% block content %}
-<div class="container pb-5">
-    <div class="mb-4">
-        <a href="{% url 'correspondence:letter_list' %}" class="text-decoration-none">
-            <i class="bi bi-arrow-left me-1" aria-hidden="true"></i>Volver a cartas
-        </a>
-        <h1 class="h3 fw-bold mt-3">{% if object %}Actualizar seguimiento de carta{% else %}Registrar carta{% endif %}</h1>
-        <p class="text-muted">Registra su ingreso, responsable, estado y derivaciones.</p>
-    </div>
-
-    <form method="post" class="card border-0 shadow-sm">
-        {% csrf_token %}
-        <div class="card-body p-4">
-            {% if form.non_field_errors %}
-            <div class="alert alert-danger" role="alert">{{ form.non_field_errors }}</div>
-            {% endif %}
-            <div class="row g-3">
-                {% for field in form %}
-                <div class="{% if field.name == 'subject' or field.name == 'observation' %}col-12{% else %}col-md-6{% endif %}">
-                    <label class="form-label fw-semibold" for="{{ field.id_for_label }}">{{ field.label }}</label>
-                    {{ field }}
-                    {% if field.help_text %}<div class="form-text">{{ field.help_text }}</div>{% endif %}
-                    {% for error in field.errors %}<div class="invalid-feedback d-block">{{ error }}</div>{% endfor %}
-                </div>
-                {% endfor %}
-            </div>
-        </div>
-        <div class="card-footer bg-white d-flex justify-content-end gap-2 p-3">
-            <a href="{% url 'correspondence:letter_list' %}" class="btn btn-outline-secondary">Cancelar</a>
-            <button type="submit" class="btn btn-primary">Guardar seguimiento</button>
-        </div>
-    </form>
-</div>
+<main class="letter-form-page pb-4">
+ <div class="mb-4">
+  <a class="btn btn-outline-secondary mb-3" href="{% if object %}{% url 'correspondence:letter_detail' object.pk %}{% else %}{% url 'correspondence:letter_list' %}{% endif %}"><i class="bi bi-arrow-left" aria-hidden="true"></i> {% if object %}Volver a la carta{% else %}Volver a cartas{% endif %}</a>
+  <h1 class="h3 fw-bold">{% if object %}Editar carta{% else %}Registrar carta{% endif %}</h1>
+  <p class="text-muted mb-1">{% if object %}Actualiza los datos y el seguimiento de esta carta.{% else %}Ingresa quién envía la carta, su asunto y quién continuará la gestión.{% endif %}</p>
+  <p class="small text-muted mb-0">Los campos con <span class="text-danger">*</span> son obligatorios.{% if not object %} La carta comenzará <strong>En proceso</strong>.{% endif %}</p>
+ </div>
+ {% if object.attention_id %}<div class="alert alert-info">Vinculada a la atención #{{ object.attention_id }}. La delegación se conserva para mantener el vínculo. <a href="{% url 'correspondence:letter_detail' object.pk %}">Ver carta y atención</a></div>{% endif %}
+ <form method="post" class="card shadow-sm" data-letter-form novalidate>
+  {% csrf_token %}
+  <div hidden data-responsible-catalog>{{ form.responsible_catalog|json_script }}</div>
+  {% if not object %}{{ form.state }}{% endif %}
+  {% if form.errors %}<div class="alert alert-danger m-3 mb-0" role="alert"><strong>No se guardó la carta.</strong> Revisa los campos indicados.{{ form.non_field_errors }}<ul class="mb-0 mt-2">{% for field in form %}{% if field.errors %}<li>{% if not field.is_hidden %}<a href="#{{ field.id_for_label }}">{{ field.label }}</a>: {% endif %}{{ field.errors|striptags }}</li>{% endif %}{% endfor %}</ul></div>{% endif %}
+  <section class="letter-form-section" aria-labelledby="letter-intake-title">
+   <div class="letter-form-heading"><i class="bi bi-inbox" aria-hidden="true"></i><div><h2 id="letter-intake-title">1. Datos de ingreso</h2><p>Indica cuándo se recibió la carta y dónde se gestionará.</p></div></div>
+   {% if form.fixed_delegation %}<div class="letter-form-context mb-3"><span class="small text-muted d-block">Delegación asignada</span><strong>{{ form.fixed_delegation.name }}</strong>{% if object.attention_id %}<p class="small text-muted mb-0">Corresponde a la atención vinculada.</p>{% endif %}</div>{{ form.delegation.as_hidden }}{% for error in form.delegation.errors %}<p class="text-danger small">{{ error }}</p>{% endfor %}{% else %}{{ form.delegation|as_crispy_field }}{% endif %}
+   <div class="row"><div class="col-md-6">{{ form.received_at|as_crispy_field }}</div><div class="col-md-6">{{ form.registry_number|as_crispy_field }}</div></div>
+  </section>
+  <section class="letter-form-section" aria-labelledby="letter-request-title">
+   <div class="letter-form-heading"><i class="bi bi-envelope-paper" aria-hidden="true"></i><div><h2 id="letter-request-title">2. Remitente y asunto</h2><p>Identifica quién escribe, a quién se dirige y qué solicita o informa.</p></div></div>
+   <div class="row"><div class="col-md-7">{{ form.sender|as_crispy_field }}</div><div class="col-md-5">{{ form.contact_phone|as_crispy_field }}</div></div>
+   {{ form.recipient|as_crispy_field }}{{ form.subject|as_crispy_field }}
+  </section>
+  <section class="letter-form-section" aria-labelledby="letter-owner-title">
+   <div class="letter-form-heading"><i class="bi bi-person-check" aria-hidden="true"></i><div><h2 id="letter-owner-title">3. Responsable{% if object %} y estado{% endif %}</h2><p>Persona encargada de continuar el seguimiento de la carta.</p></div></div>
+   {{ form.responsible|as_crispy_field }}<p class="small text-muted mb-0" data-responsible-status role="status" aria-live="polite"></p>
+   {% if object %}<div class="mt-3">{{ form.state|as_crispy_field }}</div>{% endif %}
+  </section>
+  <details {% if form.additional_open %}open{% endif %}>
+   <summary>Información adicional <span class="fw-normal text-muted">— opcional</span></summary>
+   <div class="letter-form-section"><p class="small text-muted">Puedes completar estos datos ahora si ya los tienes, o agregarlos después desde Editar carta.</p>
+    {{ form.activity_date|as_crispy_field }}{{ form.referred_to|as_crispy_field }}{{ form.pronouncement|as_crispy_field }}{{ form.observation|as_crispy_field }}
+   </div>
+  </details>
+  <div class="letter-form-actions">
+   {% if not object %}<p class="small text-muted">Después de registrar podrás revisar la carta y decidir si corresponde crear o vincular una atención.</p>{% endif %}
+   <div class="d-flex flex-wrap justify-content-end gap-2"><a href="{% if object %}{% url 'correspondence:letter_detail' object.pk %}{% else %}{% url 'correspondence:letter_list' %}{% endif %}" class="btn btn-outline-secondary">Cancelar</a><button type="submit" class="btn btn-primary px-4"><i class="bi bi-check2" aria-hidden="true"></i> {% if object %}Guardar cambios{% else %}Registrar carta{% endif %}</button></div>
+  </div>
+ </form>
+</main>
 {% endblock %}

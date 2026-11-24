@@ -28,20 +28,39 @@ RECOVERY_CODE_SESSION_KEY = 'password_recovery_code_id'
 
 
 class SGRLoginView(LoginView):
+    def form_valid(self, form):
+        response = super().form_valid(form)
+        # A new login starts with the default layout; choices persist across pages.
+        self.request.session['ui_preferences_epoch'] = secrets.token_hex(12)
+        return response
+
     def get_success_url(self):
         redirect_to = self.get_redirect_url()
-        if redirect_to:
-            return redirect_to
-
         user = self.request.user
         functionary = getattr(user, 'functionary', None)
-        if user.is_staff or user.is_superuser or (
+        is_privileged = user.is_staff or user.is_superuser or (
             functionary
             and functionary.is_admin
             and functionary.is_active
             and functionary.deleted_at is None
-        ):
+        )
+
+        if is_privileged:
             return reverse('admin_dashboard')
+
+        if redirect_to:
+            delegation_dashboard_url = reverse('dashboard_redirect')
+            if (
+                redirect_to == delegation_dashboard_url
+                or redirect_to.split('?', 1)[0] == reverse('delegation_dashboard')
+                or redirect_to.startswith(
+                    f'{delegation_dashboard_url.rstrip("/")}/delegacion/'
+                )
+            ):
+                redirect_to = None
+            else:
+                return redirect_to
+
         return reverse('user_dashboard')
 
 

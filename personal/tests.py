@@ -976,6 +976,47 @@ class ProfilePhotoViewTests(TestCase):
             f'<img class="user-menu-avatar rounded-circle" src="{reverse("personal:profile_photo")}" alt="">',
         )
 
+    def test_missing_profile_photo_shows_reupload_prompt_without_broken_images(self):
+        UserProfile.objects.create(
+            user=self.user,
+            photo='profile_photos/missing.jpg',
+        )
+
+        response = self.client.get(reverse('personal:profile_update'))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'No se encontró el archivo de la foto guardada.')
+        self.assertContains(response, 'id="savedPhotoPlaceholder"')
+        self.assertNotContains(
+            response,
+            f'<img class="user-menu-avatar rounded-circle" src="{reverse("personal:profile_photo")}" alt="">',
+        )
+
+    def test_missing_profile_photo_endpoint_returns_not_found(self):
+        UserProfile.objects.create(
+            user=self.user,
+            photo='profile_photos/missing.jpg',
+        )
+
+        response = self.client.get(reverse('personal:profile_photo'))
+
+        self.assertEqual(response.status_code, 404)
+
+    def test_reupload_recovers_profile_with_missing_photo_file(self):
+        profile = UserProfile.objects.create(
+            user=self.user,
+            photo='profile_photos/missing.jpg',
+        )
+
+        response = self._post_photo()
+
+        self.assertRedirects(response, reverse('personal:profile_update'))
+        profile.refresh_from_db()
+        self.assertTrue(profile.has_photo)
+        photo_response = self.client.get(reverse('personal:profile_photo'))
+        self.assertEqual(photo_response.status_code, 200)
+        photo_response.close()
+
     def test_functionary_list_displays_profile_photo_through_authorized_view(self):
         delegation = Delegation.objects.create(
             name='Delegación Foto',
@@ -1070,15 +1111,15 @@ class ProfilePhotoViewTests(TestCase):
         self.assertFalse(form.is_valid())
         self.assertIn('JPG o PNG', str(form.errors))
 
-    def test_profile_photo_rejects_uploads_larger_than_two_mib(self):
+    def test_profile_photo_rejects_uploads_larger_than_ten_mib(self):
         source = Image.frombytes(
             'RGB',
-            (1024, 1024),
-            os.urandom(1024 * 1024 * 3),
+            (2048, 2048),
+            os.urandom(2048 * 2048 * 3),
         )
         source_data = BytesIO()
         source.save(source_data, format='PNG')
-        self.assertGreater(len(source_data.getvalue()), 2 * 1024 * 1024)
+        self.assertGreater(len(source_data.getvalue()), 10 * 1024 * 1024)
         upload = SimpleUploadedFile(
             'foto.png',
             source_data.getvalue(),
@@ -1090,7 +1131,7 @@ class ProfilePhotoViewTests(TestCase):
         )
 
         self.assertFalse(form.is_valid())
-        self.assertIn('no puede superar 2 MiB', str(form.errors))
+        self.assertIn('no puede superar 10 MiB', str(form.errors))
 
     def test_functionary_photo_requires_list_permission(self):
         delegation = Delegation.objects.create(
@@ -1196,14 +1237,14 @@ class ProfilePhotoViewTests(TestCase):
         other_profile.refresh_from_db()
         self.assertEqual(other_profile.photo.name, other_photo_name)
 
-    def test_rejects_non_square_crop(self):
+    def test_accepts_non_square_photo_and_fits_it_automatically(self):
         response = self._post_photo(
             self._image_data_uri(size=(512, 256)),
         )
 
-        self.assertEqual(response.status_code, 200)
-        self.assertFalse(UserProfile.objects.get(user=self.user).photo)
-        self.assertContains(response, 'debe tener formato cuadrado')
+        self.assertRedirects(response, reverse('personal:profile_update'))
+        with Image.open(UserProfile.objects.get(user=self.user).photo.path) as photo:
+            self.assertEqual(photo.size, (512, 512))
 
     def test_accepts_png_and_stores_a_validated_jpeg(self):
         response = self._post_photo(self._image_data_uri(mime='png'))

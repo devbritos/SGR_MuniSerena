@@ -1,0 +1,33 @@
+(function () {
+    'use strict';
+    const epochElement = document.getElementById('ui-preferences-epoch');
+    const epoch = epochElement ? JSON.parse(epochElement.textContent) || 'default-v2' : 'default-v2';
+    const memory = {};
+    const defaults = {'sgr-navbar-inverted': true, 'sgr-sidebar-pinned': true};
+    let reset = true;
+    try { reset = window.localStorage.getItem('sgr-ui-preferences-epoch') !== epoch; } catch (error) {}
+    if (reset) {
+        Object.assign(memory, defaults);
+        try {
+            for (const key of Object.keys(defaults)) window.localStorage.setItem(key, 'true');
+            window.localStorage.setItem('sgr-ui-preferences-epoch', epoch);
+        } catch (error) {
+            // Keep the layout usable when the browser blocks local storage.
+        }
+    }
+    function read(key) {
+        if (key in memory) return memory[key];
+        try {
+            const value = window.localStorage.getItem(key);
+            if (value !== null) return value === 'true';
+        } catch (error) {}
+        return defaults[key] ?? true;
+    }
+    function write(key, value) {
+        memory[key] = Boolean(value);
+        try { window.localStorage.setItem(key, String(Boolean(value))); } catch (error) {}
+    }
+    window.sgrUiPreferences = {read, write};
+    document.body.classList.toggle('navbar-inverted', read('sgr-navbar-inverted'));
+    document.body.classList.toggle('sidebar-pinned', window.innerWidth >= 992 && read('sgr-sidebar-pinned'));
+}());

@@ -304,7 +304,7 @@ def dashboard_redirect(request):
         and functionary.is_active
         and functionary.deleted_at is None
     ):
-        return delegation_dashboard(request)
+        return redirect('admin_dashboard')
     return redirect('user_dashboard')
 
 

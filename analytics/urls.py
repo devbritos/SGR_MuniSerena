@@ -5,6 +5,7 @@ from activities.views import TrafficLightView
 urlpatterns = [
     path('', views.dashboard_redirect, name='dashboard_redirect'),
     path('admin/', views.admin_dashboard, name='admin_dashboard'),
+    path('semaforo/', views.delegation_dashboard, name='delegation_dashboard'),
     path('mi-panel/', views.user_dashboard, name='user_dashboard'),
     path(
         'delegacion/<int:delegacion_id>/',

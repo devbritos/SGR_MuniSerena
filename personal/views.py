@@ -303,7 +303,7 @@ def profile_update(request):
 @login_required
 def profile_photo(request):
     profile = get_object_or_404(UserProfile, user=request.user)
-    if not profile.photo:
+    if not profile.has_photo:
         raise Http404('Este usuario todavía no tiene foto de perfil.')
     return FileResponse(profile.photo.open('rb'), content_type='image/jpeg')
 
@@ -319,7 +319,7 @@ def functionary_photo(request, pk):
         user__isnull=False,
     )
     profile = getattr(functionary.user, 'profile', None)
-    if profile is None or not profile.photo:
+    if profile is None or not profile.has_photo:
         raise Http404('Este funcionario todavía no tiene foto de perfil.')
     return FileResponse(profile.photo.open('rb'), content_type='image/jpeg')
 

@@ -1,0 +1,38 @@
+{% extends 'base.html' %}
+{% load crispy_forms_tags %}
+{% block title %}Crear compromiso · Atención #{{ attention.pk }}{% endblock %}
+{% block extra_head %}
+<style>
+ .attention-commitment-page {max-width: 820px; margin: auto; overflow-wrap: anywhere;}
+ .attention-commitment-page .card {border-radius: 1rem; border: 1px solid #e5e7eb;}
+ .attention-commitment-page .form-control, .attention-commitment-page .form-select, .attention-commitment-page .btn {min-height: 2.75rem;}
+ .attention-commitment-source {background: #f4f7fb; border-left: 3px solid #b4cce8;}
+ @media (max-width: 575.98px) {.attention-commitment-actions .btn {width: 100%;}}
+</style>
+{% endblock %}
+{% block content %}
+<main class="attention-commitment-page">
+ <section class="card shadow-sm"><div class="card-body p-3 p-md-4">
+  <h1 class="h4 mb-2">Crear compromiso</h1>
+  <p class="text-muted">Los datos de la atención ya están completados. Revisa lo acordado, confirma el sector y define la fecha de cumplimiento.</p>
+  <div class="attention-commitment-source rounded p-3 mb-4">
+   <strong>Atención #{{ attention.pk }} · {{ attention.requester_name }}</strong>
+   <p class="small mb-1">{{ attention.attention_type.name }} / {{ attention.sub_attention.name }} · {{ attention.delegation.name }}</p>
+   {% if attention.requester_contact %}<p class="small mb-1">Contacto: {{ attention.requester_contact }}</p>{% endif %}
+   <p class="small text-muted mb-0">El compromiso quedará vinculado a esta atención. Su creación y cumplimiento no la cierran automáticamente.</p>
+  </div>
+  <form method="post" novalidate>
+   {% csrf_token %}{{ form.creation_token }}
+   {% if form.errors %}<div class="alert alert-danger" role="alert"><strong>No se guardó el compromiso.</strong> Revisa los campos indicados.{{ form.non_field_errors }}{% for error in form.creation_token.errors %}<p>{{ error }}</p>{% endfor %}</div>{% endif %}
+   {{ form.applic_name|as_crispy_field }}
+   {{ form.observation|as_crispy_field }}
+   {{ form.functionary|as_crispy_field }}
+   <div class="row"><div class="col-md-6">{{ form.territory|as_crispy_field }}</div><div class="col-md-6">{{ form.commitment_date|as_crispy_field }}</div></div>
+   <div class="attention-commitment-actions d-flex flex-wrap justify-content-end gap-2 border-top pt-3 mt-3">
+    <a href="{% url 'atenciones:attention_detail' attention.pk %}" class="btn btn-outline-secondary">Cancelar</a>
+    <button class="btn btn-primary" type="submit"><i class="bi bi-check2" aria-hidden="true"></i> Crear y vincular compromiso</button>
+   </div>
+  </form>
+ </div></section>
+</main>
+{% endblock %}

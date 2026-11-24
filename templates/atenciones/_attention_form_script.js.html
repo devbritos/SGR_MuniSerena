@@ -1,0 +1,41 @@
+(function () {
+    'use strict';
+
+    function initializeAttentionForms(root = document) {
+        root.querySelectorAll('[data-attention-form]').forEach(function (form) {
+            if (form.dataset.subattentionBound) return;
+            const typeSelect = form.querySelector('[name="attention_type"]');
+            const subSelect = form.querySelector('[name="sub_attention"]');
+            const status = form.querySelector('[data-subattention-status]');
+            const catalogElement = form.querySelector('[data-subattention-catalog]');
+            if (!typeSelect || !subSelect || !status || !catalogElement) return;
+            let catalog;
+            try {
+                catalog = JSON.parse(catalogElement.textContent);
+            } catch (error) {
+                status.textContent = 'No se pudo preparar el catálogo. Vuelve a abrir el formulario.';
+                return;
+            }
+            form.dataset.subattentionBound = 'true';
+
+            function showSubattentions() {
+                const typeId = typeSelect.value;
+                status.textContent = '';
+                const options = catalog[typeId] || [];
+                const placeholder = !typeId ? 'Selecciona primero un tipo de atención' : options.length ? 'Selecciona una subatención' : 'Sin subatenciones disponibles';
+                subSelect.replaceChildren(new Option(placeholder, ''));
+                subSelect.disabled = !typeId;
+                options.forEach(function (item) { subSelect.add(new Option(item.name, item.id)); });
+                if (typeId && !options.length) status.textContent = 'Este tipo no tiene subatenciones activas. Solicita al administrador que revise el catálogo.';
+            }
+
+            typeSelect.addEventListener('change', showSubattentions);
+            // Keep server-rendered options and the current selection when editing.
+            if (!typeSelect.value || subSelect.options.length <= 1) showSubattentions();
+        });
+    }
+
+    window.sgrInitializeAttentionForms = initializeAttentionForms;
+    document.addEventListener('DOMContentLoaded', function () { initializeAttentionForms(); });
+    document.addEventListener('sgr:page-updated', function () { initializeAttentionForms(); });
+}());

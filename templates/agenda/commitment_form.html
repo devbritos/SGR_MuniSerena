@@ -58,6 +58,13 @@
         </header>
 
         <div class="commitment-form-body card-body">
+            {% if object.source_attention %}
+            <div class="alert alert-info mb-3">
+                <strong>Origen: atención #{{ object.source_attention_id }}</strong> · {{ object.source_attention.requester_name }}
+                <a class="d-inline-block ms-2" href="{% url 'atenciones:attention_detail' object.source_attention_id %}">Volver a la atención</a>
+                <p class="small mb-0 mt-1">Marcar el compromiso como cumplido no cierra automáticamente la atención.</p>
+            </div>
+            {% endif %}
             <form method="post" novalidate>
                 {% csrf_token %}
                 {% if form.activity_id %}{{ form.activity_id }}{% endif %}

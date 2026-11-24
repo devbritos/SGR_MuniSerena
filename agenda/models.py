@@ -6,11 +6,16 @@ from core.models import BaseModel
 
 
 class Commitment(BaseModel):
+    source_attention = models.ForeignKey(
+        'atenciones.Attention', on_delete=models.PROTECT, null=True, blank=True,
+        related_name='commitments', verbose_name='Atención de origen',
+    )
+    submission_token = models.UUIDField(null=True, blank=True, unique=True, editable=False)
     class State(models.TextChoices):
-        JOINED = 'JOINED', 'Joined'
-        PENDING = 'PENDING', 'Pending'
-        IN_PROGRESS = 'IN_PROGRESS', 'In progress'
-        DONE = 'DONE', 'Done'
+        JOINED = 'JOINED', 'Ingresado'
+        PENDING = 'PENDING', 'Pendiente'
+        IN_PROGRESS = 'IN_PROGRESS', 'En gestión'
+        DONE = 'DONE', 'Cumplido'
 
     origin = models.CharField(max_length=100)
     applic_name = models.CharField(max_length=70)
@@ -48,6 +53,8 @@ class Commitment(BaseModel):
 
     def clean(self):
         super().clean()
+        if self.source_attention_id and self.functionary_id and self.source_attention.delegation_id != self.functionary.delegation_id:
+            raise ValidationError({'functionary': 'El responsable debe pertenecer a la delegación de la atención de origen.'})
         # Es una promesa a futuro: al crearla, la fecha no puede estar en el pasado.
         if self._state.adding and self.commitment_date and self.commitment_date < timezone.localdate():
             raise ValidationError(

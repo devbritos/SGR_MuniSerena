@@ -1,10 +1,14 @@
 {% extends "errors/base.html" %}
 
-{% block title %}Acceso denegado — SGR{% endblock %}
+{% block title %}{% if csrf_failure %}Solicitud no validada{% else %}Acceso denegado{% endif %} — SGR{% endblock %}
 {% block error_code %}403{% endblock %}
-{% block error_heading %}Acceso denegado{% endblock %}
-{% block error_message %}Tu cuenta no tiene permiso para ver esta página. Puedes volver al inicio o regresar a la página anterior.{% endblock %}
+{% block error_heading %}{% if csrf_failure %}No se pudo validar la solicitud{% else %}Acceso denegado{% endif %}{% endblock %}
+{% block error_message %}{% if csrf_failure %}El formulario de inicio de sesión no pasó la validación de seguridad. Recarga la página y vuelve a intentarlo; usa la misma dirección del sitio durante todo el acceso.{% else %}Tu cuenta no tiene permiso para ver esta página. Puedes volver al inicio o regresar a la página anterior.{% endif %}{% endblock %}
 {% block error_actions %}
+{% if csrf_failure %}
+<a class="btn btn-primary" href="{% url 'login' %}">Volver a iniciar sesión</a>
+{% else %}
 <a class="btn btn-primary" href="{% url 'personal:profile_update' %}">Ir a mi perfil</a>
 <button class="btn btn-outline-secondary" type="button" data-go-back>Volver a la página anterior</button>
+{% endif %}
 {% endblock %}

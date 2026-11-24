@@ -86,6 +86,7 @@
                         <th>Encargado</th>
                         <th>Estado</th>
                         <th>Derivación</th>
+                        <th>Atención</th>
                         <th class="text-end">Acciones</th>
                     </tr>
                 </thead>
@@ -104,7 +105,9 @@
                         <td>{{ letter.responsible.full_name }}</td>
                         <td><span class="badge {% if letter.state == 'IN_PROGRESS' %}text-bg-warning{% elif letter.state == 'FINALIZED' %}text-bg-success{% else %}text-bg-secondary{% endif %}">{{ letter.get_state_display }}</span></td>
                         <td>{{ letter.referred_to|default:"—" }}</td>
+                        <td>{% if letter.attention_id %}<a href="{% url 'correspondence:letter_detail' letter.pk %}">#{{ letter.attention_id }}</a>{% if letter.attention.deleted_at %}<br><small class="text-muted">Archivada</small>{% else %}<br><small class="text-muted">{{ letter.attention.get_status_display }}</small>{% endif %}{% else %}<span class="text-muted">Sin vincular</span>{% endif %}</td>
                         <td class="text-end text-nowrap">
+                            <a class="btn btn-sm btn-outline-primary" href="{% url 'correspondence:letter_detail' letter.pk %}">Ver carta</a>
                             <a class="btn btn-sm btn-outline-primary" href="{% url 'correspondence:letter_update' letter.pk %}" aria-label="Editar carta {{ letter.registry_number|default:letter.pk }}">
                                 <i class="bi bi-pencil" aria-hidden="true"></i>
                             </a>
@@ -117,7 +120,7 @@
                     </tr>
                     {% empty %}
                     <tr>
-                        <td colspan="7" class="text-center py-5">
+                        <td colspan="8" class="text-center py-5">
                             {% include "_list_empty_state.html" with empty_message="No hay cartas registradas." %}
                         </td>
                     </tr>

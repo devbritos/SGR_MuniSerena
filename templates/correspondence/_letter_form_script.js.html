@@ -1,0 +1,43 @@
+(function () {
+    'use strict';
+    function initializeLetterForms(root = document) {
+        root.querySelectorAll('[data-letter-form]').forEach(function (form) {
+            if (form.dataset.responsibleBound) return;
+            const delegation = form.querySelector('[name="delegation"]');
+            const responsible = form.querySelector('[name="responsible"]');
+            const status = form.querySelector('[data-responsible-status]');
+            const source = form.querySelector('[data-responsible-catalog]');
+            if (!delegation || !responsible || !status || !source) return;
+            let catalog;
+            try {
+                catalog = JSON.parse(source.textContent);
+            } catch (error) {
+                status.textContent = 'No se pudo preparar la lista de responsables. Vuelve a abrir el formulario.';
+                return;
+            }
+            form.dataset.responsibleBound = 'true';
+
+            function updateResponsible() {
+                const options = catalog[delegation.value] || [];
+                const placeholder = !delegation.value ? 'Selecciona primero una delegación' : options.length ? 'Selecciona un responsable' : 'Sin responsables disponibles';
+                responsible.replaceChildren(new Option(placeholder, ''));
+                options.forEach(function (person) { responsible.add(new Option(person.name, person.id)); });
+                status.textContent = delegation.value && !options.length ? 'No hay funcionarios autorizados disponibles en esta delegación. Solicita al administrador que revise las asignaciones.' : '';
+            }
+
+            delegation.addEventListener('change', updateResponsible);
+            // Preserve the saved selection or the submitted data when correcting errors.
+            if (!delegation.value || responsible.options.length <= 1) updateResponsible();
+            form.addEventListener('reset', function () {
+                window.setTimeout(function () {
+                    const initial = responsible.value;
+                    updateResponsible();
+                    if (Array.from(responsible.options).some(option => option.value === initial)) responsible.value = initial;
+                }, 0);
+            });
+        });
+    }
+    window.sgrInitializeLetterForms = initializeLetterForms;
+    document.addEventListener('DOMContentLoaded', function () { initializeLetterForms(); });
+    document.addEventListener('sgr:page-updated', function () { initializeLetterForms(); });
+}());

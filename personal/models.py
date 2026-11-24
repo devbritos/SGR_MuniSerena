@@ -291,5 +291,12 @@ class UserProfile(models.Model):
         validators=[validate_profile_photo],
     )
 
+    @property
+    def has_photo(self):
+        return bool(
+            self.photo
+            and self.photo.storage.exists(self.photo.name)
+        )
+
     def __str__(self):
         return f'Perfil de {self.user}'

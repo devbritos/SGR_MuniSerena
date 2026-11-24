@@ -188,7 +188,12 @@
     {% endif %}
 
     <div class="attention-form-card">
-        {% if object %}
+        {% if source_letter %}
+        <div class="attention-form-section">
+            {% include 'correspondence/_letter_source.html' with letter=source_letter %}
+            <p class="small text-muted mb-0">Revisa los datos precargados y selecciona la clasificación. La atención pertenecerá a la delegación de la carta y el vínculo quedará registrado en el historial.</p>
+        </div>
+        {% elif object %}
         <div class="attention-form-section">
             <div class="alert alert-info d-flex align-items-start gap-2 mb-0" role="note">
                 <i class="bi bi-info-circle mt-1" aria-hidden="true"></i>
@@ -226,7 +231,8 @@
         </div>
         {% endif %}
 
-        <form method="post">
+        <form method="post" data-attention-form>
+            <div hidden data-subattention-catalog>{{ form.subattention_catalog|json_script }}</div>
             {% csrf_token %}
             {% if form.non_field_errors %}
             <div class="alert alert-danger m-3 mb-0" role="alert">{{ form.non_field_errors }}</div>
@@ -243,6 +249,7 @@
                     <div class="col-md-7">{{ form.requester_name|as_crispy_field }}</div>
                     <div class="col-md-5">{{ form.requester_contact|as_crispy_field }}</div>
                 </div>
+                {{ form.organization|as_crispy_field }}
             </section>
 
             <section class="attention-form-section" aria-labelledby="attention-category-heading">
@@ -257,7 +264,7 @@
                     <div class="col-md-6">{{ form.attention_type|as_crispy_field }}</div>
                     <div class="col-md-6">{{ form.sub_attention|as_crispy_field }}</div>
                 </div>
-                <div id="subattention-error" class="alert alert-danger d-none mb-0" role="alert" aria-live="polite"></div>
+                <p class="small text-muted" data-subattention-status role="status" aria-live="polite"></p>
             </section>
 
             <section class="attention-form-section" aria-labelledby="attention-description-heading">
@@ -269,17 +276,18 @@
                     </div>
                 </div>
                 {{ form.description|as_crispy_field }}
+                {% if source_letter %}{{ form.followup_responsible|as_crispy_field }}{% endif %}
             </section>
 
             <div class="attention-form-actions">
                 <p class="attention-form-note"><span class="text-danger" aria-hidden="true">*</span> Completa los campos obligatorios.</p>
                 <div class="attention-form-action-buttons d-flex gap-2">
-                    <a class="btn btn-outline-secondary" href="{% url 'atenciones:attention_list' %}">
+                    <a class="btn btn-outline-secondary" href="{% if source_letter %}{% url 'correspondence:letter_detail' source_letter.pk %}{% else %}{% url 'atenciones:attention_list' %}{% endif %}">
                         <i class="bi bi-arrow-left" aria-hidden="true"></i>Cancelar
                     </a>
                     {% if has_active_attention_types %}
                     <button class="btn btn-primary" type="submit">
-                        <i class="bi bi-check2" aria-hidden="true"></i>{% if object %}Guardar cambios{% else %}Registrar atención{% endif %}
+                        <i class="bi bi-check2" aria-hidden="true"></i>{% if source_letter %}Crear y vincular atención{% elif object %}Guardar cambios{% else %}Registrar atención{% endif %}
                     </button>
                     {% endif %}
                 </div>
@@ -287,44 +295,4 @@
         </form>
     </div>
 </main>
-{% endblock %}
-{% block extra_scripts %}
-<script>
-function initializeAttentionForm() {
-    const typeSelect = document.getElementById('id_attention_type');
-    const subSelect = document.getElementById('id_sub_attention');
-    const errorBox = document.getElementById('subattention-error');
-    if (!typeSelect || !subSelect || !errorBox || typeSelect.dataset.liveUpdateBound) return;
-    typeSelect.dataset.liveUpdateBound = 'true';
-
-    const endpointTemplate = "{% url 'atenciones:subattention_options' 0 %}";
-    typeSelect.addEventListener('change', async function () {
-        subSelect.replaceChildren(new Option('---------', ''));
-        subSelect.disabled = true;
-        errorBox.classList.add('d-none');
-        if (!typeSelect.value) {
-            subSelect.disabled = false;
-            return;
-        }
-        try {
-            const endpoint = endpointTemplate.replace('/0/', '/' + typeSelect.value + '/');
-            const response = await fetch(endpoint, {
-                headers: {'X-Requested-With': 'XMLHttpRequest'}
-            });
-            if (!response.ok) throw new Error('No se pudieron cargar las subatenciones.');
-            const payload = await response.json();
-            payload.results.forEach(function (item) {
-                subSelect.add(new Option(item.name, item.id));
-            });
-            subSelect.disabled = false;
-        } catch (error) {
-            errorBox.textContent = error.message;
-            errorBox.classList.remove('d-none');
-        }
-    });
-}
-
-document.addEventListener('DOMContentLoaded', initializeAttentionForm);
-document.addEventListener('sgr:page-updated', initializeAttentionForm);
-</script>
 {% endblock %}

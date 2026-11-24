@@ -182,6 +182,38 @@ class DashboardTests(TestCase):
             fetch_redirect_response=False,
         )
 
+    def test_login_resets_ui_preferences_once_and_navigation_keeps_session_epoch(self):
+        credentials = {'username': self.staff.username, 'password': 'test-password'}
+        self.client.post(reverse('login'), credentials)
+        epoch = self.client.session['ui_preferences_epoch']
+        self.assertRegex(epoch, r'^[0-9a-f]{24}$')
+        response = self.client.get(reverse('admin_dashboard'))
+        self.assertContains(response, epoch)
+        self.assertEqual(self.client.session['ui_preferences_epoch'], epoch)
+        self.client.post(reverse('logout'))
+        self.client.post(reverse('login'), credentials)
+        self.assertNotEqual(self.client.session['ui_preferences_epoch'], epoch)
+
+    def test_authenticated_admin_enters_management_dashboard_from_root_or_dashboard(self):
+        self.client.force_login(self.staff)
+        for path in ('/', reverse('dashboard_redirect')):
+            with self.subTest(path=path):
+                response = self.client.get(path, follow=True)
+                self.assertEqual(response.status_code, 200)
+                self.assertEqual(response.redirect_chain[-1][0], reverse('admin_dashboard'))
+                self.assertTemplateUsed(response, 'analytics/admin_dashboard.html')
+
+    def test_admin_login_always_lands_on_management_dashboard(self):
+        superuser = User.objects.create_superuser(username='dashboard_superuser', password='test-password')
+        for user in (self.staff, superuser):
+            for destination in ('/', reverse('delegation_dashboard'), reverse('agenda:commitment_list'), 'https://example.com/'):
+                with self.subTest(user=user.username, destination=destination):
+                    self.client.logout()
+                    response = self.client.post(reverse('login'), {
+                        'username': user.username, 'password': 'test-password', 'next': destination,
+                    })
+                    self.assertRedirects(response, reverse('admin_dashboard'), fetch_redirect_response=False)
+
     def test_functionary_login_redirects_to_personal_dashboard(self):
         response = self.client.post(
             reverse('login'),
@@ -194,7 +226,7 @@ class DashboardTests(TestCase):
             fetch_redirect_response=False,
         )
 
-    def test_login_keeps_an_explicit_safe_next_destination(self):
+    def test_admin_login_prioritizes_management_dashboard_over_next(self):
         response = self.client.post(
             reverse('login'),
             {
@@ -206,7 +238,23 @@ class DashboardTests(TestCase):
 
         self.assertRedirects(
             response,
-            reverse('dashboard_redirect'),
+            reverse('admin_dashboard'),
+            fetch_redirect_response=False,
+        )
+
+    def test_normal_functionary_login_ignores_semaphore_next_destination(self):
+        response = self.client.post(
+            reverse('login'),
+            {
+                'username': self.user.username,
+                'password': 'test-password',
+                'next': reverse('dashboard_redirect'),
+            },
+        )
+
+        self.assertRedirects(
+            response,
+            reverse('user_dashboard'),
             fetch_redirect_response=False,
         )
 
@@ -239,7 +287,7 @@ class DashboardTests(TestCase):
 
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, 'Semáforo por delegación')
-        self.assertContains(response, reverse('dashboard_redirect'))
+        self.assertContains(response, reverse('delegation_dashboard'))
         self.assertContains(
             response,
             f'class="navbar-brand d-flex align-items-center me-auto" href="{reverse("admin_dashboard")}"',
@@ -262,11 +310,18 @@ class DashboardTests(TestCase):
             functionary=admin_functionary,
             role=admin_role,
         )
+        login_response = self.client.post(reverse('login'), {
+            'username': admin_user.username,
+            'password': 'test-password',
+            'next': reverse('delegation_dashboard'),
+        })
+        self.assertRedirects(login_response, reverse('admin_dashboard'), fetch_redirect_response=False)
         self.client.force_login(admin_user)
 
-        response = self.client.get(reverse('dashboard_redirect'))
+        response = self.client.get(reverse('dashboard_redirect'), follow=True)
 
         self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.redirect_chain[-1][0], reverse('admin_dashboard'))
         self.assertContains(response, 'Semáforo por delegación')
         self.assertContains(response, reverse('personal:functionary_list'))
         self.assertContains(response, reverse('personal:delegation_list'))
@@ -292,7 +347,7 @@ class DashboardTests(TestCase):
         )
         self.client.force_login(self.staff)
 
-        dashboard_response = self.client.get(reverse('dashboard_redirect'))
+        dashboard_response = self.client.get(reverse('delegation_dashboard'))
 
         self.assertEqual(dashboard_response.status_code, 200)
         summaries = {
@@ -367,7 +422,7 @@ class DashboardTests(TestCase):
         self.client.force_login(self.staff)
 
         response = self.client.get(
-            reverse('dashboard_redirect'),
+            reverse('delegation_dashboard'),
             {'period': historical_period.pk},
         )
 
@@ -414,7 +469,7 @@ class DashboardTests(TestCase):
         self.client.force_login(self.staff)
 
         first_page = self.client.get(
-            reverse('dashboard_redirect'),
+            reverse('delegation_dashboard'),
             {'q': 'DP-', 'funcionarios': 'con', 'per_page': 1},
         )
 
@@ -427,7 +482,7 @@ class DashboardTests(TestCase):
         self.assertEqual(first_page.context['page_size_options'], (1, 3))
 
         second_page = self.client.get(
-            reverse('dashboard_redirect'),
+            reverse('delegation_dashboard'),
             {
                 'q': 'DP-',
                 'funcionarios': 'con',
@@ -462,6 +517,7 @@ class DashboardTests(TestCase):
             reverse('user_dashboard'),
         )
         self.assertEqual(detail_response.status_code, 403)
+        self.assertEqual(self.client.get(reverse('delegation_dashboard')).status_code, 403)
 
     def test_functionary_menu_shows_operational_sections_without_admin_links(self):
         self.client.force_login(self.user)
@@ -484,7 +540,7 @@ class DashboardTests(TestCase):
         response = self.client.get(reverse('admin_dashboard'))
 
         self.assertEqual(response.status_code, 200)
-        self.assertContains(response, reverse('dashboard_redirect'))
+        self.assertContains(response, reverse('delegation_dashboard'))
         self.assertContains(response, reverse('admin_dashboard'))
         html = response.content.decode()
         functionary_list_url = reverse('personal:functionary_list')

@@ -1,0 +1,13 @@
+{# Keep the theme with dashboard content so live page refreshes load it as well. #}
+<style>{% include 'components/_dashboard_light_theme.css.html' %}</style>
+<svg width="0" height="0" aria-hidden="true" focusable="false" style="position: absolute; pointer-events: none;">
+    <defs>
+        <filter id="dashboard-red-on-white" color-interpolation-filters="sRGB">
+            <feComponentTransfer>
+                <feFuncR type="table" tableValues="1 0.678431" />
+                <feFuncG type="table" tableValues="1 0" />
+                <feFuncB type="table" tableValues="1 0" />
+            </feComponentTransfer>
+        </filter>
+    </defs>
+</svg>

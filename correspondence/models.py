@@ -5,6 +5,10 @@ from core.models import BaseModel
 
 
 class OfficeLetter(BaseModel):
+    attention = models.ForeignKey(
+        'atenciones.Attention', on_delete=models.PROTECT, null=True, blank=True,
+        related_name='office_letters', verbose_name='Atención vinculada',
+    )
     class State(models.TextChoices):
         IN_PROGRESS = 'IN_PROGRESS', 'En proceso'
         APPROVED = 'APPROVED', 'Aprobada'
@@ -82,6 +86,8 @@ class OfficeLetter(BaseModel):
 
     def clean(self):
         super().clean()
+        if self.attention_id and self.delegation_id and self.attention.delegation_id != self.delegation_id:
+            raise ValidationError({'delegation': 'La carta y su atención vinculada deben pertenecer a la misma delegación.'})
         if (
             self.delegation_id
             and self.responsible_id

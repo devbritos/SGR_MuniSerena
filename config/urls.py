@@ -54,6 +54,7 @@ urlpatterns = [
     path("eventos/", include("events.urls")),
     path("configuration/", include("configuration.urls")),
     path("atenciones/", include("atenciones.urls")),
+    path("organizaciones/", include("organizations.urls")),
 ]
 
 handler400 = "core.error_views.handler400"

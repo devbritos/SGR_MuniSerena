@@ -1,6 +1,7 @@
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.contrib import messages
 from django.db import transaction
+from django.db.models import Q
 from django.urls import reverse_lazy
 from django.utils import timezone
 from django.views.generic import ListView, CreateView, UpdateView, DeleteView
@@ -42,7 +43,11 @@ def get_commitment_scope(user):
         return commitments
     if functionary.is_delegate:
         return commitments.filter(functionary__delegation=functionary.delegation)
-    return commitments.filter(functionary=functionary)
+    return commitments.filter(
+        Q(functionary=functionary)
+        | Q(source_attention__functionary=functionary)
+        | Q(source_attention__followup_responsible=functionary)
+    )
 
 
 class CommitmentListView(ListControlsMixin, LoginRequiredMixin, FunctionaryOrStaffRequiredMixin, ListView):

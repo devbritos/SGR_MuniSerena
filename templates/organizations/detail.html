@@ -1,0 +1,49 @@
+{% extends 'organizations/base.html' %}
+{% block title %}{{ object.name }} · Organización{% endblock %}
+{% block organization_content %}
+<a class="btn btn-outline-secondary mb-3" href="{% url 'organizations:list' %}">Volver a organizaciones</a>
+<div class="d-flex flex-wrap justify-content-between gap-3 mb-4">
+  <div><h1 class="h3">{{ object.name }}</h1><p class="text-muted">{{ object.delegation.name }} · {{ object.get_status_display }}</p></div>
+  {% if can_manage %}<a class="btn btn-outline-primary align-self-start" href="{% url 'organizations:update' object.pk %}">Editar organización</a>{% endif %}
+</div>
+<section class="card p-3 p-md-4 mb-4">
+  <h2 class="h5">Antecedentes</h2>
+  <dl class="row mb-0">
+    <dt class="col-sm-4">RUT / Registro</dt><dd class="col-sm-8">{{ object.rut|default:'Sin RUT' }} / {{ object.registry_number|default:'Sin número de registro' }}</dd>
+    <dt class="col-sm-4">Tipo</dt><dd class="col-sm-8">{{ object.organization_type|default:'Sin indicar' }}</dd>
+    <dt class="col-sm-4">Sector / Dirección</dt><dd class="col-sm-8">{{ object.territory|default:'Sin sector' }} · {{ object.address|default:'Sin dirección' }}</dd>
+    <dt class="col-sm-4">Contacto</dt><dd class="col-sm-8">{{ object.phone|default:'Sin teléfono' }} · {{ object.email|default:'Sin correo' }}</dd>
+    <dt class="col-sm-4">Observaciones</dt><dd class="col-sm-8">{{ object.observations|default:'Sin observaciones'|linebreaksbr }}</dd>
+  </dl>
+</section>
+<section class="card p-3 p-md-4 mb-4">
+  <div class="d-flex flex-wrap justify-content-between gap-2 mb-3">
+    <div><h2 class="h5">Atenciones vinculadas</h2><p class="text-muted small">Solicitudes registradas a nombre de esta organización.</p></div>
+    <a class="btn btn-outline-primary" href="{% url 'atenciones:attention_create' %}?organization={{ object.pk }}">Registrar atención</a>
+  </div>
+  {% for attention in attentions %}
+  <article class="border rounded p-3 mb-2 d-flex flex-wrap justify-content-between gap-2">
+    <div><strong>Atención #{{ attention.pk }}</strong><p class="mb-1">{{ attention.requester_name }} · {{ attention.attention_type.name }} / {{ attention.sub_attention.name }}</p><small class="text-muted">{{ attention.created_at|date:"d/m/Y H:i" }} · {{ attention.get_status_display }}</small></div>
+    <a class="btn btn-sm btn-outline-secondary align-self-start" href="{% url 'atenciones:attention_detail' attention.pk %}">Abrir atención</a>
+  </article>
+  {% empty %}<p class="text-muted mb-0">No hay atenciones vinculadas a esta organización.</p>{% endfor %}
+</section>
+<section class="card p-3 p-md-4">
+  <div class="d-flex flex-wrap justify-content-between gap-2 mb-3">
+    <div><h2 class="h5">Dirigentes y períodos</h2><p class="text-muted small">Las fechas describen el período registrado; no certifican la vigencia legal de la organización.</p></div>
+    {% if can_manage %}<a class="btn btn-outline-primary align-self-start" href="{% url 'organizations:leader_create' object.pk %}">Agregar dirigente</a>{% endif %}
+  </div>
+  {% for leader in leaders %}
+  <article class="border rounded p-3 mb-2">
+    <div class="d-flex flex-wrap justify-content-between gap-2">
+      <div><strong>{{ leader.name }}</strong> · {{ leader.position }}
+        <p class="small mb-1">{{ leader.phone|default:'Sin teléfono' }} · {{ leader.email|default:'Sin correo' }}</p>
+        <p class="small mb-1">{{ leader.starts_on|date:'d/m/Y'|default:'Inicio sin registrar' }} · {{ leader.ends_on|date:'d/m/Y'|default:'Término sin registrar' }}</p>
+        <span class="badge bg-light text-dark border">{{ leader.validity_label }}</span>
+      </div>
+      {% if can_manage %}<a class="btn btn-sm btn-outline-secondary align-self-start" href="{% url 'organizations:leader_update' object.pk leader.pk %}">Editar dirigente</a>{% endif %}
+    </div>
+  </article>
+  {% empty %}<p class="text-muted">Todavía no hay dirigentes registrados. Puedes agregarlos cuando cuentes con sus antecedentes.</p>{% endfor %}
+</section>
+{% endblock %}

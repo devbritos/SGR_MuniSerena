@@ -10,6 +10,7 @@ from redis.exceptions import RedisError
 logger = logging.getLogger(__name__)
 
 BUSINESS_APP_LABELS = {
+    'organizations',
     'activities',
     'agenda',
     'atenciones',

@@ -1,0 +1,44 @@
+(function () {
+    'use strict';
+    const tones = {
+        PENDING: 'pending', JOINED: 'pending', PENDING_EMAIL: 'pending', PENDING_REVIEW: 'pending',
+        IN_PROGRESS: 'progress',
+        FORMING: 'progress', ACTIVE: 'success', INACTIVE: 'neutral',
+        CLOSED: 'success', DONE: 'success', APPROVED: 'success', VALIDATED: 'success',
+        FINALIZED: 'success', CONFIRMED: 'success', PUBLISHED: 'success', ACTIVO: 'success',
+        REJECTED: 'danger', CANCELLED: 'danger',
+        UNCLASSIFIED: 'neutral', DRAFT: 'neutral', NOT_APPLICABLE: 'neutral', INACTIVO: 'neutral',
+    };
+
+    function isStateSelect(select) {
+        return select && select.tagName === 'SELECT' && (
+            /^(?:.*-)?(?:state|status|state_validity|validity_state)$/.test(select.name)
+            || select.hasAttribute('data-state-select')
+        );
+    }
+
+    function colorStateSelect(select) {
+        if (!isStateSelect(select)) return;
+        select.classList.add('state-select');
+        for (const option of select.options) {
+            const tone = tones[option.value];
+            if (tone) option.dataset.stateTone = tone;
+            else delete option.dataset.stateTone;
+        }
+        const tone = tones[select.value];
+        if (tone) select.dataset.stateTone = tone;
+        else delete select.dataset.stateTone;
+    }
+
+    function initializeStateSelects(root = document) {
+        root.querySelectorAll('select').forEach(colorStateSelect);
+    }
+
+    window.sgrInitializeStateSelects = initializeStateSelects;
+    document.addEventListener('DOMContentLoaded', function () { initializeStateSelects(); });
+    document.addEventListener('sgr:page-updated', function () { initializeStateSelects(); });
+    document.addEventListener('change', function (event) { colorStateSelect(event.target); });
+    document.addEventListener('reset', function (event) {
+        window.setTimeout(function () { initializeStateSelects(event.target); }, 0);
+    });
+}());

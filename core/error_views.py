@@ -1,6 +1,10 @@
+import logging
+
 from django.http import HttpResponse
 from django.template.loader import render_to_string
 
+
+logger = logging.getLogger(__name__)
 
 ERROR_TEMPLATES = {
     400: '400.html',
@@ -10,8 +14,8 @@ ERROR_TEMPLATES = {
 }
 
 
-def render_error_page(status_code):
-    content = render_to_string(ERROR_TEMPLATES[status_code])
+def render_error_page(status_code, context=None):
+    content = render_to_string(ERROR_TEMPLATES[status_code], context or {})
     return HttpResponse(content, status=status_code)
 
 
@@ -24,7 +28,12 @@ def handler403(request, exception=None):
 
 
 def csrf_failure(request, reason=''):
-    return handler403(request)
+    logger.warning(
+        'CSRF validation failed on %s: %s',
+        request.path,
+        reason or 'Unknown reason',
+    )
+    return render_error_page(403, {'csrf_failure': True})
 
 
 def handler404(request, exception=None):

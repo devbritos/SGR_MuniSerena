@@ -7,6 +7,8 @@ app_name = 'atenciones'
 urlpatterns = [
     path('', views.AttentionListView.as_view(), name='attention_list'),
     path('nueva/', views.AttentionCreateView.as_view(), name='attention_create'),
+    path('<int:pk>/', views.AttentionDetailView.as_view(), name='attention_detail'),
+    path('<int:pk>/compromiso/nuevo/', views.AttentionCommitmentCreateView.as_view(), name='attention_commitment_create'),
     path(
         '<int:pk>/editar/',
         views.AttentionUpdateView.as_view(),

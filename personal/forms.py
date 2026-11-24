@@ -18,7 +18,7 @@ from .models import (
     Role,
     UserProfile,
 )
-from .validators import MAX_PROFILE_PHOTO_BYTES, validate_profile_photo
+from .validators import MAX_PROFILE_PHOTO_BYTES, MAX_PROFILE_PHOTO_SOURCE_BYTES, validate_profile_photo
 
 
 class CroppedImageInput(forms.HiddenInput):
@@ -81,9 +81,9 @@ class ProfilePhotoForm(forms.ModelForm):
         uploaded_file = self.cleaned_data.get('photo_upload')
         if uploaded_file is None:
             return None
-        if uploaded_file.size > MAX_PROFILE_PHOTO_BYTES:
+        if uploaded_file.size > MAX_PROFILE_PHOTO_SOURCE_BYTES:
             raise forms.ValidationError(
-                'La imagen de origen no puede superar 2 MiB.'
+                'La imagen de origen no puede superar 10 MiB.'
             )
         expected_format = {
             'image/jpeg': 'JPEG',
@@ -93,9 +93,10 @@ class ProfilePhotoForm(forms.ModelForm):
             raise forms.ValidationError('La imagen debe ser JPG o PNG.')
         try:
             validate_profile_photo(
-                uploaded_file.read(),
+                uploaded_file,
                 expected_format=expected_format,
                 require_square=False,
+                max_bytes=MAX_PROFILE_PHOTO_SOURCE_BYTES,
             )
         except ValidationError as exc:
             raise forms.ValidationError(exc.messages) from exc
@@ -103,11 +104,13 @@ class ProfilePhotoForm(forms.ModelForm):
 
     def clean(self):
         cleaned_data = super().clean()
-        if cleaned_data.get('photo_upload') and not cleaned_data.get('cropped_image'):
-            self.add_error(
-                'cropped_image',
-                'Selecciona y confirma el recorte antes de guardar la foto.',
-            )
+        if cleaned_data.get('photo_upload') and not cleaned_data.get('cropped_image') and 'cropped_image' not in self.errors:
+            try:
+                cleaned_data['cropped_image'] = validate_profile_photo(
+                    cleaned_data['photo_upload'], max_bytes=MAX_PROFILE_PHOTO_SOURCE_BYTES,
+                )
+            except ValidationError as exc:
+                self.add_error('photo_upload', exc)
         return cleaned_data
 
     def save(self, commit=True):

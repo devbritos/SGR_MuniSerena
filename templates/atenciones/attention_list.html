@@ -20,7 +20,7 @@
             <i class="bi bi-chat-left-text-fill text-primary me-2" aria-hidden="true"></i>
             Atenciones ciudadanas
         </h1>
-        <p class="text-muted mb-0">Historial de atenciones registradas</p>
+        <p class="text-muted mb-0">Revisa las solicitudes y organiza sus próximas gestiones.</p>
     </div>
     <a class="btn btn-primary attention-create-button px-3 py-2 fw-semibold text-nowrap"
        href="{% url 'atenciones:attention_create' %}">
@@ -28,28 +28,39 @@
         Registrar atención
     </a>
 </div>
-<div class="d-flex gap-2 mb-3">
-    <form method="get" class="d-flex gap-2 flex-grow-1">
-        <div class="col-md-5">
+<nav class="row g-2 mb-4" aria-label="Resumen de seguimiento de tus atenciones visibles">
+    <div class="col-6 col-lg-3"><a href="?followup=open" class="card card-body h-100 text-decoration-none text-dark"><span class="small text-muted">Abiertas</span><strong class="fs-4">{{ summary.pending }}</strong><span class="small">Pendientes y en gestión <i class="bi bi-arrow-right" aria-hidden="true"></i></span></a></div>
+    <div class="col-6 col-lg-3"><a href="?followup=today" class="card card-body h-100 text-decoration-none text-dark"><span class="small text-muted">Para hoy</span><strong class="fs-4">{{ summary.today }}</strong><span class="small">Ver acciones de hoy <i class="bi bi-arrow-right" aria-hidden="true"></i></span></a></div>
+    <div class="col-6 col-lg-3"><a href="?followup=overdue" class="card card-body h-100 text-decoration-none text-dark"><span class="small text-muted">Vencidas</span><strong class="fs-4 text-danger">{{ summary.overdue }}</strong><span class="small">Revisar fechas <i class="bi bi-arrow-right" aria-hidden="true"></i></span></a></div>
+    <div class="col-6 col-lg-3"><a href="?status=UNCLASSIFIED" class="card card-body h-100 text-decoration-none text-dark"><span class="small text-muted">Sin clasificar</span><strong class="fs-4">{{ summary.unclassified }}</strong><span class="small">Revisar registros anteriores <i class="bi bi-arrow-right" aria-hidden="true"></i></span></a></div>
+</nav>
+<div class="card card-body shadow-sm mb-3">
+    <form method="get" class="row g-3 align-items-end">
+        <div class="col-lg-4">
             <label class="form-label small fw-semibold" for="attention-search">Buscar atenciones</label>
             <input id="attention-search" class="form-control" type="search" name="q" value="{{ search_query }}" placeholder="Solicitante, categoría, descripción o delegación">
         </div>
-        <button class="btn btn-outline-secondary" type="submit"><i class="bi bi-search" aria-hidden="true"></i> Buscar</button>
+        <div class="col-sm-6 col-lg-2"><label class="form-label small fw-semibold" for="attention-status">Estado</label><select class="form-select" id="attention-status" name="status"><option value="">Todos</option>{% for value, label in status_choices %}<option value="{{ value }}" {% if selected_status == value %}selected{% endif %}>{{ label }}</option>{% endfor %}</select></div>
+        <div class="col-sm-6 col-lg-3"><label class="form-label small fw-semibold" for="attention-followup">Seguimiento</label><select class="form-select" id="attention-followup" name="followup"><option value="">Todas las fechas y responsables</option><option value="open" {% if selected_followup == 'open' %}selected{% endif %}>Abiertas</option><option value="today" {% if selected_followup == 'today' %}selected{% endif %}>Para hoy</option><option value="overdue" {% if selected_followup == 'overdue' %}selected{% endif %}>Vencidas</option><option value="mine" {% if selected_followup == 'mine' %}selected{% endif %}>A mi cargo (abiertas)</option></select></div>
+        <div class="col-lg-3 d-flex flex-wrap gap-2"><button class="btn btn-outline-primary" type="submit"><i class="bi bi-search" aria-hidden="true"></i> Filtrar</button><a class="btn btn-outline-secondary" href="{% url 'atenciones:attention_list' %}">Limpiar</a></div>
     </form>
-    <a class="btn btn-outline-success text-nowrap" href="{{ request.path }}?{{ query_params }}{% if query_params %}&{% endif %}export=xlsx"><i class="bi bi-file-earmark-excel"></i> Exportar a Excel</a>
 </div>
+<div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3"><p class="text-muted small mb-0">{{ page_obj.paginator.count }} resultado{{ page_obj.paginator.count|pluralize:"s" }} · Abre una ficha para registrar una gestión.</p><a class="btn btn-outline-success" href="{{ request.path }}?{{ query_params }}{% if query_params %}&{% endif %}export=xlsx"><i class="bi bi-file-earmark-excel" aria-hidden="true"></i> Exportar resultados</a></div>
 {% include "_list_sort_controls.html" %}
 <div class="table-responsive card shadow-sm">
-    <table class="table table-hover align-middle mb-0" data-list-modal-table>
-        <thead class="table-dark"><tr><th>Fecha y hora</th><th>Solicitante</th><th>Tipo</th><th>Subatención</th><th>Descripción</th><th>Delegación</th><th>Responsable</th><th class="text-end">Acciones</th></tr></thead>
+    <table class="table table-hover align-middle mb-0">
+        <thead class="table-dark"><tr><th>Fecha y hora</th><th>Solicitante</th><th>Clasificación</th><th>Estado</th><th>Próxima acción</th><th>Seguimiento a cargo de</th><th class="text-end">Acciones</th></tr></thead>
         <tbody>
             {% for attention in object_list %}
             <tr>
                 <td class="text-nowrap">{{ attention.created_at|date:"d/m/Y H:i" }}</td>
-                <td>{{ attention.requester_name }}{% if attention.requester_contact %}<br><small class="text-muted">{{ attention.requester_contact }}</small>{% endif %}</td>
-                <td>{{ attention.attention_type.name }}</td><td>{{ attention.sub_attention.name }}</td>
-                <td data-modal-value="{{ attention.description }}">{{ attention.description|truncatechars:100 }}</td><td>{{ attention.delegation.name }}</td><td>{{ attention.functionary.full_name }}</td>
+                <td><a class="fw-semibold" href="{% url 'atenciones:attention_detail' attention.pk %}">{{ attention.requester_name }}</a>{% if attention.requester_contact %}<br><small class="text-muted">{{ attention.requester_contact }}</small>{% endif %}<br><small class="text-muted">{{ attention.delegation.name }}</small></td>
+                <td>{{ attention.attention_type.name }}<br><small class="text-muted">{{ attention.sub_attention.name }}</small></td>
+                <td>{% include 'atenciones/_status_badge.html' with status=attention.status label=attention.get_status_display %}</td>
+                <td>{% if attention.status == 'CLOSED' %}<span class="text-muted">Cerrada el {{ attention.closed_at|date:"d/m/Y" }}</span>{% else %}{{ attention.next_action|default:"Por programar"|truncatechars:70 }}{% if attention.next_contact_date %}<br><small class="{% if attention.is_overdue %}text-danger fw-semibold{% else %}text-muted{% endif %}">{% if attention.is_overdue %}<i class="bi bi-clock-history" aria-hidden="true"></i> Vencida · {% endif %}{{ attention.next_contact_date|date:"d/m/Y" }}</small>{% endif %}{% endif %}</td>
+                <td>{{ attention.followup_responsible.full_name|default:"Por asignar" }}</td>
                 <td class="text-end text-nowrap">
+                    <a class="btn btn-sm btn-outline-primary" href="{% url 'atenciones:attention_detail' attention.pk %}">Ver ficha</a>
                     <a class="btn btn-sm btn-outline-primary" href="{% url 'atenciones:attention_update' attention.pk %}" aria-label="Editar atención de {{ attention.requester_name }}" title="Editar">
                         <i class="bi bi-pencil" aria-hidden="true"></i>
                     </a>
@@ -58,7 +69,7 @@
                     </a>
                 </td>
             </tr>
-            {% empty %}<tr><td colspan="8" class="text-center text-muted py-4">{% include "_list_empty_state.html" with empty_message="No hay atenciones registradas." %}</td></tr>{% endfor %}
+            {% empty %}<tr><td colspan="7" class="text-center text-muted py-4">No hay atenciones que coincidan con esta búsqueda. Prueba otros filtros o registra una atención.</td></tr>{% endfor %}
         </tbody>
     </table>
 </div>

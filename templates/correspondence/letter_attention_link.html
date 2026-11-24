@@ -1,0 +1,30 @@
+{% extends 'base.html' %}
+{% block title %}Vincular atención · Carta #{{ letter.pk }}{% endblock %}
+{% block content %}
+<main class="mx-auto pb-4" style="max-width: 920px;">
+ <a class="btn btn-outline-secondary mb-3" href="{% url 'correspondence:letter_detail' letter.pk %}">Volver a la carta</a>
+ <h1 class="h4">Vincular atención existente</h1>
+ <p class="text-muted">Busca la solicitud y revisa sus antecedentes antes de vincularla. Se muestran las atenciones de esta delegación a las que tienes acceso.</p>
+ {% include 'correspondence/_letter_source.html' %}
+ <form method="get" class="d-flex flex-wrap gap-2 mb-3 align-items-end">
+  <div class="flex-grow-1"><label class="form-label" for="link-search">Buscar por solicitante, contacto o descripción</label><input type="search" id="link-search" name="q" value="{{ search_query }}" class="form-control" placeholder="Ej.: nombre del vecino o limpieza de terreno"></div>
+  <button class="btn btn-outline-primary" type="submit">Buscar</button><a class="btn btn-outline-secondary" href="{% url 'correspondence:letter_attention_link' letter.pk %}">Limpiar</a>
+ </form>
+ <form method="post" class="card shadow-sm">
+  {% csrf_token %}
+  <div class="card-body p-3 p-md-4">
+   {% if form.errors %}<div class="alert alert-danger" role="alert">Selecciona una atención de los resultados para vincularla.{{ form.non_field_errors }}{{ form.attention.errors }}</div>{% endif %}
+   <fieldset><legend class="h6">{{ page_obj.paginator.count }} resultado{{ page_obj.paginator.count|pluralize:'s' }} · Selecciona una atención</legend>
+   {% for candidate in page_obj %}
+    <div class="border rounded p-3 mb-2">
+     <div class="d-flex align-items-start gap-2"><input class="form-check-input mt-1 flex-shrink-0" type="radio" name="attention" value="{{ candidate.pk }}" id="candidate-{{ candidate.pk }}" required {% if selected_attention == candidate.pk %}checked{% endif %}><label class="form-check-label flex-grow-1" for="candidate-{{ candidate.pk }}"><strong>#{{ candidate.pk }} · {{ candidate.requester_name }}</strong><span class="d-block small text-muted">{{ candidate.created_at|date:'d/m/Y' }} · {{ candidate.attention_type.name }} / {{ candidate.sub_attention.name }}</span><span class="d-block my-2">{{ candidate.description|truncatechars:220 }}</span>{% include 'atenciones/_status_badge.html' with status=candidate.status label=candidate.get_status_display %}</label><a href="{% url 'atenciones:attention_detail' candidate.pk %}" target="_blank" rel="noopener" class="btn btn-sm btn-outline-secondary text-nowrap" aria-label="Revisar atención {{ candidate.pk }} en otra pestaña">Revisar <i class="bi bi-box-arrow-up-right" aria-hidden="true"></i></a></div>
+    </div>
+   {% empty %}<p class="text-muted">No hay atenciones que coincidan. Cambia la búsqueda o vuelve a la carta para crear una atención.</p>{% endfor %}
+   </fieldset>
+   {% if page_obj.has_other_pages %}<nav class="d-flex justify-content-between align-items-center gap-2 my-3" aria-label="Páginas de atenciones"><span class="small">Página {{ page_obj.number }} de {{ page_obj.paginator.num_pages }}</span><div>{% if page_obj.has_previous %}<a class="btn btn-sm btn-outline-secondary" href="?{{ query_params }}{% if query_params %}&{% endif %}page={{ page_obj.previous_page_number }}">Anterior</a>{% endif %} {% if page_obj.has_next %}<a class="btn btn-sm btn-outline-secondary" href="?{{ query_params }}{% if query_params %}&{% endif %}page={{ page_obj.next_page_number }}">Siguiente</a>{% endif %}</div></nav>{% endif %}
+   <p class="small text-muted mt-3">La vinculación queda registrada en el historial y no modifica los estados de la carta ni de la atención.</p>
+   <div class="d-flex flex-wrap justify-content-end gap-2 border-top pt-3"><a class="btn btn-outline-secondary" href="{% url 'correspondence:letter_detail' letter.pk %}">Cancelar</a>{% if page_obj.paginator.count %}<button class="btn btn-primary" type="submit">Vincular atención seleccionada</button>{% endif %}</div>
+  </div>
+ </form>
+</main>
+{% endblock %}

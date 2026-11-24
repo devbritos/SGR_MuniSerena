@@ -1,0 +1,37 @@
+/* Keep the text labels: color is an additional cue, never the only one. */
+.state-select {
+    transition: background-color .15s ease, border-color .15s ease;
+    background-color: var(--state-bg, #fff);
+    color: var(--state-text, inherit);
+}
+.state-select:not(.is-invalid):not([aria-invalid="true"]) {
+    border-color: var(--state-border, #ced4da);
+}
+.state-select option {
+    background-color: var(--state-bg, #fff);
+    color: var(--state-text, #212529);
+}
+.state-select[data-state-tone="pending"], .state-select option[data-state-tone="pending"] {
+    --state-bg: #fff8e8; --state-text: #755617; --state-border: #dfc98d;
+}
+.state-select[data-state-tone="progress"], .state-select option[data-state-tone="progress"] {
+    --state-bg: #eef5ff; --state-text: #24558c; --state-border: #b4cce8;
+}
+.state-select[data-state-tone="success"], .state-select option[data-state-tone="success"] {
+    --state-bg: #edf8f1; --state-text: #286040; --state-border: #b0d3bd;
+}
+.state-select[data-state-tone="danger"], .state-select option[data-state-tone="danger"] {
+    --state-bg: #fff0f0; --state-text: #943b3b; --state-border: #e6b9b9;
+}
+.state-select[data-state-tone="neutral"], .state-select option[data-state-tone="neutral"] {
+    --state-bg: #f3f4f6; --state-text: #535c69; --state-border: #ccd1d8;
+}
+/* Empty filter choices keep a neutral white background. */
+.state-select option:not([data-state-tone]) {
+    --state-bg: #fff; --state-text: #212529;
+}
+@media (prefers-reduced-motion: reduce) {.state-select {transition: none;}}
+@media (forced-colors: active) {
+    .state-select, .state-select option {background-color: Field; color: FieldText;}
+    .state-select:not(.is-invalid):not([aria-invalid="true"]) {border-color: ButtonText;}
+}

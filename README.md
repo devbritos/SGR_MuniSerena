@@ -107,7 +107,37 @@ La pantalla `¿Olvidaste tu contraseña?` mantiene la recuperación estándar de
 - La cartelera pública está separada del menú interno y del inicio de sesión en `/eventos/`. Cada evento puede tener una imagen JPG, PNG o WebP de hasta 5 MiB, y una sección “Qué habrá”; el modal público muestra descripción, actividades, fecha, lugar, delegación, cupos y plazo de inscripción.
 - Cada evento puede ser “Requiere inscripción” o “Solo informativo”. Los informativos aparecen en la cartelera y en su modal, pero no muestran opciones para inscribirse; el servidor también rechaza el acceso directo al formulario.
 
+## Seguimiento de atenciones ciudadanas
+
+En `/atenciones/`, los accesos **Abiertas**, **Para hoy**, **Vencidas** y **Sin clasificar** permiten organizar las gestiones. La búsqueda y los filtros también se aplican al exportar a Excel.
+
+Desde **Ver ficha** se registra una gestión, se asigna un responsable de la misma delegación y se programa la próxima acción. El historial conserva el autor, la fecha y los acuerdos de cada registro. Quien registró la atención conserva acceso y el responsable asignado también puede continuar su seguimiento.
+
+Para cerrar se exige indicar un resultado y su detalle: solicitud resuelta, orientación entregada, derivación informada u otro resultado. El cierre elimina la próxima acción pendiente y deja el historial disponible para consulta. Si otra persona actualiza la atención mientras se completa el formulario, se conserva el texto y se solicita revisar los cambios antes de guardar nuevamente.
+
+La ficha también permite **Crear compromiso** con solicitante, descripción y responsable precargados. Revisa los datos, indica el sector y la fecha de cumplimiento. Al guardar vuelve a la atención, muestra el compromiso vinculado y agrega una constancia al historial. Cada formulario evita duplicados si se reenvía; pueden crearse otros compromisos desde un formulario nuevo. Solo pueden asignarse funcionarios activos de la delegación de origen. Tanto quien registró la atención como los responsables vinculados pueden consultar la gestión. Cumplir el compromiso no cierra la atención automáticamente.
+
+Esta vinculación requiere aplicar `python manage.py migrate agenda` antes de utilizarla. La migración `agenda.0004` agrega campos opcionales y conserva los compromisos existentes sin atención asociada.
+
+### Cartas vinculadas a atenciones
+
+El formulario de carta separa los datos de ingreso, remitente y asunto, y responsable. La recepción se completa con la fecha local de hoy y es editable; las nuevas cartas comienzan **En proceso**. Los datos de derivación, respuesta, fecha de actividad y observaciones están en **Información adicional (opcional)**, que se abre si tiene datos o errores. Los responsables se filtran por delegación con el catálogo incluido en el formulario, sin solicitudes adicionales. Cuando la delegación está fijada por la cuenta o por una atención vinculada, se muestra como contexto. Al registrar o editar se abre la ficha de la carta.
+
+En **Seguimiento de cartas → Ver carta**, puedes **Crear atención desde esta carta** con remitente, contacto y asunto precargados, o **Vincular atención existente** mediante una búsqueda de las solicitudes de la misma delegación a las que tienes acceso. La clasificación y el responsable de seguimiento se confirman antes de crear la atención. Una carta tiene una atención principal; varias cartas del mismo asunto pueden vincularse a una atención existente.
+
+Las dos fichas muestran el vínculo y la acción queda registrada en el historial de la atención. Los estados son independientes: finalizar la carta no cierra la atención ni viceversa. Las cartas informativas pueden mantenerse sin atención. Reenviar el formulario conserva la primera vinculación y evita crear duplicados. Las atenciones archivadas conservan su vínculo histórico.
+
+Aplica `python manage.py migrate correspondence` antes de utilizar esta funcionalidad. La migración `correspondence.0002` agrega un vínculo opcional y conserva las cartas anteriores sin atención asociada.
+
+La migración `atenciones.0002` conserva las atenciones anteriores como **Sin clasificar**; las nuevas comienzan **Pendientes**, con quien las registra como responsable inicial. Aplica la migración en la base de datos del entorno antes de utilizar esta funcionalidad:
+
+```powershell
+python manage.py migrate atenciones
+```
+
 ## Secciones principales
+
+Al iniciar sesión se activa el tema blanco y rojo y, en escritorio, el menú queda fijado. Puedes desfijarlo o cambiar el tema; la elección se conserva al navegar durante esa sesión. Un nuevo inicio de sesión restablece la presentación inicial. En pantallas pequeñas el menú permanece deslizable y no modifica la preferencia de escritorio. Las tarjetas del dashboard usan fondos blancos y acentos suaves en rojo, conservando los colores de alerta en los indicadores.
 
 | Sección | Ruta local | Descripción |
 |---|---|---|
@@ -196,7 +226,7 @@ location / {
 }
 ```
 
-La regla `/ws/` debe estar en el mismo `server` que sirve la aplicación y llegar al mismo servicio Daphne que las páginas HTTP. No expongas Daphne directamente a Internet: permite el tráfico público solo al proxy en el grupo de seguridad. Redis debe estar disponible para todas las instancias de la aplicación; en AWS puedes usar un servicio administrado y mantenerlo en una red privada. WhiteNoise sirve los archivos estáticos recopilados por `collectstatic`, incluidos los logos y recursos de la interfaz. Las evidencias subidas se guardan en `MEDIA_ROOT`; en AWS configura almacenamiento persistente o un servicio de objetos como S3. Publica únicamente las imágenes de eventos desde `MEDIA_ROOT/event_images/`; no expongas el directorio completo de medios, porque contiene evidencias y otros archivos que requieren acceso controlado.
+La regla `/ws/` debe estar en el mismo `server` que sirve la aplicación y llegar al mismo servicio Daphne que las páginas HTTP. No expongas Daphne directamente a Internet: permite el tráfico público solo al proxy en el grupo de seguridad. Redis debe estar disponible para todas las instancias de la aplicación; en AWS puedes usar un servicio administrado y mantenerlo en una red privada. WhiteNoise sirve los archivos estáticos recopilados por `collectstatic`, incluidos los logos y recursos de la interfaz. Las evidencias, fotos de perfil y demás archivos subidos se guardan en `MEDIA_ROOT`; en AWS configura almacenamiento persistente o un servicio de objetos como S3. La base de datos solo conserva la ruta de cada foto, por lo que conservar o migrar la base de datos sin los archivos de `MEDIA_ROOT` deja fotos guardadas que no se pueden mostrar. Publica únicamente las imágenes de eventos desde `MEDIA_ROOT/event_images/`; no expongas el directorio completo de medios, porque contiene evidencias y otros archivos que requieren acceso controlado.
 
 No actives `SECURE_SSL_REDIRECT`, `SESSION_COOKIE_SECURE`, `CSRF_COOKIE_SECURE` ni HSTS mientras el sitio solo use HTTP. Una vez configurado y probado HTTPS, habilita esas opciones en el `.env` y aumenta `SECURE_HSTS_SECONDS` gradualmente.
 
