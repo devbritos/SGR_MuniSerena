@@ -89,6 +89,11 @@ def can_access(user, route, method='GET'):
         return user.has_perm(f'events.{action}_eventorganization')
     if route == 'atenciones:attention_detail' and method not in ('GET', 'HEAD', 'OPTIONS'):
         return user.has_perm('atenciones.change_attention')
+    if route == 'organizations:neighbors':
+        permissions = ['organizations.view_organization']
+        if method == 'POST':
+            permissions.append('organizations.change_organization')
+        return user.has_perms(permissions)
     if route in ROUTES:
         if method not in ('GET', 'HEAD', 'OPTIONS') and all('.view_' in p for p in ROUTES[route]):
             return False

@@ -1,0 +1,98 @@
+﻿{% extends 'organizations/base.html' %}
+{% block title %}Vecinos registrados{% endblock %}
+{% block organization_content %}
+<header class="d-flex flex-wrap justify-content-between gap-3 mb-4">
+  <div>
+    <h1 class="h3">Vecinos registrados</h1>
+    {% if organization %}<p class="mb-1">{{ organization.name }}</p><a href="{% url 'organizations:neighbors' %}">Ver padrón completo</a>
+    {% else %}<a href="{% url 'organizations:list' %}">Ver organizaciones</a>{% endif %}
+  </div>
+  {% if can_manage %}
+    {% if modal_action %}
+      <a class="btn btn-primary align-self-start" href="?{{ query }}{% if query %}&amp;{% endif %}action=create">Registrar vecino</a>
+    {% else %}
+      <button class="btn btn-primary align-self-start" type="button" data-bs-toggle="modal" data-bs-target="#neighbor-modal">Registrar vecino</button>
+    {% endif %}
+  {% endif %}
+</header>
+<form method="get" class="d-flex flex-wrap gap-2 mb-3">
+  {% if organization %}<input type="hidden" name="junta" value="{{ organization.pk }}">{% endif %}
+  <label class="visually-hidden" for="neighbor-search">Buscar por nombre o RUT</label>
+  <input class="form-control w-auto" type="search" id="neighbor-search" name="q" value="{{ request.GET.q }}" placeholder="Nombre o RUT">
+  <button class="btn btn-outline-primary">Buscar</button>
+</form>
+<div class="card table-responsive">
+  <table class="table table-hover align-middle mb-0">
+    <thead><tr>
+      <th scope="col">RUT</th><th scope="col">Nombre</th><th scope="col">Teléfono</th><th scope="col">Correo electrónico</th>
+      {% if can_manage %}<th scope="col">Acciones</th>{% endif %}
+    </tr></thead>
+    <tbody>
+      {% for neighbor in object_list %}
+        <tr>
+          <td class="text-nowrap">{{ neighbor.rut }}</td><td>{{ neighbor.name }}</td>
+          <td>{{ neighbor.phone|default:'—' }}</td><td>{{ neighbor.email|default:'—' }}</td>
+          {% if can_manage %}
+            <td><div class="d-flex flex-wrap gap-2">
+              <a class="btn btn-sm btn-outline-primary" href="?{{ query }}{% if query %}&amp;{% endif %}action=edit&amp;neighbor={{ neighbor.pk }}" aria-label="Editar a {{ neighbor.name }}">Editar</a>
+              <a class="btn btn-sm btn-outline-danger" href="?{{ query }}{% if query %}&amp;{% endif %}action=delete&amp;neighbor={{ neighbor.pk }}" aria-label="Eliminar a {{ neighbor.name }}">Eliminar</a>
+            </div></td>
+          {% endif %}
+        </tr>
+      {% empty %}
+        <tr><td colspan="{% if can_manage %}5{% else %}4{% endif %}" class="text-center p-4">No hay vecinos registrados para esta búsqueda.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% if is_paginated %}
+  <nav class="d-flex align-items-center gap-3 mt-3" aria-label="Páginas de vecinos">
+    {% if page_obj.has_previous %}<a class="btn btn-sm btn-outline-secondary" href="?{{ query }}{% if query %}&amp;{% endif %}page={{ page_obj.previous_page_number }}">Anterior</a>{% endif %}
+    <span>Página {{ page_obj.number }} de {{ paginator.num_pages }}</span>
+    {% if page_obj.has_next %}<a class="btn btn-sm btn-outline-secondary" href="?{{ query }}{% if query %}&amp;{% endif %}page={{ page_obj.next_page_number }}">Siguiente</a>{% endif %}
+  </nav>
+{% endif %}
+{% if can_manage %}
+  <div class="modal fade" id="neighbor-modal" tabindex="-1" aria-labelledby="neighbor-modal-title" aria-hidden="true"{% if modal_action %} data-open-on-load{% endif %}>
+    <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable">
+      <form class="modal-content" method="post" action="{{ request.path }}{% if query %}?{{ query }}{% endif %}">
+        {% csrf_token %}
+        <input type="hidden" name="action" value="{{ modal_action|default:'create' }}">
+        {% if selected_neighbor %}<input type="hidden" name="neighbor" value="{{ selected_neighbor.pk }}">{% endif %}
+        <div class="modal-header">
+          <h2 class="h5 modal-title" id="neighbor-modal-title">{% if modal_action == 'delete' %}Eliminar vecino{% elif modal_action == 'edit' %}Editar vecino{% else %}Registrar vecino{% endif %}</h2>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+        </div>
+        <div class="modal-body">
+          {% if modal_action == 'delete' %}
+            <p class="mb-0">¿Quieres eliminar a <strong>{{ selected_neighbor.name }}</strong> del padrón y quitar sus vínculos con juntas?</p>
+          {% else %}
+            {{ form.non_field_errors }}
+            {% for field in form %}
+              <div class="mb-3">
+                <label for="{{ field.id_for_label }}" class="form-label">{{ field.label }}</label>
+                {{ field }}
+                {% if field.help_text %}<div class="form-text" id="{{ field.auto_id }}_helptext">{{ field.help_text }}</div>{% endif %}
+                {% for error in field.errors %}<div class="text-danger small">{{ error }}</div>{% endfor %}
+              </div>
+            {% endfor %}
+          {% endif %}
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
+          {% if modal_action == 'delete' %}<button type="submit" class="btn btn-danger">Eliminar</button>
+          {% else %}<button type="submit" class="btn btn-primary">Guardar</button>{% endif %}
+        </div>
+      </form>
+    </div>
+  </div>
+{% endif %}
+{% endblock %}
+{% block extra_scripts %}
+<script>
+  const neighborModal = document.querySelector('#neighbor-modal[data-open-on-load]');
+  if (neighborModal) {
+    bootstrap.Modal.getOrCreateInstance(neighborModal).show();
+  }
+</script>
+{% endblock %}

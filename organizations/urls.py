@@ -1,7 +1,8 @@
 from django.urls import path
-from . import views
+from . import neighbor_views, views
 app_name = 'organizations'
 urlpatterns = [
+    path('vecinos/', neighbor_views.NeighborListView.as_view(), name='neighbors'),
     path('', views.OrganizationListView.as_view(), name='list'),
     path('nueva/', views.OrganizationCreateView.as_view(), name='create'),
     path('<int:pk>/', views.OrganizationDetailView.as_view(), name='detail'),

@@ -1,6 +1,9 @@
 {% extends 'organizations/base.html' %}
 {% block title %}{{ object.name }} · Organización{% endblock %}
 {% block organization_content %}
+{% if user|can_visit:'organizations:neighbors' %}
+  <a class="btn btn-outline-primary mb-3" href="{% url 'organizations:neighbors' %}?junta={{ object.pk }}">Ver vecinos registrados</a>
+{% endif %}
 <style>{% include 'organizations/_attention_buttons.css.html' %}</style>
 {% if user|can_visit:'organizations:list' %}<a class="btn btn-outline-secondary mb-3" href="{% url 'organizations:list' %}">Volver a organizaciones</a>{% endif %}
 <div class="d-flex flex-wrap justify-content-between gap-3 mb-4">

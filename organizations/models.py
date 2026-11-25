@@ -82,6 +82,27 @@ class OrganizationLeader(BaseModel):
         return f'{self.name} · {self.position}'
 
 
+class Neighbor(BaseModel):
+    delegation = models.ForeignKey('personal.Delegation', on_delete=models.PROTECT)
+    rut = models.CharField('RUT', max_length=12)
+    name = models.CharField('Nombre completo', max_length=175)
+    phone = models.CharField('Teléfono', max_length=30, blank=True)
+    email = models.EmailField('Correo electrónico', blank=True)
+    organizations = models.ManyToManyField(
+        Organization, related_name='registered_neighbors', blank=True, verbose_name='Juntas de vecinos',
+    )
+
+    class Meta:
+        ordering = ['name', 'pk']
+        verbose_name = 'Vecino registrado'
+        constraints = [
+            models.UniqueConstraint(fields=['delegation', 'rut'], name='unique_neighbor_rut_delegation'),
+        ]
+
+    def __str__(self):
+        return self.name
+
+
 class NeighborhoodMember(BaseModel):
     submission_token = models.UUIDField(default=uuid.uuid4, unique=True, editable=False)
     organization = models.ForeignKey(Organization, on_delete=models.PROTECT, related_name='neighbors')
