@@ -139,6 +139,46 @@ class StaffEvidenceAccessTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, self.functionary.full_name)
 
+    def test_activity_list_filters_and_displays_period_in_kanban_view(self):
+        today = timezone.localdate()
+        period = Period.objects.create(
+            start_date=today - timedelta(days=1),
+            end_date=today + timedelta(days=1),
+            computable_days=3,
+            status=True,
+            version_parameter='0',
+            minimum_threshold=0,
+            maximum_computable_days=3,
+            semaphore='SGR',
+        )
+        outside_activity = Activity.objects.create(
+            date=today + timedelta(days=10),
+            application='Actividad fuera del período',
+            taken_action='Acción posterior.',
+            name_contact='Contacto posterior',
+            telephone_contact='12345678',
+            functionary=self.functionary,
+            measuring=self.activity.measuring,
+        )
+
+        response = self.client.get(
+            reverse('activities:activity_list'),
+            {'period': period.pk, 'view': 'kanban'},
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.context['selected_period'], period)
+        self.assertContains(
+            response,
+            f'{period.start_date:%d/%m/%Y} al {period.end_date:%d/%m/%Y}',
+        )
+        self.assertContains(response, self.activity.application)
+        self.assertNotContains(response, outside_activity.application)
+        self.assertEqual(
+            response.context['kanban_columns'][0]['items'],
+            [self.activity],
+        )
+
     def test_evidence_upload_form_uses_spanish_labels_and_guidance(self):
         self.client.force_login(self.owner_user)
 

@@ -6,9 +6,9 @@
     <div class="d-flex justify-content-between align-items-center mb-4">
         <div>
             <h2 class="fw-bold text-dark mb-1">
-                <i class="bi bi-clipboard-check text-primary me-2"></i>Mis Actividades Diarias
+                <i class="bi bi-clipboard-check text-primary me-2"></i>{% if view_mode == 'kanban' %}Tubo de Trabajo · Kanban{% else %}Tubo de Trabajo · Mis Actividades Diarias{% endif %}
             </h2>
-            <p class="text-muted small mb-0">Registro y respaldo de atenciones e hitos ejecutados</p>
+            <p class="text-muted small mb-0">{% if view_mode == 'kanban' %}Actividades organizadas por estado de validación{% else %}Registro y respaldo de atenciones e hitos ejecutados{% endif %}</p>
         </div>
         {% if user.functionary %}
         <a href="{% url 'activities:activity_create' %}" class="btn btn-primary shadow-sm px-3 py-2 fw-semibold">
@@ -17,18 +17,109 @@
         {% endif %}
     </div>
 
-    <div class="d-flex gap-2 mb-3">
-        <form method="get" class="d-flex gap-2 flex-grow-1 align-items-end">
-            <div class="flex-grow-1">
-                <label class="form-label small fw-semibold" for="activity-search">Buscar actividades</label>
-                <input id="activity-search" class="form-control" type="search" name="q" value="{{ search_query }}" placeholder="Solicitud, contacto, ítem o responsable">
-            </div>
-            <button class="btn btn-outline-secondary" type="submit"><i class="bi bi-search" aria-hidden="true"></i> Buscar</button>
-        </form>
-        <a class="btn btn-outline-success text-nowrap" href="{{ request.path }}?{{ query_params }}{% if query_params %}&{% endif %}export=xlsx"><i class="bi bi-file-earmark-excel"></i> Exportar a Excel</a>
+    {% if selected_period %}
+    <div class="alert alert-primary d-flex flex-wrap align-items-center gap-2 py-2 mb-3" role="status">
+        <i class="bi bi-calendar-range" aria-hidden="true"></i>
+        <span>Período seleccionado:</span>
+        <strong>{{ selected_period.start_date|date:"d/m/Y" }} al {{ selected_period.end_date|date:"d/m/Y" }}</strong>
+        <span class="text-muted">· fecha de registro de la actividad</span>
     </div>
-    {% include "_list_sort_controls.html" %}
+    {% endif %}
 
+    <div class="card border-0 shadow-sm mb-3">
+        <div class="card-body">
+            <form method="get" class="row g-2 align-items-end">
+                <input type="hidden" name="view" value="{{ view_mode }}">
+                <div class="col-12 col-lg-4">
+                    <label class="form-label small fw-semibold" for="activity-search">Buscar actividades</label>
+                    <input id="activity-search" class="form-control" type="search" name="q" value="{{ search_query }}" placeholder="Solicitud, contacto, ítem o responsable">
+                </div>
+                <div class="col-12 col-md-4 col-lg-3">
+                    <label class="form-label small fw-semibold" for="activity-period">Período</label>
+                    <select id="activity-period" name="period" class="form-select">
+                        <option value="">Todos los períodos</option>
+                        {% for period_option in periods %}
+                        <option value="{{ period_option.pk }}" {% if selected_period_id == period_option.pk|stringformat:"s" %}selected{% endif %}>
+                            {{ period_option.start_date|date:"d/m/Y" }} al {{ period_option.end_date|date:"d/m/Y" }} · {% if period_option.status %}Vigente{% else %}Histórico{% endif %}
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-6 col-md-4 col-lg-2">
+                    <label class="form-label small fw-semibold" for="activity-date-from">Desde</label>
+                    <input id="activity-date-from" class="form-control" type="date" name="date_from" value="{{ selected_date_from }}">
+                </div>
+                <div class="col-6 col-md-4 col-lg-2">
+                    <label class="form-label small fw-semibold" for="activity-date-to">Hasta</label>
+                    <input id="activity-date-to" class="form-control" type="date" name="date_to" value="{{ selected_date_to }}">
+                </div>
+                <div class="col-12 d-flex flex-wrap gap-2 pt-2">
+                    <button class="btn btn-outline-primary" type="submit"><i class="bi bi-search" aria-hidden="true"></i> Buscar</button>
+                    <a class="btn btn-outline-secondary" href="{% url 'activities:activity_list' %}?view={{ view_mode }}">Limpiar</a>
+                    <a class="btn btn-outline-success" href="{{ request.path }}?{{ query_params }}{% if query_params %}&amp;{% endif %}export=xlsx"><i class="bi bi-file-earmark-excel" aria-hidden="true"></i> Exportar a Excel</a>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+        {% include "_list_sort_controls.html" %}
+        <div class="btn-group" role="group" aria-label="Cambiar presentación de actividades">
+            <a class="btn btn-sm {% if view_mode == 'table' %}btn-primary{% else %}btn-outline-primary{% endif %}" href="{{ request.path }}?{% if view_switch_params %}{{ view_switch_params }}&amp;{% endif %}view=table" aria-pressed="{% if view_mode == 'table' %}true{% else %}false{% endif %}">
+                <i class="bi bi-list-ul" aria-hidden="true"></i> Tabla
+            </a>
+            <a class="btn btn-sm {% if view_mode == 'kanban' %}btn-primary{% else %}btn-outline-primary{% endif %}" href="{{ request.path }}?{% if view_switch_params %}{{ view_switch_params }}&amp;{% endif %}view=kanban" aria-pressed="{% if view_mode == 'kanban' %}true{% else %}false{% endif %}">
+                <i class="bi bi-kanban" aria-hidden="true"></i> Kanban
+            </a>
+        </div>
+    </div>
+
+    {% if view_mode == 'kanban' %}
+    <div class="row g-3">
+        {% for column in kanban_columns %}
+        <div class="col-12 col-md-6 col-xxl-4">
+            <section class="card border-0 shadow-sm h-100" aria-labelledby="activity-column-{{ column.value|lower }}">
+                <div class="card-header bg-white d-flex justify-content-between align-items-center py-3">
+                    <h3 id="activity-column-{{ column.value|lower }}" class="h6 fw-bold mb-0">{{ column.label }}</h3>
+                    <span class="badge text-bg-{{ column.color }}">{{ column.items|length }}</span>
+                </div>
+                <div class="card-body d-flex flex-column gap-3">
+                    {% for a in column.items %}
+                    <article class="card border-start border-4 border-{{ column.color }} shadow-sm">
+                        <div class="card-body p-3">
+                            <div class="d-flex justify-content-between gap-2 mb-2">
+                                <span class="badge bg-light text-dark border font-monospace">#{{ a.id }}</span>
+                                <small class="text-muted text-nowrap">{{ a.date|date:"d/m/Y" }}</small>
+                            </div>
+                            <h4 class="h6 fw-semibold">{{ a.application }}</h4>
+                            <p class="small text-muted mb-2">{{ a.taken_action|truncatechars:120 }}</p>
+                            <dl class="small mb-3">
+                                <dt class="d-inline">Ítem:</dt> <dd class="d-inline">{{ a.measuring.service|default:a.measuring }}</dd><br>
+                                <dt class="d-inline">Responsable:</dt> <dd class="d-inline">{{ a.functionary.full_name }}</dd>
+                                {% if a.name_contact %}<br><dt class="d-inline">Contacto:</dt> <dd class="d-inline">{{ a.name_contact }}</dd>{% endif %}
+                            </dl>
+                            <div class="d-flex flex-wrap gap-2">
+                                {% if user.is_staff or user.is_superuser or user.functionary.is_admin or user.functionary.is_delegate or a.functionary_id == user.functionary.id %}
+                                <a href="{% url 'activities:activity_update' a.id %}" class="btn btn-sm btn-outline-primary">Editar</a>
+                                {% endif %}
+                                {% if user.is_staff or user.is_superuser or user.functionary.is_admin or user.functionary.is_delegate or a.functionary_id == user.functionary.id %}
+                                <a href="{% url 'activities:activity_delete' a.id %}" class="btn btn-sm btn-outline-danger">Eliminar</a>
+                                {% endif %}
+                                {% if a.functionary_id == current_functionary_id %}
+                                <a href="{% url 'activities:evidence_create' %}?activity_id={{ a.id }}" class="btn btn-sm btn-outline-success">Evidencia</a>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </article>
+                    {% empty %}
+                    <p class="small text-muted text-center my-3">No hay actividades en esta etapa.</p>
+                    {% endfor %}
+                </div>
+            </section>
+        </div>
+        {% endfor %}
+    </div>
+    {% else %}
     <!-- Tabla de actividades ajustada al wireframe WF-01 del informe -->
     <div class="card border-0 shadow-sm overflow-hidden">
         <div class="card-body p-0 table-responsive">
@@ -52,7 +143,6 @@
                             <small class="text-muted">{{ a.date|date:"d/m/Y" }}</small>
                         </td>
                         <td>
-                            <!-- Campo exacto de la solicitud -->
                             <span class="fw-semibold text-dark">{{ a.application }}</span>
                             {% if a.name_contact %}
                                 <br><small class="text-muted"><i class="bi bi-person me-1"></i>Contacto: {{ a.name_contact }} ({{ a.telephone_contact }})</small>
@@ -105,6 +195,7 @@
             </table>
         </div>
     </div>
+    {% endif %}
 </div>
 {% include "_pagination.html" %}
 {% endblock %}

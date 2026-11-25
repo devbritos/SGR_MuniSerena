@@ -1,6 +1,9 @@
+import re
+
 from django.contrib import messages
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.core.exceptions import PermissionDenied
+from django.db.models import Q
 from django.shortcuts import get_object_or_404, render, redirect
 from django.db import transaction
 from django.core.paginator import Paginator
@@ -41,7 +44,28 @@ class OrganizationListView(AccessMixin, ListControlsMixin, ListView):
     template_name = 'organizations/list.html'
     paginate_by = 20
     def get_queryset(self):
-        qs = search_queryset(super().get_queryset(), self.request.GET.get('q'), 'name', 'rut', 'registry_number', 'territory', 'organization_type')
+        qs = super().get_queryset()
+        query = self.request.GET.get('q', '').strip()
+        if query:
+            search = (
+                Q(name__icontains=query)
+                | Q(rut__icontains=query)
+                | Q(registry_number__icontains=query)
+                | Q(territory__icontains=query)
+                | Q(organization_type__icontains=query)
+            )
+            compact_rut = re.sub(r'[.\s-]', '', query).upper()
+            if (
+                re.fullmatch(r'\d{6,8}[0-9K]', compact_rut)
+                and (len(compact_rut) == 9 or '-' in query)
+            ):
+                normalized_rut = (
+                    f'{int(compact_rut[:-1])}-{compact_rut[-1]}'
+                )
+                search |= Q(rut__iexact=normalized_rut)
+            elif re.fullmatch(r'\d{6,8}', compact_rut):
+                search |= Q(rut__startswith=f'{int(compact_rut)}-')
+            qs = qs.filter(search)
         status = self.request.GET.get('status')
         return qs.filter(status=status) if status in Organization.Status.values else qs
     def get_context_data(self, **kwargs):

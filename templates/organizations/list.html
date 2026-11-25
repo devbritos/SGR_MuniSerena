@@ -7,7 +7,7 @@
 </div>
 <form method="get" class="card card-body mb-3">
   <div class="row g-3 align-items-end">
-    <div class="col-md-6"><label for="org-query" class="form-label">Buscar organización</label><input id="org-query" type="search" name="q" value="{{ request.GET.q }}" class="form-control" placeholder="Nombre, RUT, registro o sector"></div>
+    <div class="col-md-6"><label for="org-query" class="form-label">Buscar organización</label><input id="org-query" type="search" name="q" value="{{ request.GET.q }}" class="form-control" placeholder="Nombre, RUT (con o sin formato), registro o sector"></div>
     <div class="col-md-3"><label for="org-status" class="form-label">Estado</label><select name="status" id="org-status" class="form-select"><option value="">Todos</option>{% for value,label in status_choices %}<option value="{{ value }}" {% if selected_status == value %}selected{% endif %}>{{ label }}</option>{% endfor %}</select></div>
     <div class="col-md-3 d-flex gap-2"><button class="btn btn-outline-primary">Buscar</button><a class="btn btn-outline-secondary" href="{% url 'organizations:list' %}">Limpiar</a></div>
   </div>

@@ -7,7 +7,7 @@ from django.urls import reverse
 from django.utils import timezone
 
 from activities.models import Activity
-from configuration.models import Measuring
+from configuration.models import Measuring, Period
 from personal.models import (
     Delegation,
     Functionary,
@@ -449,3 +449,51 @@ class CommitmentActivityLinkTests(TestCase):
         self.assertContains(response, 'name="territory" value="Sector"')
         self.assertContains(response, 'aria-pressed="true"')
         self.assertNotContains(response, 'Aplicar orden')
+
+    def test_commitment_list_filters_and_displays_period_in_kanban_view(self):
+        today = timezone.localdate()
+        period = Period.objects.create(
+            start_date=today + timedelta(days=1),
+            end_date=today + timedelta(days=14),
+            computable_days=14,
+            status=True,
+            version_parameter='0',
+            minimum_threshold=0,
+            maximum_computable_days=14,
+            semaphore='SGR',
+        )
+        in_period = Commitment.objects.create(
+            origin='Compromiso dentro del período',
+            applic_name='Vecino del período',
+            territory='Sector de prueba',
+            commitment_date=today + timedelta(days=5),
+            functionary=self.functionary,
+            state=Commitment.State.IN_PROGRESS,
+        )
+        outside_period = Commitment.objects.create(
+            origin='Compromiso fuera del período',
+            applic_name='Vecino fuera del período',
+            territory='Sector de prueba',
+            commitment_date=today + timedelta(days=20),
+            functionary=self.functionary,
+        )
+
+        response = self.client.get(
+            reverse('agenda:commitment_list'),
+            {'period': period.pk, 'view': 'kanban'},
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.context['selected_period'], period)
+        self.assertContains(
+            response,
+            f'{period.start_date:%d/%m/%Y} al {period.end_date:%d/%m/%Y}',
+        )
+        self.assertContains(response, in_period.origin)
+        self.assertNotContains(response, outside_period.origin)
+        in_progress_column = next(
+            column
+            for column in response.context['kanban_columns']
+            if column['value'] == Commitment.State.IN_PROGRESS
+        )
+        self.assertEqual(in_progress_column['items'], [in_period])

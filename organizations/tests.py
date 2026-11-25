@@ -87,3 +87,21 @@ class OrganizationTests(TestCase):
         self.assertNotContains(self.client.get(reverse('organizations:list'),{'q':'Sin coincidencias'}),self.org.name)
         leader = OrganizationLeader(organization=self.org,name='Nombre',position='Cargo',ends_on=timezone.localdate()-timedelta(days=1))
         self.assertEqual(leader.validity_label,'Período vencido')
+
+    def test_organization_search_matches_formatted_rut(self):
+        organization = Organization.objects.create(
+            name='Organización identificada por RUT',
+            rut='12345678-5',
+            delegation=self.delegation,
+            created_by=self.fn,
+        )
+
+        for query in ('12.345.678-5', '12.345.678', '12345678'):
+            with self.subTest(query=query):
+                response = self.client.get(
+                    reverse('organizations:list'),
+                    {'q': query},
+                )
+
+                self.assertEqual(response.status_code, 200)
+                self.assertContains(response, organization.name)

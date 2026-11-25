@@ -67,6 +67,33 @@ class ActivityListView(ListControlsMixin, LoginRequiredMixin, FunctionaryOrStaff
             'functionary__delegation',
             'measuring',
         )
+        self.periods = Period.objects.filter(
+            deleted_at__isnull=True,
+        ).order_by('-start_date', '-pk')
+        period_id = self.request.GET.get('period', '').strip()
+        self.selected_period = None
+        if period_id:
+            if not period_id.isdecimal():
+                raise Http404
+            self.selected_period = self.periods.filter(
+                pk=int(period_id),
+            ).first()
+            if self.selected_period is None:
+                raise Http404
+            queryset = queryset.filter(
+                date__range=(
+                    self.selected_period.start_date,
+                    self.selected_period.end_date,
+                )
+            )
+
+        date_from = self.request.GET.get('date_from')
+        date_to = self.request.GET.get('date_to')
+        if date_from:
+            queryset = queryset.filter(date__gte=date_from)
+        if date_to:
+            queryset = queryset.filter(date__lte=date_to)
+
         queryset = search_queryset(
             queryset,
             self.request.GET.get('q'),
@@ -114,6 +141,57 @@ class ActivityListView(ListControlsMixin, LoginRequiredMixin, FunctionaryOrStaff
         context['current_functionary_id'] = (
             functionary.pk if functionary is not None else None
         )
+        context['periods'] = getattr(
+            self,
+            'periods',
+            Period.objects.filter(deleted_at__isnull=True).order_by(
+                '-start_date',
+                '-pk',
+            ),
+        )
+        context['selected_period'] = getattr(self, 'selected_period', None)
+        context['selected_period_id'] = (
+            str(context['selected_period'].pk)
+            if context['selected_period']
+            else ''
+        )
+        context['selected_date_from'] = self.request.GET.get('date_from', '')
+        context['selected_date_to'] = self.request.GET.get('date_to', '')
+        context['view_mode'] = (
+            'kanban'
+            if self.request.GET.get('view') == 'kanban'
+            else 'table'
+        )
+        view_params = self.request.GET.copy()
+        for key in ('page', 'view', 'export'):
+            view_params.pop(key, None)
+        context['view_switch_params'] = view_params.urlencode()
+        if context['view_mode'] == 'kanban':
+            activities = list(context['activities'])
+            colors = {
+                'PENDING': 'warning',
+                'VALIDATED': 'success',
+                'REJECTED': 'danger',
+            }
+            context['kanban_columns'] = [
+                {
+                    'value': value,
+                    'label': label,
+                    'color': colors[value],
+                    'items': [
+                        activity
+                        for activity in activities
+                        if (
+                            activity.state_validity == value
+                            or (
+                                value == 'VALIDATED'
+                                and activity.state_validity == 'APPROVED'
+                            )
+                        )
+                    ],
+                }
+                for value, label in Activity.STATE_CHOICES
+            ]
         return context
 
 
@@ -529,3 +607,7 @@ def add_pagination_context(request, context):
     query_params.pop('export', None)
     context['query_params'] = query_params.urlencode()
     context['search_query'] = request.GET.get('q', '')
+    view_params = request.GET.copy()
+    for key in ('page', 'view', 'export'):
+        view_params.pop(key, None)
+    context['view_switch_params'] = view_params.urlencode()

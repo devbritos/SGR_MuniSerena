@@ -2,11 +2,13 @@ from django.contrib.auth.mixins import LoginRequiredMixin
 from django.contrib import messages
 from django.db import transaction
 from django.db.models import Q
+from django.http import Http404
 from django.urls import reverse_lazy
 from django.utils import timezone
 from django.views.generic import ListView, CreateView, UpdateView, DeleteView
 
 from configuration.forms import MeasuringForm
+from configuration.models import Period
 
 from .models import Commitment
 from .forms import CommitmentForm
@@ -65,7 +67,27 @@ class CommitmentListView(ListControlsMixin, LoginRequiredMixin, FunctionaryOrSta
 
     def get_queryset(self):
         queryset = get_commitment_scope(self.request.user)
-        
+
+        self.periods = Period.objects.filter(
+            deleted_at__isnull=True,
+        ).order_by('-start_date', '-pk')
+        period_id = self.request.GET.get('period', '').strip()
+        self.selected_period = None
+        if period_id:
+            if not period_id.isdecimal():
+                raise Http404
+            self.selected_period = self.periods.filter(
+                pk=int(period_id),
+            ).first()
+            if self.selected_period is None:
+                raise Http404
+            queryset = queryset.filter(
+                commitment_date__range=(
+                    self.selected_period.start_date,
+                    self.selected_period.end_date,
+                )
+            )
+
         state = self.request.GET.get('state')
         functionary_id = self.request.GET.get('functionary')
         territory = self.request.GET.get('territory')
@@ -154,6 +176,50 @@ class CommitmentListView(ListControlsMixin, LoginRequiredMixin, FunctionaryOrSta
         context['selected_state'] = self.request.GET.get('state', '')
         context['selected_functionary'] = self.request.GET.get('functionary', '')
         context['selected_territory'] = self.request.GET.get('territory', '')
+        context['periods'] = getattr(
+            self,
+            'periods',
+            Period.objects.filter(deleted_at__isnull=True).order_by(
+                '-start_date',
+                '-pk',
+            ),
+        )
+        context['selected_period'] = getattr(self, 'selected_period', None)
+        context['selected_period_id'] = (
+            str(context['selected_period'].pk)
+            if context['selected_period']
+            else ''
+        )
+        context['view_mode'] = (
+            'kanban'
+            if self.request.GET.get('view') == 'kanban'
+            else 'table'
+        )
+        view_params = self.request.GET.copy()
+        for key in ('page', 'view', 'export'):
+            view_params.pop(key, None)
+        context['view_switch_params'] = view_params.urlencode()
+        if context['view_mode'] == 'kanban':
+            page_commitments = list(context['commitments'])
+            colors = {
+                Commitment.State.JOINED: 'secondary',
+                Commitment.State.PENDING: 'warning',
+                Commitment.State.IN_PROGRESS: 'primary',
+                Commitment.State.DONE: 'success',
+            }
+            context['kanban_columns'] = [
+                {
+                    'value': value,
+                    'label': label,
+                    'color': colors[value],
+                    'items': [
+                        commitment
+                        for commitment in page_commitments
+                        if commitment.state == value
+                    ],
+                }
+                for value, label in Commitment.State.choices
+            ]
         context['today'] = today
         total_count = commitments.count()
         realized_count = commitments.filter(state=Commitment.State.DONE).count()
