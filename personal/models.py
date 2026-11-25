@@ -71,6 +71,8 @@ class Role(BaseModel):
     READONLY = 'READONLY'
 
     ROLE_CHOICES = [
+        ('NEIGHBORHOOD_MEMBER', 'Vecino de junta de vecinos'),
+        ('NEIGHBORHOOD_ADMIN', 'Administrador de junta de vecinos'),
         (ADMIN, 'Administrador'),
         (COORDINATOR, 'Coordinador del Sistema'),
         (DELEGATE, 'Delegado / Jefatura'),
@@ -111,7 +113,9 @@ class Role(BaseModel):
         return self.get_role_name_display()
 
     def get_role_name_display(self):
+        from .document_roles import ROLE_LABELS
         standard_names = dict(self.ROLE_CHOICES)
+        standard_names.update(ROLE_LABELS)
         return standard_names.get(self.role_name, self.role_name)
 
     @property
@@ -166,6 +170,8 @@ class Functionary(BaseModel):
         return self.functionaryrole_set.filter(
             role__role_name__iexact=role_name,
             role__is_active=True,
+            role__deleted_at__isnull=True,
+            deleted_at__isnull=True,
         ).exists()
 
 
@@ -178,6 +184,7 @@ class Functionary(BaseModel):
     def is_delegate(self):
         return (
             self.has_role('DELEGATE')
+            or self.has_role('DOC_DELEGATE')
             or self.has_role('Delegado')
             or self.has_role('COORDINATOR')
         )

@@ -1,0 +1,8 @@
+{% extends 'community/base.html' %}
+{% block content %}
+<a href="{% url 'community:letters' %}" class="small"><i class="bi bi-arrow-left" aria-hidden="true"></i> Volver a cartas</a>
+<header class="board-page-header mt-3"><div><h1>Carta #{{ letter.pk }}</h1><p>Enviada el {{ letter.received_at|date:'d/m/Y' }} a {{ letter.recipient }}.</p></div><span class="board-badge">{{ letter.get_state_display }}</span></header>
+{% if letter.registry_number %}<p class="small text-muted">Registro municipal: {{ letter.registry_number }}</p>{% endif %}
+<section class="card p-3 p-md-4 mb-3"><h2 class="h5">Carta enviada</h2><div>{{ letter.subject|linebreaksbr }}</div>{% if letter.activity_date %}<p class="small mt-3 mb-0"><strong>Fecha de actividad:</strong> {{ letter.activity_date }}</p>{% endif %}</section>
+<section class="card p-3 p-md-4"><h2 class="h5">Respuesta de la delegación</h2>{% if letter.public_response %}<div>{{ letter.public_response|linebreaksbr }}</div>{% else %}<p class="text-muted mb-0">Aún no hay una respuesta publicada para la junta. Puedes consultar el estado de la carta en esta página.</p>{% endif %}</section>
+{% endblock %}

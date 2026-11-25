@@ -1,0 +1,1 @@
+<span class="badge rounded-pill {% if status == 'HELD' or status == 'DONE' %}bg-success-subtle text-success-emphasis{% elif status == 'CANCELLED' %}bg-secondary-subtle text-secondary-emphasis{% elif status == 'IN_PROGRESS' or status == 'SCHEDULED' %}bg-primary-subtle text-primary-emphasis{% else %}bg-warning-subtle text-warning-emphasis{% endif %}">{{ label }}</span>

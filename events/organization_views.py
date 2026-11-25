@@ -13,6 +13,9 @@ from .views import EventManagementRequiredMixin, _event_scope
 
 
 def can_manage_invitations(user):
+    from core.role_access import can_access
+    if not can_access(user, 'events:organization_invitations', 'POST'):
+        return False
     fn = getattr(user, 'functionary', None)
     return user.is_superuser or user.is_staff or (fn and (fn.is_admin or not fn.has_role('READONLY')))
 

@@ -2,10 +2,10 @@
 {% block title %}{{ object.name }} · Organización{% endblock %}
 {% block organization_content %}
 <style>{% include 'organizations/_attention_buttons.css.html' %}</style>
-<a class="btn btn-outline-secondary mb-3" href="{% url 'organizations:list' %}">Volver a organizaciones</a>
+{% if user|can_visit:'organizations:list' %}<a class="btn btn-outline-secondary mb-3" href="{% url 'organizations:list' %}">Volver a organizaciones</a>{% endif %}
 <div class="d-flex flex-wrap justify-content-between gap-3 mb-4">
   <div><h1 class="h3">{{ object.name }}</h1><p class="text-muted">{{ object.delegation.name }} · {{ object.get_status_display }}</p></div>
-  {% if can_manage %}<a class="btn btn-outline-primary align-self-start" href="{% url 'organizations:update' object.pk %}">Editar organización</a>{% endif %}
+  {% if can_manage %}{% if user|can_visit:'organizations:update' %}<a class="btn btn-outline-primary align-self-start" href="{% url 'organizations:update' object.pk %}">Editar organización</a>{% endif %}{% endif %}
 </div>
 <section class="card p-3 p-md-4 mb-4">
   <h2 class="h5">Antecedentes</h2>
@@ -21,27 +21,27 @@
   <div class="d-flex flex-wrap justify-content-between gap-2 mb-3">
     <div><h2 class="h5">Atenciones vinculadas</h2><p class="text-muted small">Solicitudes registradas a nombre de esta organización.</p></div>
     {% if can_manage %}<div class="d-flex flex-wrap gap-2">
-      {% if object.status != 'INACTIVE' %}<a class="btn organization-attention-secondary" href="{% url 'atenciones:attention_create' %}?organization={{ object.pk }}">Registrar atención</a>{% endif %}
-      <a class="btn organization-attention-primary" href="{% url 'organizations:attention_link' object.pk %}"><i class="bi bi-link-45deg" aria-hidden="true"></i> Vincular atención existente</a>
+      {% if object.status != 'INACTIVE' %}{% if user|can_visit:'atenciones:attention_create' %}<a class="btn organization-attention-secondary" href="{% url 'atenciones:attention_create' %}?organization={{ object.pk }}">Registrar atención</a>{% endif %}{% endif %}
+      {% if user|can_visit:'organizations:attention_link' %}<a class="btn organization-attention-primary" href="{% url 'organizations:attention_link' object.pk %}"><i class="bi bi-link-45deg" aria-hidden="true"></i> Vincular atención existente</a>{% endif %}
     </div>{% endif %}
   </div>
   {% for attention in attentions %}
   <article class="border rounded p-3 mb-2 d-flex flex-wrap justify-content-between gap-2">
     <div><strong>Atención #{{ attention.pk }}</strong><p class="mb-1">{{ attention.requester_name }} · {{ attention.attention_type.name }} / {{ attention.sub_attention.name }}</p><small class="text-muted">{{ attention.created_at|date:"d/m/Y H:i" }} · {{ attention.get_status_display }}</small></div>
-    <a class="btn btn-sm btn-outline-secondary align-self-start" href="{% url 'atenciones:attention_detail' attention.pk %}">Abrir atención</a>
+    {% if user|can_visit:'atenciones:attention_detail' %}<a class="btn btn-sm btn-outline-secondary align-self-start" href="{% url 'atenciones:attention_detail' attention.pk %}">Abrir atención</a>{% endif %}
   </article>
   {% empty %}<p class="text-muted mb-0">No hay atenciones vinculadas a esta organización.</p>{% endfor %}
   {% if attention_page.has_other_pages %}<nav class="d-flex justify-content-between align-items-center gap-2 mt-3" aria-label="Páginas de atenciones vinculadas"><span class="small">Página {{ attention_page.number }} de {{ attention_page.paginator.num_pages }}</span><div>{% if attention_page.has_previous %}<a class="btn btn-sm btn-outline-secondary" href="?attention_page={{ attention_page.previous_page_number }}">Anterior</a>{% endif %} {% if attention_page.has_next %}<a class="btn btn-sm btn-outline-secondary" href="?attention_page={{ attention_page.next_page_number }}">Siguiente</a>{% endif %}</div></nav>{% endif %}
 </section>
 <section class="card p-3 p-md-4">
   <h2 class="h5">Eventos y convocatorias</h2>
-  {% for invitation in event_page %}<article class="border rounded p-3 mb-2 d-flex flex-wrap justify-content-between gap-2"><div><strong>{{ invitation.event.title }}</strong><p class="small mb-1">{{ invitation.event.starts_at|date:'d/m/Y H:i' }} · {{ invitation.event.location }}</p><span class="small">{{ invitation.get_status_display }}{% if invitation.event.status == 'CANCELLED' %} · Evento cancelado{% endif %}</span></div><a class="btn btn-sm btn-outline-danger align-self-start" href="{% url 'events:organization_invitations' invitation.event_id %}">Ver convocatoria</a></article>{% empty %}<p class="text-muted">Esta organización aún no tiene convocatorias registradas.</p>{% endfor %}
+  {% for invitation in event_page %}<article class="border rounded p-3 mb-2 d-flex flex-wrap justify-content-between gap-2"><div><strong>{{ invitation.event.title }}</strong><p class="small mb-1">{{ invitation.event.starts_at|date:'d/m/Y H:i' }} · {{ invitation.event.location }}</p><span class="small">{{ invitation.get_status_display }}{% if invitation.event.status == 'CANCELLED' %} · Evento cancelado{% endif %}</span></div>{% if user|can_visit:'events:organization_invitations' %}<a class="btn btn-sm btn-outline-danger align-self-start" href="{% url 'events:organization_invitations' invitation.event_id %}">Ver convocatoria</a>{% endif %}</article>{% empty %}<p class="text-muted">Esta organización aún no tiene convocatorias registradas.</p>{% endfor %}
   {% if event_page.has_other_pages %}<nav class="d-flex gap-2 align-items-center" aria-label="Páginas de eventos"><span class="small">Página {{ event_page.number }} de {{ event_page.paginator.num_pages }}</span>{% if event_page.has_previous %}<a class="btn btn-sm btn-outline-secondary" href="?event_page={{ event_page.previous_page_number }}">Anterior</a>{% endif %}{% if event_page.has_next %}<a class="btn btn-sm btn-outline-secondary" href="?event_page={{ event_page.next_page_number }}">Siguiente</a>{% endif %}</nav>{% endif %}
 </section>
 <section class="card p-3 p-md-4 mt-4">
   <div class="d-flex flex-wrap justify-content-between gap-2 mb-3">
     <div><h2 class="h5">Dirigentes y períodos</h2><p class="text-muted small">Las fechas describen el período registrado; no certifican la vigencia legal de la organización.</p></div>
-    {% if can_manage %}<a class="btn btn-outline-primary align-self-start" href="{% url 'organizations:leader_create' object.pk %}">Agregar dirigente</a>{% endif %}
+    {% if can_manage %}{% if user|can_visit:'organizations:leader_create' %}<a class="btn btn-outline-primary align-self-start" href="{% url 'organizations:leader_create' object.pk %}">Agregar dirigente</a>{% endif %}{% endif %}
   </div>
   {% for leader in leaders %}
   <article class="border rounded p-3 mb-2">
@@ -52,7 +52,7 @@
         <span class="badge bg-light text-dark border">{{ leader.validity_label }}</span>
         {% if leader.observations %}<p class="small mt-2 mb-0">{{ leader.observations|linebreaksbr }}</p>{% endif %}
       </div>
-      {% if can_manage %}<a class="btn btn-sm btn-outline-secondary align-self-start" href="{% url 'organizations:leader_update' object.pk leader.pk %}">Editar dirigente</a>{% endif %}
+      {% if can_manage %}{% if user|can_visit:'organizations:leader_update' %}<a class="btn btn-sm btn-outline-secondary align-self-start" href="{% url 'organizations:leader_update' object.pk leader.pk %}">Editar dirigente</a>{% endif %}{% endif %}
     </div>
   </article>
   {% empty %}<p class="text-muted">Todavía no hay dirigentes registrados. Puedes agregarlos cuando cuentes con sus antecedentes.</p>{% endfor %}

@@ -281,6 +281,9 @@ def _render_list(
 @login_required
 @require_http_methods(['GET', 'POST'])
 def profile_update(request):
+    from organizations.community_access import portal_identity
+    if portal_identity(request.user)[0]:
+        return redirect('community:profile')
     profile, _ = UserProfile.objects.get_or_create(user=request.user)
     form = ProfilePhotoForm(
         request.POST or None,

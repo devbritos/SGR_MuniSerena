@@ -107,6 +107,7 @@ class ActivityForm(forms.ModelForm):
         active_measurings = self.fields['measuring'].queryset.filter(
             validity=True,
             deleted_at__isnull=True,
+            calculation_method='ACTIVITIES',
         )
         if self.instance.pk:
             active_measurings = active_measurings | self.fields[

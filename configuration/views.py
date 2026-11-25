@@ -11,6 +11,7 @@ from django.core.paginator import Paginator
 from django.utils import timezone
 
 from .models import Goal, Measuring, Period
+from personal.models import Position
 from .forms import GoalForm, MeasuringForm, PeriodForm
 from core.mixins import AdminRequiredMixin
 from core.exports import excel_response
@@ -94,6 +95,9 @@ class GoalListView(ListControlsMixin, LoginRequiredMixin, AdminRequiredMixin, Li
         period_id = self.request.GET.get('period')
         if period_id and period_id.isdigit():
             queryset = queryset.filter(period_id=period_id)
+        position_id = self.request.GET.get('position', '')
+        if position_id.isdigit():
+            queryset = queryset.filter(position_id=position_id)
         queryset = search_queryset(
             queryset,
             self.request.GET.get('q'),
@@ -134,8 +138,10 @@ class GoalListView(ListControlsMixin, LoginRequiredMixin, AdminRequiredMixin, Li
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        context['periods'] = Period.objects.all().order_by('-start_date')
+        context['periods'] = Period.objects.filter(deleted_at__isnull=True).order_by('-start_date')
         context['selected_period'] = self.request.GET.get('period', '')
+        context['positions'] = Position.objects.filter(deleted_at__isnull=True).order_by('name')
+        context['selected_position'] = self.request.GET.get('position', '')
 
         goals = list(self.get_queryset())
         group_ids = {goal.group_id for goal in goals if goal.group_id}
@@ -207,15 +213,53 @@ class GoalListView(ListControlsMixin, LoginRequiredMixin, AdminRequiredMixin, Li
             ]
             cards.append(card)
 
+        # El bloque completo de un cargo y período permanece en la misma página.
+        # Los grupos compartidos se conservan para edición y desactivación.
+        active_totals = {}
+        active_counts = {}
+        for position_id, period_id, weight in Goal.objects.filter(
+            position_id__in=position_ids, period_id__in=period_ids,
+            validity=True, deleted_at__isnull=True,
+            measuring__validity=True, measuring__deleted_at__isnull=True,
+        ).values_list('position_id', 'period_id', 'weight'):
+            key = (position_id, period_id)
+            active_totals[key] = active_totals.get(key, 0) + weight
+            active_counts[key] = active_counts.get(key, 0) + 1
+
+        sections = {}
+        for card in cards:
+            for cargo in card['positions']:
+                position = cargo['position']
+                selected_position = context['selected_position']
+                if selected_position.isdigit() and position.pk != int(selected_position):
+                    continue
+                key = (position.pk, card['period'].pk)
+                total = active_totals.get(key, 0)
+                section = sections.setdefault(key, {
+                    'position': position, 'period': card['period'], 'rows': [],
+                    'total_weight': total, 'active_count': active_counts.get(key, 0),
+                    'status': ('neutral' if not active_counts.get(key) else
+                               'complete' if total == 100 else 'over' if total > 100 else 'pending'),
+                    'remaining_weight': max(100 - total, 0),
+                    'excess_weight': max(total - 100, 0),
+                })
+                section['rows'].append(card)
+
+        sections = list(sections.values())
+        context['configuration_count'] = len(sections)
+        context['complete_count'] = sum(section['status'] == 'complete' for section in sections)
+        context['review_count'] = sum(section['status'] in ('pending', 'over') for section in sections)
         page = Paginator(
-            cards,
+            sections,
             get_page_size(self.request, default=20),
         ).get_page(
             self.request.GET.get('page')
         )
 
-        context['resumen'] = page.object_list
-        context['goals'] = page.object_list
+        visible_cards = {row['goal'].pk: row for section in page.object_list for row in section['rows']}
+        context['resumen'] = list(visible_cards.values())
+        context['goals'] = context['resumen']
+        context['position_sections'] = page.object_list
         context['page_obj'] = page
         context['paginator'] = page.paginator
         context['is_paginated'] = page.has_other_pages()

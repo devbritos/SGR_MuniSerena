@@ -15,6 +15,9 @@ from .models import Organization, OrganizationLeader
 from .forms import OrganizationForm, LeaderForm, ExistingAttentionForm, AttentionSearchForm
 
 def can_manage(user):
+    from core.role_access import can_access
+    if not can_access(user, 'organizations:update'):
+        return False
     fn = user.functionary
     return user.is_superuser or fn.is_admin or not fn.has_role('READONLY')
 

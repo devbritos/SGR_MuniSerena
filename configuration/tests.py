@@ -1,4 +1,7 @@
 import uuid
+from io import BytesIO
+
+from openpyxl import load_workbook
 
 from django.test import TestCase
 from django.contrib.auth.models import User
@@ -178,6 +181,61 @@ class GoalFormTests(TestCase):
         self.assertContains(response, 'Meta a alcanzar')
         self.assertContains(response, 'Ponderación de la meta')
         self.assertContains(response, 'Aporte al total del cargo')
+
+    def test_position_filter_preserves_shared_goal_warning_and_export_scope(self):
+        group_id = uuid.uuid4()
+        for position in (self.position_one, self.position_two):
+            Goal.objects.create(position=position, measuring=self.measuring, period=self.period,
+                                weight=30, target_value=120, unity='atenciones', group_id=group_id)
+        response = self.client.get(reverse('configuration:goal_list'), {'position': self.position_one.pk})
+        sections = response.context['position_sections']
+        self.assertEqual(len(sections), 1)
+        self.assertEqual(sections[0]['position'], self.position_one)
+        self.assertEqual(len(sections[0]['rows'][0]['positions']), 2)
+        self.assertContains(response, 'Editar o desactivar esta meta afecta a todos estos cargos')
+        export = self.client.get(reverse('configuration:goal_list'), {
+            'position': self.position_one.pk, 'export': 'xlsx',
+        })
+        self.assertEqual(export.status_code, 200)
+        workbook = load_workbook(BytesIO(export.content), read_only=True)
+        rows = list(workbook.active.iter_rows(values_only=True))
+        workbook.close()
+        self.assertEqual(len(rows), 2)
+        self.assertEqual(rows[1][0], self.position_one.name)
+
+    def test_showing_inactive_goals_does_not_inflate_active_weight_summary(self):
+        other = Measuring.objects.create(service='Informe de prueba')
+        Goal.objects.create(position=self.position_one, measuring=self.measuring, period=self.period,
+                            weight=40, target_value=120, unity='atenciones')
+        Goal.objects.create(position=self.position_one, measuring=other, period=self.period,
+                            weight=60, target_value=3, unity='informes', validity=False)
+        response = self.client.get(reverse('configuration:goal_list'), {'all': 1})
+        section = response.context['position_sections'][0]
+        self.assertEqual(len(section['rows']), 2)
+        self.assertEqual(section['total_weight'], 40)
+        self.assertEqual(section['status'], 'pending')
+        self.assertEqual(section['remaining_weight'], 60)
+
+    def test_search_shows_full_active_total_even_when_only_one_goal_matches(self):
+        other = Measuring.objects.create(service='Informe de prueba')
+        Goal.objects.create(position=self.position_one, measuring=self.measuring, period=self.period,
+                            weight=40, target_value=120, unity='atenciones')
+        Goal.objects.create(position=self.position_one, measuring=other, period=self.period,
+                            weight=60, target_value=3, unity='informes')
+        response = self.client.get(reverse('configuration:goal_list'), {'q': self.measuring.code})
+        section = response.context['position_sections'][0]
+        self.assertEqual(len(section['rows']), 1)
+        self.assertEqual(section['total_weight'], 100)
+        self.assertEqual(section['status'], 'complete')
+
+    def test_pagination_does_not_split_a_positions_goals(self):
+        for index in range(21):
+            measuring = Measuring.objects.create(service=f'Meta de prueba {index}')
+            Goal.objects.create(position=self.position_one, measuring=measuring, period=self.period,
+                                weight=1, target_value=1, unity='gestiones')
+        response = self.client.get(reverse('configuration:goal_list'))
+        self.assertEqual(response.context['paginator'].count, 1)
+        self.assertEqual(len(response.context['position_sections'][0]['rows']), 21)
 
     def test_goal_card_groups_related_positions_and_keeps_them_when_searching(self):
         group_id = uuid.uuid4()

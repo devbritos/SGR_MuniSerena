@@ -1,0 +1,30 @@
+document.addEventListener('change', function (event) {
+    if (event.target.name !== 'delegation') return;
+    const form = event.target.closest('[data-meeting-form]');
+    if (!form) return;
+    const catalog = JSON.parse(form.querySelector('[data-meeting-participants]').textContent);
+    const container = form.querySelector('[data-participant-choices]');
+    const search = form.querySelector('[data-meeting-participant-search]');
+    if (search) search.value = '';
+    container.replaceChildren();
+    const people = catalog[event.target.value] || [];
+    people.forEach(function (person) {
+        const label = document.createElement('label');
+        label.className = 'd-flex align-items-center gap-2 py-1';
+        const checkbox = document.createElement('input');
+        checkbox.type = 'checkbox'; checkbox.name = 'participants'; checkbox.value = person.id; checkbox.className = 'form-check-input';
+        label.append(checkbox, document.createTextNode(person.name)); container.append(label);
+    });
+    if (!people.length) container.textContent = 'No hay funcionarios activos disponibles en esta delegación.';
+});
+
+document.addEventListener('input', function (event) {
+    if (!event.target.matches('[data-meeting-participant-search]')) return;
+    const form = event.target.closest('[data-meeting-form]');
+    if (!form) return;
+    const normalize = value => value.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLocaleLowerCase();
+    const query = normalize(event.target.value.trim());
+    form.querySelectorAll('[data-participant-choices] label').forEach(function (label) {
+        label.hidden = !normalize(label.textContent).includes(query);
+    });
+});

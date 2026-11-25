@@ -9,8 +9,9 @@ from .models import Goal, Measuring, Period
 class MeasuringForm(forms.ModelForm):
     class Meta:
         model = Measuring
-        fields = ['code', 'service', 'measurable_item', 'validity']
+        fields = ['code', 'service', 'measurable_item', 'calculation_method', 'validity']
         widgets = {
+            'calculation_method': forms.Select(attrs={'class': 'form-select'}),
             'code': forms.TextInput(
                 attrs={
                     'class': 'form-control',
@@ -40,11 +41,28 @@ class MeasuringForm(forms.ModelForm):
             'validity': 'Ítem activo',
         }
         help_texts = {
+            'calculation_method': 'Los porcentajes de compromisos se actualizan desde la agenda. No requieren registrar otra actividad.',
             'code': 'Identificador único para reconocer este ítem en reportes y metas.',
             'service': 'Nombre breve que verán los funcionarios al registrar actividades.',
             'measurable_item': 'Indica qué resultado o actividad se medirá.',
             'validity': 'Solo los ítems activos estarán disponibles para nuevos registros.',
         }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields['calculation_method'].required = False
+
+    def clean_calculation_method(self):
+        return self.cleaned_data.get('calculation_method') or self.instance.calculation_method or Measuring.Calculation.ACTIVITIES
+
+    def clean(self):
+        data = super().clean()
+        method = data.get('calculation_method')
+        if self.instance.pk and method in (Measuring.Calculation.COMMITMENTS_DONE, Measuring.Calculation.COMMITMENTS_PENDING):
+            targets = Goal.objects.filter(measuring=self.instance, deleted_at__isnull=True).values_list('target_value', flat=True)
+            if any(target <= 0 or target > 100 or (method == Measuring.Calculation.COMMITMENTS_PENDING and target >= 50) for target in targets):
+                self.add_error('calculation_method', 'Revisa primero las metas asociadas: deben expresar un porcentaje válido (por ejemplo, 80 para cumplidos o 10 para pendientes).')
+        return data
 
     def clean_code(self):
         code = (self.cleaned_data.get('code') or '').strip()
@@ -139,13 +157,15 @@ class GoalForm(forms.ModelForm):
             'period': 'Período en el que se evaluará el cumplimiento.',
             'weight': 'Importancia de esta meta en el resultado total. La suma por cargo y período no puede superar 100%.',
             'validity': 'Las metas inactivas se conservan en el historial, pero no se consideran en el cálculo.',
-            'target_value': 'Cantidad que se espera alcanzar durante el período.',
+            'target_value': 'Cantidad o porcentaje objetivo. Para compromisos: 80 significa 80% de cumplidos; 10 significa máximo 10% de pendientes.',
             'unity': 'Unidad usada para interpretar el valor objetivo, por ejemplo: atenciones o actividades.',
         }
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         position_ids = []
+        self.fields['unity'].required = False
+        self.fields['unity'].help_text = 'Para los porcentajes de compromisos se completa automáticamente como %. Para cantidades, indica la unidad (por ejemplo, visitas).'
         if self.instance.pk:
             grouped_goals = (
                 Goal.objects.filter(group_id=self.instance.group_id)
@@ -176,6 +196,13 @@ class GoalForm(forms.ModelForm):
         measuring = cleaned_data.get('measuring')
         period = cleaned_data.get('period')
         weight = cleaned_data.get('weight')
+        target = cleaned_data.get('target_value')
+        if measuring and measuring.is_commitment_percentage:
+            if target is not None and not 0 < target <= 100:
+                self.add_error('target_value', 'Para compromisos, ingresa un porcentaje mayor a 0 y hasta 100. Ejemplo: 80 para un 80%.')
+            if measuring.calculation_method == Measuring.Calculation.COMMITMENTS_PENDING and target is not None and target >= 50:
+                self.add_error('target_value', 'El límite de pendientes debe ser menor al 50%; en el Excel es 10%.')
+            cleaned_data['unity'] = '%'
 
         if not positions or not measuring or not period or weight is None:
             return cleaned_data
@@ -237,6 +264,9 @@ class GoalForm(forms.ModelForm):
         return target
 
     def clean_unity(self):
+        measuring = self.cleaned_data.get('measuring')
+        if measuring and measuring.is_commitment_percentage:
+            return '%'
         unity = (self.cleaned_data.get('unity') or '').strip()
         if not unity:
             raise forms.ValidationError('Debe indicar la unidad de medida.')

@@ -44,7 +44,7 @@
                             Ver detalles
                         </button>
                         {% if event.requires_registration %}
-                        <a class="btn btn-primary" href="{% url 'events:public_register' event.pk %}">Inscribirme</a>
+                        {% if user|can_visit:'events:public_register' %}<a class="btn btn-primary" href="{% url 'events:public_register' event.pk %}">Inscribirme</a>{% endif %}
                         {% endif %}
                     </div>
                 </div>
@@ -87,7 +87,7 @@
                 {% endif %}
             </dl>
             {% if event.requires_registration %}
-            <a class="btn btn-primary mt-4" href="{% url 'events:public_register' event.pk %}">Inscribirme a este evento</a>
+            {% if user|can_visit:'events:public_register' %}<a class="btn btn-primary mt-4" href="{% url 'events:public_register' event.pk %}">Inscribirme a este evento</a>{% endif %}
             {% else %}
             <div class="alert alert-info mt-4 mb-0">
                 Este evento es solo informativo; no requiere inscripción.

@@ -10,8 +10,8 @@
             <p class="text-muted mb-0">Datos privados usados para verificar tutores de menores inscritos.</p>
         </div>
         <div class="d-flex gap-2">
-            <a class="btn btn-outline-secondary" href="{% url 'events:management_list' %}">Eventos</a>
-            <a class="btn btn-primary" href="{% url 'events:person_create' %}">Agregar persona</a>
+            {% if user|can_visit:'events:management_list' %}<a class="btn btn-outline-secondary" href="{% url 'events:management_list' %}">Eventos</a>{% endif %}
+            {% if user|can_visit:'events:person_create' %}<a class="btn btn-primary" href="{% url 'events:person_create' %}">Agregar persona</a>{% endif %}
         </div>
     </div>
     <div class="card border-0 shadow-sm">
@@ -26,7 +26,7 @@
                         <td>{{ person.full_name }}</td><td>{{ person.rut }}</td><td>{{ person.delegation.name }}</td>
                         <td>{{ person.email }}</td><td>{{ person.phone }}</td>
                         <td>{% if person.is_active %}Activo{% else %}Inactivo{% endif %}</td>
-                        <td><a class="btn btn-sm btn-outline-primary" href="{% url 'events:person_update' person.pk %}">Editar</a></td>
+                        <td>{% if user|can_visit:'events:person_update' %}<a class="btn btn-sm btn-outline-primary" href="{% url 'events:person_update' person.pk %}">Editar</a>{% endif %}</td>
                     </tr>
                     {% empty %}
                     <tr><td class="text-muted text-center py-4" colspan="7">El padrón está vacío. Agrega personas antes de confirmar inscripciones de menores.</td></tr>

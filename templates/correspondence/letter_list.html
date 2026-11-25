@@ -9,9 +9,9 @@
             <h1 class="h3 fw-bold mb-1">Seguimiento de cartas</h1>
             <p class="text-muted mb-0">Control de cartas ingresadas por Oficina de Partes y sus derivaciones.</p>
         </div>
-        <a class="btn btn-primary" href="{% url 'correspondence:letter_create' %}">
+        {% if user|can_visit:'correspondence:letter_create' %}<a class="btn btn-primary" href="{% url 'correspondence:letter_create' %}">
             <i class="bi bi-plus-lg me-1" aria-hidden="true"></i>Registrar carta
-        </a>
+        </a>{% endif %}
     </div>
 
     <div class="row g-3 mb-4">
@@ -54,9 +54,9 @@
                 </div>
                 <div class="col-xl-2 col-md-4 d-flex gap-2">
                     <button class="btn btn-dark flex-grow-1" type="submit">Buscar</button>
-                    <a class="btn btn-outline-secondary" href="{% url 'correspondence:letter_list' %}" aria-label="Limpiar filtros" title="Limpiar filtros">
+                    {% if user|can_visit:'correspondence:letter_list' %}<a class="btn btn-outline-secondary" href="{% url 'correspondence:letter_list' %}" aria-label="Limpiar filtros" title="Limpiar filtros">
                         <i class="bi bi-x-lg" aria-hidden="true"></i>
-                    </a>
+                    </a>{% endif %}
                     <a class="btn btn-outline-success" href="{{ request.path }}?{{ query_params }}{% if query_params %}&{% endif %}export=xlsx" aria-label="Exportar a Excel" title="Exportar a Excel">
                         <i class="bi bi-file-earmark-excel" aria-hidden="true"></i>
                     </a>
@@ -105,16 +105,16 @@
                         <td>{{ letter.responsible.full_name }}</td>
                         <td><span class="badge {% if letter.state == 'IN_PROGRESS' %}text-bg-warning{% elif letter.state == 'FINALIZED' %}text-bg-success{% else %}text-bg-secondary{% endif %}">{{ letter.get_state_display }}</span></td>
                         <td>{{ letter.referred_to|default:"—" }}</td>
-                        <td>{% if letter.attention_id %}<a href="{% url 'correspondence:letter_detail' letter.pk %}">#{{ letter.attention_id }}</a>{% if letter.attention.deleted_at %}<br><small class="text-muted">Archivada</small>{% else %}<br><small class="text-muted">{{ letter.attention.get_status_display }}</small>{% endif %}{% else %}<span class="text-muted">Sin vincular</span>{% endif %}</td>
+                        <td>{% if letter.attention_id %}{% if user|can_visit:'correspondence:letter_detail' %}<a href="{% url 'correspondence:letter_detail' letter.pk %}">#{{ letter.attention_id }}</a>{% endif %}{% if letter.attention.deleted_at %}<br><small class="text-muted">Archivada</small>{% else %}<br><small class="text-muted">{{ letter.attention.get_status_display }}</small>{% endif %}{% else %}<span class="text-muted">Sin vincular</span>{% endif %}</td>
                         <td class="text-end text-nowrap">
-                            <a class="btn btn-sm btn-outline-primary" href="{% url 'correspondence:letter_detail' letter.pk %}">Ver carta</a>
-                            <a class="btn btn-sm btn-outline-primary" href="{% url 'correspondence:letter_update' letter.pk %}" aria-label="Editar carta {{ letter.registry_number|default:letter.pk }}">
+                            {% if user|can_visit:'correspondence:letter_detail' %}<a class="btn btn-sm btn-outline-primary" href="{% url 'correspondence:letter_detail' letter.pk %}">Ver carta</a>{% endif %}
+                            {% if user|can_visit:'correspondence:letter_update' %}<a class="btn btn-sm btn-outline-primary" href="{% url 'correspondence:letter_update' letter.pk %}" aria-label="Editar carta {{ letter.registry_number|default:letter.pk }}">
                                 <i class="bi bi-pencil" aria-hidden="true"></i>
-                            </a>
+                            </a>{% endif %}
                             {% if can_delete_letters %}
-                            <a class="btn btn-sm btn-outline-danger" href="{% url 'correspondence:letter_delete' letter.pk %}" aria-label="Archivar carta {{ letter.registry_number|default:letter.pk }}">
+                            {% if user|can_visit:'correspondence:letter_delete' %}<a class="btn btn-sm btn-outline-danger" href="{% url 'correspondence:letter_delete' letter.pk %}" aria-label="Archivar carta {{ letter.registry_number|default:letter.pk }}">
                                 <i class="bi bi-archive" aria-hidden="true"></i>
-                            </a>
+                            </a>{% endif %}
                             {% endif %}
                         </td>
                     </tr>

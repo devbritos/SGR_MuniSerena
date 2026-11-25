@@ -1,5 +1,6 @@
 {% extends "base.html" %}
 {% load static %}
+{% load semaphore %}
 
 {% block title %}Mi panel — SGR{% endblock %}
 
@@ -64,12 +65,12 @@
                 <p class="mb-0 text-white-50">{{ funcionario.position.name }} <span aria-hidden="true">·</span> {{ funcionario.delegation.name }}</p>
             </div>
             <div class="dashboard-welcome-actions d-flex flex-wrap gap-2">
-                <a href="{% url 'activities:activity_create' %}" class="btn btn-light text-danger fw-semibold">
+                {% if user|can_visit:'activities:activity_create' %}<a href="{% url 'activities:activity_create' %}" class="btn btn-light text-danger fw-semibold">
                     <i class="bi bi-plus-lg me-2" aria-hidden="true"></i>Registrar actividad
-                </a>
-                <a href="{% url 'atenciones:attention_create' %}" class="btn btn-outline-light">
+                </a>{% endif %}
+                {% if user|can_visit:'atenciones:attention_create' %}<a href="{% url 'atenciones:attention_create' %}" class="btn btn-outline-light">
                     <i class="bi bi-chat-left-text me-2" aria-hidden="true"></i>Nueva atención
-                </a>
+                </a>{% endif %}
             </div>
         </div>
         <img class="dashboard-welcome-lighthouse" src="{% static 'images/laserena.png' %}" alt="" aria-hidden="true">
@@ -85,32 +86,32 @@
         </div>
         <div class="row g-3">
             <div class="col-6 col-md-4 col-xl-3">
-                <a class="dashboard-shortcut" href="{% url 'activities:traffic_light' %}">
+                {% if user|can_visit:'activities:traffic_light' %}<a class="dashboard-shortcut" href="{% url 'activities:traffic_light' %}">
                     <span class="dashboard-shortcut-icon"><i class="bi bi-stoplights" aria-hidden="true"></i></span>
                     <span class="fw-semibold">Mi semáforo</span>
                     <i class="bi bi-arrow-up-right ms-auto text-muted" aria-hidden="true"></i>
-                </a>
+                </a>{% endif %}
             </div>
             <div class="col-6 col-md-4 col-xl-3">
-                <a class="dashboard-shortcut" href="{% url 'activities:activity_create' %}">
+                {% if user|can_visit:'activities:activity_create' %}<a class="dashboard-shortcut" href="{% url 'activities:activity_create' %}">
                     <span class="dashboard-shortcut-icon"><i class="bi bi-clipboard-data" aria-hidden="true"></i></span>
                     <span class="fw-semibold">Registrar actividad</span>
                     <i class="bi bi-arrow-up-right ms-auto text-muted" aria-hidden="true"></i>
-                </a>
+                </a>{% endif %}
             </div>
             <div class="col-6 col-md-4 col-xl-3">
-                <a class="dashboard-shortcut" href="{% url 'agenda:commitment_list' %}">
+                {% if user|can_visit:'agenda:commitment_list' %}<a class="dashboard-shortcut" href="{% url 'agenda:commitment_list' %}">
                     <span class="dashboard-shortcut-icon"><i class="bi bi-calendar2-check" aria-hidden="true"></i></span>
                     <span class="fw-semibold">Compromisos</span>
                     <i class="bi bi-arrow-up-right ms-auto text-muted" aria-hidden="true"></i>
-                </a>
+                </a>{% endif %}
             </div>
             <div class="col-6 col-md-4 col-xl-3">
-                <a class="dashboard-shortcut" href="{% url 'atenciones:attention_list' %}">
+                {% if user|can_visit:'atenciones:attention_list' %}<a class="dashboard-shortcut" href="{% url 'atenciones:attention_list' %}">
                     <span class="dashboard-shortcut-icon"><i class="bi bi-chat-left-text" aria-hidden="true"></i></span>
                     <span class="fw-semibold">Atenciones</span>
                     <i class="bi bi-arrow-up-right ms-auto text-muted" aria-hidden="true"></i>
-                </a>
+                </a>{% endif %}
             </div>
         </div>
     </section>
@@ -126,7 +127,7 @@
             </div>
         </div>
         {% if compromisos_vencidos %}
-        <a href="{% url 'agenda:commitment_list' %}" class="btn btn-outline-danger btn-sm">Revisar compromisos <i class="bi bi-arrow-right ms-1" aria-hidden="true"></i></a>
+        {% if user|can_visit:'agenda:commitment_list' %}<a href="{% url 'agenda:commitment_list' %}" class="btn btn-outline-danger btn-sm">Revisar compromisos <i class="bi bi-arrow-right ms-1" aria-hidden="true"></i></a>{% endif %}
         {% endif %}
     </section>
 
@@ -134,7 +135,7 @@
         <div class="col-6 col-xl">
             <article class="dashboard-stat dashboard-stat--activities card p-3 p-lg-4">
                 <div class="d-flex justify-content-between align-items-start"><div><p class="small fw-semibold text-muted mb-2">Actividades este mes</p><p class="h2 fw-bold mb-0">{{ actividades_mes }}</p></div><span class="dashboard-stat-icon bg-success-subtle text-success"><i class="bi bi-list-check" aria-hidden="true"></i></span></div>
-                <a href="{% url 'activities:activity_list' %}" class="small text-decoration-none mt-3">Mis actividades <i class="bi bi-arrow-right" aria-hidden="true"></i></a>
+                {% if user|can_visit:'activities:activity_list' %}<a href="{% url 'activities:activity_list' %}" class="small text-decoration-none mt-3">Mis actividades <i class="bi bi-arrow-right" aria-hidden="true"></i></a>{% endif %}
             </article>
         </div>
         <div class="col-6 col-xl">
@@ -146,7 +147,7 @@
         <div class="col-6 col-xl">
             <article class="dashboard-stat dashboard-stat--overdue card p-3 p-lg-4">
                 <div class="d-flex justify-content-between align-items-start"><div><p class="small fw-semibold text-muted mb-2">Compromisos abiertos</p><p class="h2 fw-bold mb-0">{{ compromisos_abiertos }}</p></div><span class="dashboard-stat-icon bg-primary-subtle text-primary"><i class="bi bi-calendar2-check" aria-hidden="true"></i></span></div>
-                <a href="{% url 'agenda:commitment_list' %}" class="small text-decoration-none mt-3">Ver compromisos <i class="bi bi-arrow-right" aria-hidden="true"></i></a>
+                {% if user|can_visit:'agenda:commitment_list' %}<a href="{% url 'agenda:commitment_list' %}" class="small text-decoration-none mt-3">Ver compromisos <i class="bi bi-arrow-right" aria-hidden="true"></i></a>{% endif %}
             </article>
         </div>
         <div class="col-6 col-xl">
@@ -158,17 +159,18 @@
         <div class="col-6 col-xl">
             <article class="dashboard-stat card p-3 p-lg-4">
                 <div class="d-flex justify-content-between align-items-start"><div><p class="small fw-semibold text-muted mb-2">Atenciones este mes</p><p class="h2 fw-bold mb-0">{{ atenciones_mes }}</p></div><span class="dashboard-stat-icon bg-secondary-subtle text-secondary"><i class="bi bi-chat-square-text" aria-hidden="true"></i></span></div>
-                <a href="{% url 'atenciones:attention_list' %}" class="small text-decoration-none mt-3">Ver atenciones <i class="bi bi-arrow-right" aria-hidden="true"></i></a>
+                {% if user|can_visit:'atenciones:attention_list' %}<a href="{% url 'atenciones:attention_list' %}" class="small text-decoration-none mt-3">Ver atenciones <i class="bi bi-arrow-right" aria-hidden="true"></i></a>{% endif %}
             </article>
         </div>
     </section>
 
+    {% if period %}{% semaphore_rules %}<div class="card p-3 mb-4">{% include 'analytics/_commitment_percentages.html' with metrics=indicador.commitments weighted=indicador.has_commitment_goals %}</div>{% endif %}
     <section class="row g-4">
         <div class="col-12 col-xl-7">
             <article class="dashboard-section card h-100">
                 <div class="card-header d-flex align-items-center justify-content-between p-3 p-lg-4">
                     <div><h2 class="h5 fw-bold mb-1">Mi avance</h2><p class="small text-muted mb-0">{% if period %}Período {{ period.start_date|date:"d/m/Y" }} – {{ period.end_date|date:"d/m/Y" }}{% else %}No hay período activo{% endif %}</p></div>
-                    <a href="{% url 'activities:traffic_light' %}" class="btn btn-sm btn-outline-secondary">Ver semáforo</a>
+                    {% if user|can_visit:'activities:traffic_light' %}<a href="{% url 'activities:traffic_light' %}" class="btn btn-sm btn-outline-secondary">Ver semáforo</a>{% endif %}
                 </div>
                 {% if indicador %}
                     {% if indicador.items %}
@@ -176,18 +178,19 @@
                         {% for item in indicador.items %}
                         <div class="dashboard-goal-card p-3 p-lg-4">
                             <div class="d-flex flex-column flex-sm-row justify-content-between gap-2 mb-2">
-                                <div><div class="fw-semibold">{{ item.measuring.service }}</div><small class="text-muted">{{ item.avance }} de {{ item.meta }} {{ item.measuring.measurable_item }}</small></div>
+                                <div><div class="fw-semibold">{{ item.measuring.service }}</div><small class="text-muted">{% if item.has_data %}{{ item.avance|floatformat:'-2' }}{% if item.is_percentage %}%{% endif %}{% else %}Sin datos{% endif %} · Meta: {% if item.measuring.calculation_method == 'COMMITMENTS_PENDING' %}máximo {% endif %}{{ item.meta|floatformat:'-2' }} {{ item.unit }}</small></div>
                                 <div class="text-sm-end">
                                     {% if item.semaforo == 'verde' %}<span class="badge text-bg-success">En ritmo</span>
                                     {% elif item.semaforo == 'ambar' %}<span class="badge text-bg-warning">Atención</span>
-                                    {% else %}<span class="badge text-bg-danger">Bajo el ritmo</span>{% endif %}
+                                    {% elif item.semaforo == 'sin_datos' %}<span class="badge text-bg-secondary">Sin compromisos</span>{% else %}<span class="badge text-bg-danger">Bajo el ritmo</span>{% endif %}
                                     <span class="small fw-semibold ms-1">{{ item.porcentaje_cumplimiento }}%</span>
                                 </div>
                             </div>
-                            <div class="progress goal-progress" role="progressbar" aria-label="Avance de {{ item.measuring.service }}" aria-valuenow="{{ item.porcentaje_cumplimiento }}" aria-valuemin="0" aria-valuemax="100">
-                                <div class="progress-bar {% if item.semaforo == 'verde' %}bg-success{% elif item.semaforo == 'ambar' %}bg-warning{% else %}bg-danger{% endif %}" style="width: {% if item.porcentaje_cumplimiento > 100 %}100{% else %}{{ item.porcentaje_cumplimiento }}{% endif %}%"></div>
+                            <div class="progress goal-progress" role="progressbar" aria-label="Avance de {{ item.measuring.service }}" aria-valuenow="{% if item.porcentaje_cumplimiento > 100 %}100{% else %}{{ item.porcentaje_cumplimiento|floatformat:'2u' }}{% endif %}" aria-valuemin="0" aria-valuemax="100">
+                                <div class="progress-bar {% if item.semaforo == 'verde' %}bg-success{% elif item.semaforo == 'ambar' %}bg-warning{% else %}bg-danger{% endif %}" style="width: {% if item.porcentaje_cumplimiento > 100 %}100{% else %}{{ item.porcentaje_cumplimiento|floatformat:'2u' }}{% endif %}%"></div>
                             </div>
-                            <div class="d-flex justify-content-between mt-2"><small class="text-muted">Ponderación {{ item.ponderador }}%</small><small class="text-muted">Aporte {{ item.cumplimiento_ponderado }}%</small></div>
+                            <div class="d-flex justify-content-between mt-2"><small class="text-muted">Ponderación {{ item.ponderador }}%</small><small class="text-muted">Aporte {{ item.cumplimiento_ponderado }} puntos</small></div>
+                            {% if item.porcentaje_cumplimiento > item.cumplimiento_aplicado %}<p class="small text-muted mt-2 mb-0">Para la evaluación se aplica un {{ item.cumplimiento_aplicado }}% de cumplimiento. {% if item.is_percentage %}Se conserva el porcentaje real: {{ item.avance|floatformat:'-2' }}%.{% else %}Se conserva la cantidad real registrada: {{ item.avance }}.{% endif %}</p>{% endif %}
                         </div>
                         {% endfor %}
                     </div>
@@ -206,7 +209,7 @@
             <article class="dashboard-section card h-100">
                 <div class="card-header d-flex align-items-center justify-content-between p-3 p-lg-4">
                     <div><h2 class="h5 fw-bold mb-1">Mis compromisos</h2><p class="small text-muted mb-0">Fechas y próximos pasos</p></div>
-                    <a href="{% url 'agenda:commitment_list' %}" class="btn btn-sm btn-outline-secondary">Ver todos</a>
+                    {% if user|can_visit:'agenda:commitment_list' %}<a href="{% url 'agenda:commitment_list' %}" class="btn btn-sm btn-outline-secondary">Ver todos</a>{% endif %}
                 </div>
                 <div class="table-responsive">
                     <table class="table dashboard-table mb-0">
@@ -228,7 +231,7 @@
             <article class="dashboard-section card">
                 <div class="card-header d-flex align-items-center justify-content-between p-3 p-lg-4">
                     <div><h2 class="h5 fw-bold mb-1">Mis actividades recientes</h2><p class="small text-muted mb-0">Últimos registros del período de trabajo</p></div>
-                    <a href="{% url 'activities:activity_list' %}" class="btn btn-sm btn-outline-secondary">Ver todas</a>
+                    {% if user|can_visit:'activities:activity_list' %}<a href="{% url 'activities:activity_list' %}" class="btn btn-sm btn-outline-secondary">Ver todas</a>{% endif %}
                 </div>
                 <div class="table-responsive">
                     <table class="table dashboard-table mb-0">

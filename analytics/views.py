@@ -11,9 +11,11 @@ from atenciones.models import Attention
 from django.utils import timezone
 from .calculations import (
     calcular_porcentaje_esperado,
+    estado_semaforo,
     obtener_indicador_funcionario,
     obtener_semaforo_funcionarios,
 )
+from .commitment_metrics import combine_commitment_metrics
 from configuration.models import Period
 
 
@@ -170,7 +172,7 @@ def delegation_dashboard(request):
                 expected_percentage,
             )
             measured_percentages = [
-                item['achieved_percentage']
+                item['unrounded_percentage']
                 for item in metrics
                 if item['achieved_percentage'] is not None
             ]
@@ -185,15 +187,10 @@ def delegation_dashboard(request):
             if average_percentage is None:
                 status = 'no_goal'
                 status_label = 'Sin metas activas'
-            elif average_percentage - expected_percentage >= -5:
-                status = 'green'
-                status_label = 'En línea con lo esperado'
-            elif average_percentage - expected_percentage >= -15:
-                status = 'yellow'
-                status_label = 'Atención'
             else:
-                status = 'red'
-                status_label = 'Bajo lo esperado'
+                status, status_label = estado_semaforo(
+                    sum(measured_percentages) / len(measured_percentages), expected_percentage,
+                )
             delegation_summaries.append({
                 'delegation': delegation,
                 'average_percentage': average_percentage,
@@ -201,6 +198,8 @@ def delegation_dashboard(request):
                 'measured_functionary_count': len(measured_percentages),
                 'status': status,
                 'status_label': status_label,
+                'commitments': combine_commitment_metrics(item['commitments'] for item in metrics),
+                'has_commitment_goals': any(item['has_commitment_goals'] for item in metrics),
             })
     else:
         delegation_summaries = [
@@ -243,6 +242,9 @@ def delegation_dashboard(request):
 
 @login_required
 def user_dashboard(request):
+    from organizations.community_access import portal_identity
+    if portal_identity(request.user)[0]:
+        return redirect('community:home')
     funcionario = getattr(request.user, 'functionary', None)
     if funcionario is None:
         return render(request, 'analytics/no_functionary.html')
@@ -297,6 +299,9 @@ def user_dashboard(request):
 
 @login_required
 def dashboard_redirect(request):
+    from organizations.community_access import portal_identity
+    if portal_identity(request.user)[0]:
+        return redirect('community:home')
     functionary = getattr(request.user, 'functionary', None)
     if request.user.is_staff or request.user.is_superuser or (
         functionary

@@ -58,6 +58,7 @@
         </header>
 
         <div class="commitment-form-body card-body">
+            {% if object.meeting_agreement %}<div class="alert alert-info">Compromiso originado en una reunión. <a href="{% url 'agenda:meeting_detail' object.meeting_agreement.meeting_id %}">Volver al acuerdo y la reunión</a></div>{% endif %}
             {% if object.source_attention %}
             <div class="alert alert-info mb-3">
                 <strong>Origen: atención #{{ object.source_attention_id }}</strong> · {{ object.source_attention.requester_name }}

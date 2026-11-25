@@ -16,7 +16,7 @@ from core.auth_views import (
 from core.forms import UsernameOrEmailAuthenticationForm
 
 urlpatterns = [
-    path("", RedirectView.as_view(pattern_name="dashboard_redirect")),
+    path("", RedirectView.as_view(pattern_name="dashboard_redirect"), name="home"),
     path("admin/", admin.site.urls),
     path(
         "accounts/login/",
@@ -47,6 +47,7 @@ urlpatterns = [
     ),
     path("accounts/", include("django.contrib.auth.urls")),
     path("personal/", include("personal.urls")),
+    path("mi-junta/", include("organizations.community_urls")),
     path("dashboard/", include("analytics.urls")),
     path("activities/", include("activities.urls")),
     path("agenda/", include("agenda.urls")),

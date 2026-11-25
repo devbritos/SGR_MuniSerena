@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% load semaphore %}
 
 {% block title %}Semáforo por delegación — SGR{% endblock %}
 
@@ -65,7 +66,7 @@
                 <select id="delegation-period-select" name="period" class="form-select form-select-lg">
                     {% for period_option in periods %}
                     <option value="{{ period_option.pk }}" {% if period_option.pk == period.pk %}selected{% endif %}>
-                        {{ period_option.start_date|date:"d/m/Y" }} al {{ period_option.end_date|date:"d/m/Y" }} · {% if period_option.status %}Vigente{% else %}Histórico{% endif %}
+                        {% if period_option.quarter_label %}{{ period_option.quarter_label }} · {% endif %}{{ period_option.start_date|date:"d/m/Y" }} al {{ period_option.end_date|date:"d/m/Y" }} · {% if period_option.semaphore == 'DEMO' %}Demostración{% elif period_option.status %}Vigente{% else %}Histórico{% endif %}
                     </option>
                     {% endfor %}
                 </select>
@@ -134,6 +135,7 @@
         {% endif %}
     </div>
 
+    {% if period %}{% semaphore_rules %}{% endif %}
     <div class="row g-3">
         {% for summary in delegation_summaries %}
         <div class="col-sm-6 col-xl-4">
@@ -175,9 +177,9 @@
                     <span>Avance ponderado</span>
                     <span>{{ summary.average_percentage|floatformat:1 }}%</span>
                 </div>
-                <div class="delegation-progress mb-2" role="progressbar" aria-label="Avance promedio de {{ summary.delegation.name }}" aria-valuenow="{{ summary.average_percentage|floatformat:0 }}" aria-valuemin="0" aria-valuemax="100">
-                    <div class="delegation-progress-bar {% if summary.status == 'green' %}bg-success{% elif summary.status == 'yellow' %}bg-warning{% else %}bg-danger{% endif %}" style="width: {% if summary.average_percentage > 100 %}100{% else %}{{ summary.average_percentage|floatformat:1 }}{% endif %}%"></div>
-                    <span class="delegation-progress-marker" style="left: {{ expected_percentage|floatformat:1 }}%" title="Objetivo esperado {{ expected_percentage|floatformat:1 }}%" aria-hidden="true"></span>
+                <div class="delegation-progress mb-2" role="progressbar" aria-label="Avance promedio de {{ summary.delegation.name }}" aria-valuenow="{{ summary.average_percentage|floatformat:"0u" }}" aria-valuemin="0" aria-valuemax="100">
+                    <div class="delegation-progress-bar {% if summary.status == 'green' %}bg-success{% elif summary.status == 'yellow' %}bg-warning{% else %}bg-danger{% endif %}" style="width: {% if summary.average_percentage > 100 %}100{% else %}{{ summary.average_percentage|floatformat:"1u" }}{% endif %}%"></div>
+                    <span class="delegation-progress-marker" style="left: {{ expected_percentage|floatformat:"1u" }}%" title="Objetivo esperado {{ expected_percentage|floatformat:1 }}%" aria-hidden="true"></span>
                 </div>
                 <p class="small text-muted mb-4">La marca indica el objetivo esperado a la fecha ({{ expected_percentage|floatformat:1 }}%).</p>
                 {% elif period %}
@@ -192,7 +194,8 @@
                 </div>
                 {% endif %}
 
-                <a class="btn btn-primary w-100" href="{% url 'dashboard_delegation_detail' summary.delegation.pk %}{% if period %}?period={{ period.pk }}{% endif %}">
+                {% if summary.commitments %}{% include 'analytics/_commitment_percentages.html' with metrics=summary.commitments weighted=summary.has_commitment_goals %}{% endif %}
+                <a class="btn btn-primary w-100 mt-3" href="{% url 'dashboard_delegation_detail' summary.delegation.pk %}{% if period %}?period={{ period.pk }}{% endif %}">
                     Ver funcionarios <i class="bi bi-arrow-up-right ms-1" aria-hidden="true"></i>
                 </a>
             </article>

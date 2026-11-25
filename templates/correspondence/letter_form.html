@@ -51,7 +51,7 @@
   <details {% if form.additional_open %}open{% endif %}>
    <summary>Información adicional <span class="fw-normal text-muted">— opcional</span></summary>
    <div class="letter-form-section"><p class="small text-muted">Puedes completar estos datos ahora si ya los tienes, o agregarlos después desde Editar carta.</p>
-    {{ form.activity_date|as_crispy_field }}{{ form.referred_to|as_crispy_field }}{{ form.pronouncement|as_crispy_field }}{{ form.observation|as_crispy_field }}
+    {{ form.activity_date|as_crispy_field }}{{ form.referred_to|as_crispy_field }}{{ form.pronouncement|as_crispy_field }}{% if object.organization_id %}{{ form.public_response|as_crispy_field }}{% endif %}{{ form.observation|as_crispy_field }}
    </div>
   </details>
   <div class="letter-form-actions">

@@ -1,0 +1,18 @@
+{% if is_demo %}<div class="alert alert-info mb-3" role="status"><strong>Datos ficticios de demostración.</strong> Este período permite probar el semáforo y no representa trabajo municipal real.</div>{% endif %}
+<details class="card p-3 mb-4 small">
+    <summary class="fw-medium">Cómo se calcula el semáforo</summary>
+    <div class="mt-3">
+        <p>Las actividades suman cuando están validadas y su última evidencia está aprobada. Los indicadores de compromisos se calculan automáticamente desde la agenda cuando tienen una meta y ponderación asignadas.</p>
+        <p>Compromisos cumplidos: cumplidos ÷ total ingresado en el período × 100. Pendientes: pendientes ÷ ese mismo total × 100. Sin compromisos se muestra «Sin datos», sin asignar un cumplimiento ficticio.</p>
+        <p>Para la meta de pendientes se aplica la escala del Excel: hasta el límite configurado, 100% de cumplimiento; por encima del límite y hasta 50% de pendientes, 50%; sobre 50%, 0%.</p>
+        <p>Cada indicador aporta su cumplimiento multiplicado por su ponderación. El aporte se limita al {{ maximum_compliance|floatformat:0 }}% de cumplimiento; las cantidades registradas se conservan completas.</p>
+        <p>El color se determina con el valor exacto, antes de redondear el porcentaje mostrado.</p>
+        <ul class="mb-2">
+            <li><strong>Verde:</strong> alcanza o supera el objetivo esperado a la fecha.</li>
+            <li><strong>Amarillo:</strong> alcanza al menos el 60% del objetivo esperado.</li>
+            <li><strong>Rojo:</strong> está por debajo de ese 60%.</li>
+            <li><strong>Sin meta:</strong> no tiene metas activas para evaluar.</li>
+        </ul>
+        <p class="mb-0 text-muted">El objetivo avanza por días calendario, contando inicio y término. Por ejemplo, si hoy se espera un 50%, verde empieza en 50% y amarillo en 30%. Los descuentos por ausencias se incorporarán en una etapa posterior.</p>
+    </div>
+</details>

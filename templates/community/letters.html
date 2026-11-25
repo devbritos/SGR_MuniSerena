@@ -1,0 +1,6 @@
+{% extends 'community/base.html' %}
+{% block content %}
+<header class="board-page-header"><div><h1>Cartas de mi junta</h1><p>Consulta el estado y la respuesta de las cartas enviadas a la delegación.</p></div>{% if member.can_send_letters %}<a class="btn btn-primary" href="{% url 'community:letter_create' %}"><i class="bi bi-envelope-plus" aria-hidden="true"></i>Enviar carta</a>{% endif %}</header>
+{% for letter in page_obj %}<article class="card p-3 mb-3"><div class="d-flex flex-wrap justify-content-between align-items-start gap-3"><div><span class="text-muted small">Carta #{{ letter.pk }} · {{ letter.received_at|date:'d/m/Y' }}</span><h2 class="h6 mt-2 mb-2">{{ letter.subject|truncatechars:150 }}</h2><span class="board-badge">{{ letter.get_state_display }}</span></div><a class="btn btn-outline-secondary" href="{% url 'community:letter_detail' letter.pk %}">Ver carta</a></div></article>{% empty %}<div class="card board-empty"><h2 class="h5">Todavía no hay cartas</h2><p class="text-muted mb-0">Cuando un dirigente envíe una carta, su estado aparecerá aquí.</p></div>{% endfor %}
+{% include 'community/_pagination.html' %}
+{% endblock %}

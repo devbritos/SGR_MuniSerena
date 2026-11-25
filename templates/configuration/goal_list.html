@@ -1,124 +1,116 @@
 {% extends "base.html" %}
 {% block title %}Metas y ponderaciones por cargo{% endblock %}
+{% block extra_head %}<style>{% include 'configuration/_goal_list.css.html' %}</style>{% endblock %}
 {% block content %}
-<div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3 mb-3">
-    <div>
-        <h2 class="mb-1">Metas y ponderaciones por cargo</h2>
-        <p class="text-muted mb-0">Define el valor objetivo de cada meta y cuánto aporta al cumplimiento del cargo.</p>
-    </div>
-    {% if user.is_superuser or user.functionary.is_admin %}
-    <div class="d-flex flex-wrap gap-2">
-        <a href="{% url 'configuration:period_create' %}" class="btn btn-outline-primary">
-            <i class="bi bi-calendar-plus me-1" aria-hidden="true"></i>Crear período
-        </a>
-        <a href="{% url 'configuration:goal_create' %}" class="btn btn-primary">
-            <i class="bi bi-plus-lg me-1" aria-hidden="true"></i>Nueva meta
-        </a>
-    </div>
-    {% endif %}
-</div>
-
-<form method="get" class="row g-2 mb-4">
-    <div class="col-md-5">
-        <div class="col-md-5">
-            <label class="form-label small fw-semibold" for="goal-search">Buscar metas</label>
-            <input id="goal-search" class="form-control" name="q" type="search" value="{{ search_query }}" placeholder="Cargo, ítem o unidad">
+<main class="goal-ui">
+    <header class="goal-page-header">
+        <div>
+            <p class="goal-eyebrow">Configuración de la evaluación</p>
+            <h1>Metas y ponderaciones por cargo</h1>
+            <p class="text-muted mb-0">Revisa qué debe lograr cada cargo y cuánto aporta cada meta a su evaluación.</p>
         </div>
-    </div>
-    <div class="col-md-3">
-        <label class="form-label small fw-semibold" for="goal-period-filter">Período</label>
-        <select id="goal-period-filter" name="period" class="form-select">
-            <option value="">Todos los períodos</option>
-            {% for p in periods %}
-            <option value="{{ p.id }}" {% if selected_period == p.id|stringformat:"s" %}selected{% endif %}>
-                {{ p.start_date }} — {{ p.end_date }}
-            </option>
-            {% endfor %}
-        </select>
-    </div>
-    {% if showing_all %}<input type="hidden" name="all" value="1">{% endif %}
-    <div class="col-auto"><button type="submit" class="btn btn-outline-secondary"><i class="bi bi-search"></i> Buscar</button></div>
-    <div class="col-auto"><a class="btn btn-outline-success" href="{{ request.path }}?{{ query_params }}{% if query_params %}&{% endif %}export=xlsx"><i class="bi bi-file-earmark-excel"></i> Exportar a Excel</a></div>
-    <div class="col-auto">
-        {% if showing_all %}
-        <a class="btn btn-outline-secondary" href="{% url 'configuration:goal_list' %}">Ver activas</a>
-        {% else %}
-        <a class="btn btn-outline-secondary" href="{% url 'configuration:goal_list' %}?all=1">Ver todas</a>
-        {% endif %}
-    </div>
-</form>
-{% include "_list_sort_controls.html" %}
+        <a href="{% url 'configuration:goal_create' %}" class="btn btn-primary"><i class="bi bi-plus-lg me-1" aria-hidden="true"></i>Nueva meta</a>
+    </header>
 
-{% for grupo in resumen %}
-<article class="card border-0 shadow-sm mb-3">
-    <div class="card-body p-3 p-md-4">
-        <div class="d-flex flex-column flex-xl-row justify-content-between gap-3">
-            <div class="flex-grow-1">
-                <p class="text-uppercase text-muted small fw-semibold mb-1">Ítem de medición</p>
-                <h3 class="h5 fw-bold mb-1">{{ grupo.measuring.service }}</h3>
-                {% if grupo.measuring.measurable_item %}
-                <p class="text-muted mb-2">{{ grupo.measuring.measurable_item }}</p>
-                {% endif %}
-                <span class="badge rounded-pill text-bg-light border">
-                    <i class="bi bi-calendar-range me-1" aria-hidden="true"></i>Período: {{ grupo.period }}
-                </span>
+    <form method="get" class="goal-filters" role="search" aria-label="Filtrar metas">
+        <div class="goal-filter-grid">
+            <div class="goal-search-field">
+                <label class="form-label" for="goal-search">Buscar metas</label>
+                <input id="goal-search" class="form-control" name="q" type="search" value="{{ search_query }}" placeholder="Nombre de la meta, cargo o unidad">
             </div>
-            <div class="d-flex flex-wrap align-items-start gap-2">
-                <div class="border rounded-3 px-3 py-2">
-                    <span class="d-block text-muted small">Meta a alcanzar</span>
-                    <strong>{{ grupo.target_value }} {{ grupo.unity }}</strong>
-                </div>
-                <div class="border rounded-3 px-3 py-2">
-                    <span class="d-block text-muted small">Ponderación de la meta</span>
-                    <strong>{{ grupo.weight }}%</strong>
-                    <span class="d-block text-muted small">Aporte al total del cargo</span>
-                </div>
-                {% if grupo.validity %}
-                <span class="badge rounded-pill text-bg-success mt-2">Activa</span>
-                {% else %}
-                <span class="badge rounded-pill text-bg-secondary mt-2">Inactiva</span>
-                {% endif %}
+            <div>
+                <label class="form-label" for="goal-position-filter">Cargo</label>
+                <select id="goal-position-filter" name="position" class="form-select">
+                    <option value="">Todos los cargos</option>
+                    {% for position in positions %}<option value="{{ position.pk }}" {% if selected_position == position.pk|stringformat:'s' %}selected{% endif %}>{{ position.name }}</option>{% endfor %}
+                </select>
+            </div>
+            <div>
+                <label class="form-label" for="goal-period-filter">Período de evaluación</label>
+                <select id="goal-period-filter" name="period" class="form-select">
+                    <option value="">Todos los períodos</option>
+                    {% for p in periods %}<option value="{{ p.pk }}" {% if selected_period == p.pk|stringformat:'s' %}selected{% endif %}>{{ p.start_date|date:'d/m/Y' }} al {{ p.end_date|date:'d/m/Y' }}</option>{% endfor %}
+                </select>
+            </div>
+            <div>
+                <label class="form-label" for="goal-state-filter">Mostrar</label>
+                <select id="goal-state-filter" name="all" class="form-select">
+                    <option value="" {% if not showing_all %}selected{% endif %}>Solo metas activas</option>
+                    <option value="1" {% if showing_all %}selected{% endif %}>Activas e inactivas</option>
+                </select>
             </div>
         </div>
-
-        <hr class="my-3">
-
-        <div class="d-flex flex-column flex-lg-row justify-content-between align-items-lg-end gap-3">
-            <div class="flex-grow-1">
-                <h4 class="h6 fw-semibold mb-2">
-                    Cargos vinculados
-                    <span class="badge rounded-pill text-bg-light border ms-1">{{ grupo.positions|length }}</span>
-                </h4>
-                <div class="d-flex flex-wrap gap-2">
-                    {% for cargo in grupo.positions %}
-                    <span class="badge rounded-pill {% if cargo.total_weight == 100 %}text-bg-success{% else %}text-bg-danger{% endif %} px-3 py-2">
-                        {{ cargo.position.name }}
-                        <span class="fw-normal ms-1">(ponderación total: {{ cargo.total_weight }}%)</span>
-                    </span>
-                    {% endfor %}
-                </div>
+        <div class="goal-filter-footer">
+            <div class="d-flex flex-wrap gap-2">
+                <button type="submit" class="btn btn-primary"><i class="bi bi-funnel me-1" aria-hidden="true"></i>Aplicar filtros</button>
+                <a class="btn btn-outline-secondary" href="{% url 'configuration:goal_list' %}">Limpiar</a>
             </div>
-            <div class="d-flex gap-2">
-                <a class="btn btn-sm btn-outline-primary"
-                   href="{% url 'configuration:goal_update' grupo.goal.pk %}"
-                   aria-label="Editar meta para los cargos vinculados">
-                    <i class="bi bi-pencil me-1" aria-hidden="true"></i>Editar
-                </a>
-                {% if grupo.validity %}
-                <a class="btn btn-sm btn-outline-danger"
-                   href="{% url 'configuration:goal_deactivate' grupo.goal.pk %}"
-                   aria-label="Desactivar meta para los cargos vinculados">
-                    <i class="bi bi-trash me-1" aria-hidden="true"></i>Desactivar
-                </a>
-                {% endif %}
+            <div class="goal-order">
+                <label for="goal-sort">Ordenar metas</label>
+                <select id="goal-sort" name="sort" class="form-select form-select-sm">
+                    <option value="">Predeterminado</option>
+                    {% for value,label in sort_options %}<option value="{{ value }}" {% if selected_sort == value %}selected{% endif %}>{{ label }}</option>{% endfor %}
+                </select>
             </div>
         </div>
+        {% if request.GET.per_page %}<input type="hidden" name="per_page" value="{{ selected_page_size }}">{% endif %}
+    </form>
+
+    <div class="goal-overview" aria-label="Resumen de configuraciones encontradas">
+        <div><span class="text-muted">Configuraciones de cargo</span><strong>{{ configuration_count }}</strong></div>
+        <div><span class="text-muted">Con ponderación completa</span><strong>{{ complete_count }}</strong></div>
+        <div><span class="text-muted">Por completar o revisar</span><strong>{{ review_count }}</strong></div>
     </div>
-</article>
-{% empty %}
-<div class="card card-body text-center my-3" role="status">
-    {% include "_list_empty_state.html" with empty_message="No hay metas registradas todavía." %}
-</div>
-{% endfor %}
-{% include "_pagination.html" %}
+
+    <div class="goal-results-toolbar">
+        <div><h2 class="h5 mb-1">Metas por cargo y período</h2><p class="small text-muted mb-0">La ponderación activa considera todas las metas que participan en el semáforo, aunque filtres el listado.</p></div>
+        <div class="d-flex flex-wrap gap-2">
+            <a class="btn btn-sm btn-outline-secondary" href="{% url 'configuration:period_create' %}"><i class="bi bi-calendar-plus me-1" aria-hidden="true"></i>Crear período</a>
+            <a class="btn btn-sm btn-outline-secondary" href="{{ request.path }}?{{ query_params }}{% if query_params %}&amp;{% endif %}export=xlsx"><i class="bi bi-file-earmark-excel me-1" aria-hidden="true"></i>Exportar a Excel</a>
+        </div>
+    </div>
+
+    {% for section in position_sections %}
+    <section class="goal-section" aria-labelledby="goal-heading-{{ section.position.pk }}-{{ section.period.pk }}">
+        <header class="goal-section-header">
+            <div>
+                <h3 id="goal-heading-{{ section.position.pk }}-{{ section.period.pk }}" class="h5 mb-1">{{ section.position.name }}</h3>
+                <p class="small text-muted mb-0"><i class="bi bi-calendar3 me-1" aria-hidden="true"></i>{{ section.period.start_date|date:'d/m/Y' }} al {{ section.period.end_date|date:'d/m/Y' }} <span class="mx-1" aria-hidden="true">·</span> {{ section.rows|length }} meta{{ section.rows|length|pluralize:'s' }} mostrada{{ section.rows|length|pluralize:'s' }}</p>
+            </div>
+            <div class="goal-weight-summary">
+                <span class="small text-muted">Ponderación activa</span>
+                <div><strong>{{ section.total_weight|floatformat:'-2' }}%</strong><span class="goal-status goal-status--{{ section.status }}">{% if section.status == 'complete' %}<i class="bi bi-check-circle" aria-hidden="true"></i>Completa{% elif section.status == 'over' %}Revisar: supera el 100%{% elif section.status == 'pending' %}Falta asignar {{ section.remaining_weight|floatformat:'-2' }}%{% else %}Sin metas activas{% endif %}</span></div>
+            </div>
+        </header>
+        <table class="table goal-table align-middle mb-0">
+            <caption class="visually-hidden">Metas de {{ section.position.name }}, del {{ section.period.start_date|date:'d/m/Y' }} al {{ section.period.end_date|date:'d/m/Y' }}.</caption>
+            <thead><tr><th scope="col">Ítem de medición</th><th scope="col">Meta a alcanzar</th><th scope="col"><span>Ponderación de la meta</span><small>Aporte al total del cargo</small></th><th scope="col">Estado</th><th scope="col">Acciones</th></tr></thead>
+            <tbody>
+                {% for row in section.rows %}
+                <tr>
+                    <td class="goal-item">
+                        <span class="fw-medium">{{ row.measuring.service }}</span>
+                        {% if row.measuring.code %}<span class="goal-item-code">{{ row.measuring.code }}</span>{% endif %}
+                        {% if row.measuring.measurable_item %}<details class="goal-description"><summary>Ver descripción</summary><p class="text-muted mb-0 mt-1">{{ row.measuring.measurable_item }}</p></details>{% endif %}
+                        {% if row.positions|length > 1 %}<details class="goal-shared"><summary><i class="bi bi-link-45deg" aria-hidden="true"></i>Cargos vinculados: {{ row.positions|length }}</summary><div class="goal-shared-info"><p class="mb-1">Editar o desactivar esta meta afecta a todos estos cargos:</p><ul class="mb-0 ps-3">{% for cargo in row.positions %}<li>{{ cargo.position.name }}</li>{% endfor %}</ul></div></details>{% endif %}
+                    </td>
+                    <td><span class="goal-mobile-label">Meta a alcanzar</span><span class="goal-number">{% if row.measuring.calculation_method == 'COMMITMENTS_PENDING' %}Máx. {% endif %}{{ row.target_value|floatformat:'-2' }}{% if row.measuring.is_commitment_percentage %}%{% endif %}</span><span class="goal-unit">{% if row.measuring.is_commitment_percentage %}Desde la agenda{% else %}{{ row.unity }}{% endif %}</span></td>
+                    <td><span class="goal-mobile-label">Ponderación</span><span class="goal-number">{{ row.weight|floatformat:'-2' }}%</span></td>
+                    <td><span class="goal-mobile-label">Estado</span><span class="goal-status {% if not row.validity %}goal-status--neutral{% elif not row.measuring.validity or row.measuring.deleted_at %}goal-status--pending{% else %}goal-status--active{% endif %}">{% if not row.validity %}Inactiva{% elif not row.measuring.validity or row.measuring.deleted_at %}Ítem inactivo{% else %}Activa{% endif %}</span></td>
+                    <td class="goal-actions"><a class="btn btn-sm btn-outline-secondary" href="{% url 'configuration:goal_update' row.goal.pk %}" aria-label="Editar {{ row.measuring.service }}{% if row.positions|length > 1 %}, compartida entre {{ row.positions|length }} cargos{% endif %}"><i class="bi bi-pencil me-1" aria-hidden="true"></i>Editar</a>{% if row.validity %}<a class="goal-deactivate" href="{% url 'configuration:goal_deactivate' row.goal.pk %}" aria-label="Desactivar {{ row.measuring.service }}{% if row.positions|length > 1 %}, compartida entre {{ row.positions|length }} cargos{% endif %}">Desactivar</a>{% endif %}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </section>
+    {% empty %}
+    <section class="goal-empty" role="status">
+        <i class="bi bi-clipboard2-check fs-3 text-muted" aria-hidden="true"></i>
+        <h2 class="h5 mt-2">No hay metas para mostrar</h2>
+        <p class="text-muted">Prueba con otro cargo o período, o limpia la búsqueda.</p>
+        <div class="d-flex flex-wrap justify-content-center gap-2"><a class="btn btn-outline-secondary" href="{% url 'configuration:goal_list' %}">Limpiar filtros</a><a class="btn btn-primary" href="{% url 'configuration:goal_create' %}">Crear una meta</a></div>
+    </section>
+    {% endfor %}
+    {% include '_pagination.html' %}
+</main>
 {% endblock %}

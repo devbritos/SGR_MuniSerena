@@ -250,7 +250,11 @@ class OfficeLetterDetailView(LoginRequiredMixin, FunctionaryOrStaffRequiredMixin
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        context['can_link_attention'] = _active_functionary(self.request.user) is not None
+        from core.role_access import can_access
+        context['can_link_attention'] = (
+            _active_functionary(self.request.user) is not None
+            and can_access(self.request.user, 'correspondence:letter_attention_link')
+        )
         return context
 
 

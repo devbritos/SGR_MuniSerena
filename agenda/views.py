@@ -49,6 +49,7 @@ def get_commitment_scope(user):
         Q(functionary=functionary)
         | Q(source_attention__functionary=functionary)
         | Q(source_attention__followup_responsible=functionary)
+        | Q(meeting_agreement__meeting__created_by=functionary)
     )
 
 
@@ -191,9 +192,7 @@ class CommitmentListView(ListControlsMixin, LoginRequiredMixin, FunctionaryOrSta
             else ''
         )
         context['view_mode'] = (
-            'kanban'
-            if self.request.GET.get('view') == 'kanban'
-            else 'table'
+            'table' if self.request.GET.get('view') == 'table' else 'kanban'
         )
         view_params = self.request.GET.copy()
         for key in ('page', 'view', 'export'):
@@ -341,6 +340,11 @@ class CommitmentDeleteView(LoginRequiredMixin, AdminRequiredMixin, DeleteView):
         return get_commitment_scope(self.request.user)
 
     def form_valid(self, form):
+        agreement = getattr(self.object, 'meeting_agreement', None)
+        if agreement:
+            messages.error(self.request, 'Este compromiso respalda un acuerdo. Actualiza su estado desde la reunión para conservar la trazabilidad.')
+            from django.shortcuts import redirect
+            return redirect('agenda:meeting_detail', pk=agreement.meeting_id)
         response = super().form_valid(form)
         messages.success(self.request, 'Compromiso eliminado correctamente.')
         return response

@@ -20,6 +20,16 @@ from .models import Commitment
 
 
 class CommitmentActivityLinkTests(TestCase):
+    def test_kanban_is_default_and_table_remains_explicitly_available(self):
+        url = reverse('agenda:commitment_list')
+        response = self.client.get(url)
+        self.assertEqual(response.context['view_mode'], 'kanban')
+        self.assertIn('kanban_columns', response.context)
+        table = self.client.get(url, {'view': 'table', 'q': 'Solicitud'})
+        self.assertEqual(table.context['view_mode'], 'table')
+        self.assertContains(table, 'data-list-modal-table')
+        self.assertIn('q=Solicitud', table.context['view_switch_params'])
+
     def setUp(self):
         self.user = User.objects.create_user(
             username='funcionario_compromiso',

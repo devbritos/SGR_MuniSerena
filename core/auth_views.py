@@ -37,6 +37,9 @@ class SGRLoginView(LoginView):
     def get_success_url(self):
         redirect_to = self.get_redirect_url()
         user = self.request.user
+        from organizations.community_access import portal_identity
+        if portal_identity(user)[0]:
+            return reverse('community:home')
         functionary = getattr(user, 'functionary', None)
         is_privileged = user.is_staff or user.is_superuser or (
             functionary

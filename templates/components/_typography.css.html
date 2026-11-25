@@ -1,0 +1,53 @@
+:root {
+    --sgr-font-family: 'Inter', Arial, sans-serif;
+    --sgr-font-size-body: 14px;
+    --sgr-font-size-sidebar-category: 11px;
+    --sgr-font-size-title: 26px;
+    --sgr-font-size-table-heading: 13px;
+    --sgr-font-weight-normal: 400;
+    --sgr-font-weight-medium: 500;
+    --sgr-font-weight-semibold: 600;
+    --bs-font-sans-serif: var(--sgr-font-family);
+    --bs-body-font-family: var(--sgr-font-family);
+    --bs-body-font-size: var(--sgr-font-size-body);
+    --bs-body-font-weight: var(--sgr-font-weight-normal);
+}
+/* Typography is independent of theme colors and applies to dynamically loaded forms. */
+html body {
+    font-family: var(--sgr-font-family);
+    font-size: var(--sgr-font-size-body);
+    font-weight: var(--sgr-font-weight-normal);
+    line-height: 1.55;
+    font-synthesis: none;
+}
+body :where(input, select, textarea, button, .btn, .form-control, .form-select) {
+    font-family: var(--sgr-font-family) !important;
+}
+body :where(h1, h2, h3, h4, h5, h6, .h1, .h2, .h3, .h4, .h5, .h6, strong, b, th) {
+    font-weight: var(--sgr-font-weight-semibold) !important;
+}
+body h1, body main > h2, body #page-content > div > div:first-child h2,
+body .commitments-page > div:first-child h2 {
+    font-size: var(--sgr-font-size-title) !important;
+    line-height: 1.25;
+}
+body :where(.fw-bold, .fw-bolder, .fw-semibold) {
+    font-weight: var(--sgr-font-weight-semibold) !important;
+}
+body :where(.fw-medium, .form-label, .btn, .sidebar-link, .badge) {
+    font-weight: var(--sgr-font-weight-medium) !important;
+}
+body :where(.fw-normal, .fw-light, .fw-lighter) {
+    font-weight: var(--sgr-font-weight-normal) !important;
+}
+body .sidebar-section-title {
+    font-size: var(--sgr-font-size-sidebar-category) !important;
+    font-weight: var(--sgr-font-weight-medium) !important;
+    letter-spacing: .055em;
+}
+body table thead th {
+    font-size: var(--sgr-font-size-table-heading) !important;
+    font-weight: var(--sgr-font-weight-semibold) !important;
+    line-height: 1.4;
+}
+body .sidebar-link, body .form-label {line-height: 1.45;}

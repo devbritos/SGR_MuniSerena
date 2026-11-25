@@ -46,6 +46,7 @@ class OfficeLetterForm(forms.ModelForm):
             'responsible',
             'state',
             'pronouncement',
+            'public_response',
             'referred_to',
             'observation',
         ]
@@ -141,6 +142,8 @@ class OfficeLetterForm(forms.ModelForm):
         self.fields['activity_date'].help_text = 'Solo si corresponde: una fecha, un rango o “por confirmar”.'
         for name in ('registry_number', 'contact_phone', 'activity_date', 'pronouncement', 'referred_to', 'observation'):
             self.fields[name].label += ' (opcional)'
+        self.fields['public_response'].widget = forms.Textarea(attrs={'class': 'form-control', 'rows': 4})
+        self.fields['public_response'].help_text = 'Este texto será visible en el portal de la junta remitente. Las observaciones internas no se comparten.'
 
     @property
     def responsible_catalog(self):
@@ -154,7 +157,7 @@ class OfficeLetterForm(forms.ModelForm):
 
     @property
     def additional_open(self):
-        return any(self[name].value() or self[name].errors for name in ('activity_date', 'pronouncement', 'referred_to', 'observation'))
+        return any(self[name].value() or self[name].errors for name in ('activity_date', 'pronouncement', 'public_response', 'referred_to', 'observation'))
 
 
 class OfficeLetterFilterForm(forms.Form):

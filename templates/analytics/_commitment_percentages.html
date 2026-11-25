@@ -1,0 +1,13 @@
+<section class="border-top pt-3 mt-3" aria-label="Porcentajes de compromisos">
+    <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-2">
+        <h4 class="h6 mb-0">Compromisos del período{% if period.quarter_label %}<span class="small text-muted d-block mt-1">{{ period.quarter_label }}</span>{% endif %}</h4>
+        <span class="small text-muted">{{ metrics.total }} registrado{{ metrics.total|pluralize:'s' }}</span>
+    </div>
+    {% if metrics.has_data %}
+    <div class="row g-2">
+        <div class="col-6"><div class="border rounded-3 p-2 h-100"><span class="small text-muted d-block">Cumplidos</span><strong class="d-block fs-5 fw-semibold">{{ metrics.done_percentage|floatformat:1 }}%</strong><span class="small text-muted">{{ metrics.done }} de {{ metrics.total }}</span></div></div>
+        <div class="col-6"><div class="border rounded-3 p-2 h-100"><span class="small text-muted d-block">Pendientes</span><strong class="d-block fs-5 fw-semibold">{{ metrics.pending_percentage|floatformat:1 }}%</strong><span class="small text-muted">{{ metrics.pending }} de {{ metrics.total }}</span></div></div>
+    </div>
+    <details class="small mt-2"><summary>Ver distribución y criterio</summary><div class="mt-2 text-muted"><p class="mb-1">En gestión: {{ metrics.in_progress }} ({{ metrics.in_progress_percentage|floatformat:1 }}%). Ingresados sin gestión: {{ metrics.joined }} ({{ metrics.joined_percentage|floatformat:1 }}%).</p><p class="mb-1">Se consideran los compromisos registrados durante este período y su estado actual. La fecha de vencimiento no cambia el período de ingreso.</p><p class="mb-0">{% if weighted %}Su aporte depende de las metas y ponderaciones configuradas para el cargo.{% else %}Resumen informativo: estos porcentajes no tienen una ponderación asignada en este resultado.{% endif %}</p></div></details>
+    {% else %}<p class="small text-muted mb-0">Sin compromisos registrados en este período. No hay un porcentaje para evaluar.</p>{% endif %}
+</section>

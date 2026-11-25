@@ -23,8 +23,27 @@ class Period(BaseModel):
     def __str__(self):
         return f"{self.start_date} – {self.end_date}"
 
+    @property
+    def quarter_label(self):
+        from calendar import monthrange
+        from datetime import date
+        quarter = (self.start_date.month - 1) // 3 + 1
+        start = date(self.start_date.year, (quarter - 1) * 3 + 1, 1)
+        end_month = quarter * 3
+        end = date(start.year, end_month, monthrange(start.year, end_month)[1])
+        return f'{quarter}.º trimestre de {start.year}' if self.start_date == start and self.end_date == end else ''
+
 
 class Measuring(BaseModel):
+    class Calculation(models.TextChoices):
+        ACTIVITIES = 'ACTIVITIES', 'Cantidad de actividades validadas'
+        COMMITMENTS_DONE = 'COMMITMENTS_DONE', 'Porcentaje de compromisos cumplidos'
+        COMMITMENTS_PENDING = 'COMMITMENTS_PENDING', 'Porcentaje de compromisos pendientes'
+
+    calculation_method = models.CharField(
+        max_length=24, choices=Calculation.choices, default=Calculation.ACTIVITIES,
+        verbose_name='Cómo se obtiene el avance',
+    )
     code = models.CharField(
         max_length=30,
         unique=True,
@@ -39,6 +58,10 @@ class Measuring(BaseModel):
         verbose_name='Descripción',
     )
     validity = models.BooleanField(default=True, verbose_name='Activo')
+
+    @property
+    def is_commitment_percentage(self):
+        return self.calculation_method in (self.Calculation.COMMITMENTS_DONE, self.Calculation.COMMITMENTS_PENDING)
 
     class Meta:
         verbose_name = 'Ítem de medición'

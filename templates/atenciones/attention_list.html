@@ -22,11 +22,11 @@
         </h1>
         <p class="text-muted mb-0">Revisa las solicitudes y organiza sus próximas gestiones.</p>
     </div>
-    <a class="btn btn-primary attention-create-button px-3 py-2 fw-semibold text-nowrap"
+    {% if user|can_visit:'atenciones:attention_create' %}<a class="btn btn-primary attention-create-button px-3 py-2 fw-semibold text-nowrap"
        href="{% url 'atenciones:attention_create' %}">
         <i class="bi bi-plus-lg me-1" aria-hidden="true"></i>
         Registrar atención
-    </a>
+    </a>{% endif %}
 </div>
 <nav class="row g-2 mb-4" aria-label="Resumen de seguimiento de tus atenciones visibles">
     <div class="col-6 col-lg-3"><a href="?followup=open" class="card card-body h-100 text-decoration-none text-dark"><span class="small text-muted">Abiertas</span><strong class="fs-4">{{ summary.pending }}</strong><span class="small">Pendientes y en gestión <i class="bi bi-arrow-right" aria-hidden="true"></i></span></a></div>
@@ -42,7 +42,7 @@
         </div>
         <div class="col-sm-6 col-lg-2"><label class="form-label small fw-semibold" for="attention-status">Estado</label><select class="form-select" id="attention-status" name="status"><option value="">Todos</option>{% for value, label in status_choices %}<option value="{{ value }}" {% if selected_status == value %}selected{% endif %}>{{ label }}</option>{% endfor %}</select></div>
         <div class="col-sm-6 col-lg-3"><label class="form-label small fw-semibold" for="attention-followup">Seguimiento</label><select class="form-select" id="attention-followup" name="followup"><option value="">Todas las fechas y responsables</option><option value="open" {% if selected_followup == 'open' %}selected{% endif %}>Abiertas</option><option value="today" {% if selected_followup == 'today' %}selected{% endif %}>Para hoy</option><option value="overdue" {% if selected_followup == 'overdue' %}selected{% endif %}>Vencidas</option><option value="mine" {% if selected_followup == 'mine' %}selected{% endif %}>A mi cargo (abiertas)</option></select></div>
-        <div class="col-lg-3 d-flex flex-wrap gap-2"><button class="btn btn-outline-primary" type="submit"><i class="bi bi-search" aria-hidden="true"></i> Filtrar</button><a class="btn btn-outline-secondary" href="{% url 'atenciones:attention_list' %}">Limpiar</a></div>
+        <div class="col-lg-3 d-flex flex-wrap gap-2"><button class="btn btn-outline-primary" type="submit"><i class="bi bi-search" aria-hidden="true"></i> Filtrar</button>{% if user|can_visit:'atenciones:attention_list' %}<a class="btn btn-outline-secondary" href="{% url 'atenciones:attention_list' %}">Limpiar</a>{% endif %}</div>
     </form>
 </div>
 <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3"><p class="text-muted small mb-0">{{ page_obj.paginator.count }} resultado{{ page_obj.paginator.count|pluralize:"s" }} · Abre una ficha para registrar una gestión.</p><a class="btn btn-outline-success" href="{{ request.path }}?{{ query_params }}{% if query_params %}&{% endif %}export=xlsx"><i class="bi bi-file-earmark-excel" aria-hidden="true"></i> Exportar resultados</a></div>
@@ -54,19 +54,19 @@
             {% for attention in object_list %}
             <tr>
                 <td class="text-nowrap">{{ attention.created_at|date:"d/m/Y H:i" }}</td>
-                <td><a class="fw-semibold" href="{% url 'atenciones:attention_detail' attention.pk %}">{{ attention.requester_name }}</a>{% if attention.requester_contact %}<br><small class="text-muted">{{ attention.requester_contact }}</small>{% endif %}<br><small class="text-muted">{{ attention.delegation.name }}</small></td>
+                <td>{% if user|can_visit:'atenciones:attention_detail' %}<a class="fw-semibold" href="{% url 'atenciones:attention_detail' attention.pk %}">{{ attention.requester_name }}</a>{% endif %}{% if attention.requester_contact %}<br><small class="text-muted">{{ attention.requester_contact }}</small>{% endif %}<br><small class="text-muted">{{ attention.delegation.name }}</small></td>
                 <td>{{ attention.attention_type.name }}<br><small class="text-muted">{{ attention.sub_attention.name }}</small></td>
                 <td>{% include 'atenciones/_status_badge.html' with status=attention.status label=attention.get_status_display %}</td>
                 <td>{% if attention.status == 'CLOSED' %}<span class="text-muted">Cerrada el {{ attention.closed_at|date:"d/m/Y" }}</span>{% else %}{{ attention.next_action|default:"Por programar"|truncatechars:70 }}{% if attention.next_contact_date %}<br><small class="{% if attention.is_overdue %}text-danger fw-semibold{% else %}text-muted{% endif %}">{% if attention.is_overdue %}<i class="bi bi-clock-history" aria-hidden="true"></i> Vencida · {% endif %}{{ attention.next_contact_date|date:"d/m/Y" }}</small>{% endif %}{% endif %}</td>
                 <td>{{ attention.followup_responsible.full_name|default:"Por asignar" }}</td>
                 <td class="text-end text-nowrap">
-                    <a class="btn btn-sm btn-outline-primary" href="{% url 'atenciones:attention_detail' attention.pk %}">Ver ficha</a>
-                    <a class="btn btn-sm btn-outline-primary" href="{% url 'atenciones:attention_update' attention.pk %}" aria-label="Editar atención de {{ attention.requester_name }}" title="Editar">
+                    {% if user|can_visit:'atenciones:attention_detail' %}<a class="btn btn-sm btn-outline-primary" href="{% url 'atenciones:attention_detail' attention.pk %}">Ver ficha</a>{% endif %}
+                    {% if user|can_visit:'atenciones:attention_update' %}<a class="btn btn-sm btn-outline-primary" href="{% url 'atenciones:attention_update' attention.pk %}" aria-label="Editar atención de {{ attention.requester_name }}" title="Editar">
                         <i class="bi bi-pencil" aria-hidden="true"></i>
-                    </a>
-                    <a class="btn btn-sm btn-outline-danger" href="{% url 'atenciones:attention_delete' attention.pk %}" aria-label="Eliminar atención de {{ attention.requester_name }}" title="Eliminar">
+                    </a>{% endif %}
+                    {% if user|can_visit:'atenciones:attention_delete' %}<a class="btn btn-sm btn-outline-danger" href="{% url 'atenciones:attention_delete' attention.pk %}" aria-label="Eliminar atención de {{ attention.requester_name }}" title="Eliminar">
                         <i class="bi bi-trash" aria-hidden="true"></i>
-                    </a>
+                    </a>{% endif %}
                 </td>
             </tr>
             {% empty %}<tr><td colspan="7" class="text-center text-muted py-4">No hay atenciones que coincidan con esta búsqueda. Prueba otros filtros o registra una atención.</td></tr>{% endfor %}

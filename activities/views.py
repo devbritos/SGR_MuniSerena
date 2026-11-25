@@ -564,7 +564,7 @@ class TrafficLightView(
         elif not user.is_superuser and not user.is_staff:
             functionary = user.functionary
             if not functionary.has_global_scope:
-                if functionary.is_delegate:
+                if functionary.is_delegate or functionary.has_role('DOC_PLANNING'):
                     functionaries = functionaries.filter(
                         delegation=functionary.delegation
                     )

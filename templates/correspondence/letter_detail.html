@@ -2,19 +2,19 @@
 {% block title %}Carta #{{ letter.pk }} · Seguimiento{% endblock %}
 {% block content %}
 <main class="mx-auto pb-4" style="max-width: 1040px; overflow-wrap: anywhere;">
- <a class="btn btn-outline-secondary mb-3" href="{% url 'correspondence:letter_list' %}"><i class="bi bi-arrow-left" aria-hidden="true"></i> Volver a cartas</a>
+ {% if user|can_visit:'correspondence:letter_list' %}<a class="btn btn-outline-secondary mb-3" href="{% url 'correspondence:letter_list' %}"><i class="bi bi-arrow-left" aria-hidden="true"></i> Volver a cartas</a>{% endif %}
  <div class="d-flex flex-wrap justify-content-between align-items-start gap-3 mb-4">
   <div><h1 class="h3 mb-1">Carta #{{ letter.pk }}{% if letter.registry_number %} · {{ letter.registry_number }}{% endif %}</h1><p class="text-muted mb-0">Ingresada el {{ letter.received_at|date:'d/m/Y' }} · {{ letter.delegation.name }}</p></div>
-  <a class="btn btn-outline-primary" href="{% url 'correspondence:letter_update' letter.pk %}">Editar carta</a>
+  {% if user|can_visit:'correspondence:letter_update' %}<a class="btn btn-outline-primary" href="{% url 'correspondence:letter_update' letter.pk %}">Editar carta</a>{% endif %}
  </div>
  <section class="card shadow-sm mb-4"><div class="card-body p-3 p-md-4">
   <h2 class="h5">Atención ciudadana</h2>
   <p class="text-muted small">La carta y la atención tienen estados independientes. Vincula una existente si la solicitud ya se está gestionando.</p>
   {% if letter.attention_id %}
    {% if letter.attention.deleted_at %}<div class="alert alert-secondary mb-0">Esta carta está vinculada a la atención #{{ letter.attention_id }}, que está archivada. El vínculo se conserva.</div>
-   {% else %}<div class="rounded border p-3"><div class="d-flex flex-wrap justify-content-between align-items-center gap-3"><div><strong>Atención #{{ letter.attention_id }} · {{ letter.attention.requester_name }}</strong><p class="small text-muted mb-2">{{ letter.attention.attention_type.name }} / {{ letter.attention.sub_attention.name }}</p>{% include 'atenciones/_status_badge.html' with status=letter.attention.status label=letter.attention.get_status_display %}</div>{% if can_link_attention %}<a class="btn btn-primary" href="{% url 'atenciones:attention_detail' letter.attention_id %}">Abrir atención</a>{% endif %}</div></div>{% endif %}
+   {% else %}<div class="rounded border p-3"><div class="d-flex flex-wrap justify-content-between align-items-center gap-3"><div><strong>Atención #{{ letter.attention_id }} · {{ letter.attention.requester_name }}</strong><p class="small text-muted mb-2">{{ letter.attention.attention_type.name }} / {{ letter.attention.sub_attention.name }}</p>{% include 'atenciones/_status_badge.html' with status=letter.attention.status label=letter.attention.get_status_display %}</div>{% if can_link_attention %}{% if user|can_visit:'atenciones:attention_detail' %}<a class="btn btn-primary" href="{% url 'atenciones:attention_detail' letter.attention_id %}">Abrir atención</a>{% endif %}{% endif %}</div></div>{% endif %}
   {% elif can_link_attention %}
-   <div class="d-flex flex-wrap gap-2"><a class="btn btn-primary" href="{% url 'correspondence:letter_attention_create' letter.pk %}"><i class="bi bi-plus-lg" aria-hidden="true"></i> Crear atención desde esta carta</a><a class="btn btn-outline-primary" href="{% url 'correspondence:letter_attention_link' letter.pk %}"><i class="bi bi-link-45deg" aria-hidden="true"></i> Vincular atención existente</a></div>
+   <div class="d-flex flex-wrap gap-2">{% if user|can_visit:'correspondence:letter_attention_create' %}<a class="btn btn-primary" href="{% url 'correspondence:letter_attention_create' letter.pk %}"><i class="bi bi-plus-lg" aria-hidden="true"></i> Crear atención desde esta carta</a>{% endif %}{% if user|can_visit:'correspondence:letter_attention_link' %}<a class="btn btn-outline-primary" href="{% url 'correspondence:letter_attention_link' letter.pk %}"><i class="bi bi-link-45deg" aria-hidden="true"></i> Vincular atención existente</a>{% endif %}</div>
    <p class="small text-muted mt-3 mb-0">Si la carta es informativa o una invitación, puedes continuar sin crear una atención.</p>
   {% else %}<p class="text-muted mb-0">Se necesita un perfil de funcionario activo para crear o vincular una atención.</p>{% endif %}
  </div></section>
@@ -31,6 +31,7 @@
    <dt class="col-sm-4 text-muted">Pronunciamiento</dt><dd class="col-sm-8">{{ letter.pronouncement|default:'Sin pronunciamiento' }}</dd>
    <dt class="col-sm-4 text-muted">Derivada a</dt><dd class="col-sm-8">{{ letter.referred_to|default:'Sin derivación' }}</dd>
    <dt class="col-sm-4 text-muted">Observaciones</dt><dd class="col-sm-8">{{ letter.observation|default:'Sin observaciones'|linebreaksbr }}</dd>
+   {% if letter.organization_id %}<dt class="col-sm-4 text-muted">Junta remitente</dt><dd class="col-sm-8">{{ letter.organization.name }}</dd><dt class="col-sm-4 text-muted">Respuesta publicada para la junta</dt><dd class="col-sm-8">{{ letter.public_response|default:'Aún no se publica una respuesta'|linebreaksbr }}</dd>{% endif %}
   </dl>
  </div></section>
 </main>

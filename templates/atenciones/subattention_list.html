@@ -3,7 +3,7 @@
 {% block content %}
 <div class="d-flex justify-content-between align-items-center mb-4">
     <div><h1 class="h3"><i class="bi bi-diagram-3-fill text-primary me-2"></i>Subatenciones</h1><p class="text-muted mb-0">Subcategorías de los tipos de atención</p></div>
-    <a class="btn btn-primary" href="{% url 'atenciones:subattention_create' %}"><i class="bi bi-plus-lg"></i> Nueva subatención</a>
+    {% if user|can_visit:'atenciones:subattention_create' %}<a class="btn btn-primary" href="{% url 'atenciones:subattention_create' %}"><i class="bi bi-plus-lg"></i> Nueva subatención</a>{% endif %}
 </div>
 <div class="d-flex gap-2 mb-3">
     <form method="get" class="d-flex gap-2 flex-grow-1">
@@ -31,8 +31,8 @@
             <tr><td>{{ item.code }}</td><td>{{ item.name }}</td><td>{{ item.attention_type.name }}</td><td>{{ item.description|default:"—" }}</td>
                 <td><span class="badge {% if item.is_active %}bg-success{% else %}bg-secondary{% endif %}">{% if item.is_active %}Activo{% else %}Inactivo{% endif %}</span></td>
                 <td>
-                    <a class="btn btn-sm btn-outline-primary" href="{% url 'atenciones:subattention_update' item.pk %}" aria-label="Editar subatención"><i class="bi bi-pencil"></i></a>
-                    {% if item.is_active %}<a class="btn btn-sm btn-outline-danger" href="{% url 'atenciones:subattention_deactivate' item.pk %}" aria-label="Desactivar subatención"><i class="bi bi-person-dash"></i></a>{% endif %}
+                    {% if user|can_visit:'atenciones:subattention_update' %}<a class="btn btn-sm btn-outline-primary" href="{% url 'atenciones:subattention_update' item.pk %}" aria-label="Editar subatención"><i class="bi bi-pencil"></i></a>{% endif %}
+                    {% if item.is_active %}{% if user|can_visit:'atenciones:subattention_deactivate' %}<a class="btn btn-sm btn-outline-danger" href="{% url 'atenciones:subattention_deactivate' item.pk %}" aria-label="Desactivar subatención"><i class="bi bi-person-dash"></i></a>{% endif %}{% endif %}
                 </td>
             </tr>
             {% empty %}<tr><td colspan="6" class="text-center text-muted py-4">{% include "_list_empty_state.html" with empty_message="No hay subatenciones registradas." %}</td></tr>{% endfor %}

@@ -5,6 +5,10 @@ from core.models import BaseModel
 
 
 class OfficeLetter(BaseModel):
+    organization = models.ForeignKey('organizations.Organization', on_delete=models.PROTECT, null=True, blank=True, related_name='submitted_letters', verbose_name='Junta remitente')
+    submitted_by = models.ForeignKey('auth.User', on_delete=models.PROTECT, null=True, blank=True, related_name='neighborhood_letters')
+    submission_token = models.UUIDField(null=True, blank=True, unique=True, editable=False)
+    public_response = models.TextField(blank=True, verbose_name='Respuesta visible para la junta de vecinos')
     attention = models.ForeignKey(
         'atenciones.Attention', on_delete=models.PROTECT, null=True, blank=True,
         related_name='office_letters', verbose_name='Atención vinculada',
@@ -86,6 +90,8 @@ class OfficeLetter(BaseModel):
 
     def clean(self):
         super().clean()
+        if self.organization_id and self.delegation_id and self.organization.delegation_id != self.delegation_id:
+            raise ValidationError({'organization': 'La carta debe dirigirse a la delegación de la junta.'})
         if self.attention_id and self.delegation_id and self.attention.delegation_id != self.delegation_id:
             raise ValidationError({'delegation': 'La carta y su atención vinculada deben pertenecer a la misma delegación.'})
         if (

@@ -1,0 +1,33 @@
+.commitments-page {max-width: 1600px; margin: 1.5rem auto 0;}
+.commitments-page .card {border: 1px solid #e8e9ed !important; border-radius: .75rem; box-shadow: none !important;}
+.commitments-page .kpi-card .card-body {text-align: left !important; padding: .85rem 1rem !important;}
+.commitments-page .kpi-card h3 {font-size: 1.5rem; font-variant-numeric: tabular-nums;}
+.commitments-page .btn {min-height: 2.5rem; padding: .45rem .8rem; font-size: .85rem; font-weight: 500; border-radius: .5rem; box-shadow: none;}
+.commitments-page .btn-primary {--bs-btn-bg:#ad0000;--bs-btn-border-color:#ad0000;--bs-btn-hover-bg:#850000;--bs-btn-hover-border-color:#850000;--bs-btn-active-bg:#850000;--bs-btn-active-border-color:#850000;}
+.commitments-page .btn-outline-primary,.commitments-page .btn-outline-secondary,.commitments-page .btn-outline-success,.commitments-page .btn-outline-danger {--bs-btn-color:#505863;--bs-btn-border-color:#e0e3e7;--bs-btn-hover-color:#333b45;--bs-btn-hover-bg:#f3f4f6;--bs-btn-hover-border-color:#d1d6dc;--bs-btn-active-color:#333b45;--bs-btn-active-bg:#e9ecef;}
+.commitment-filter-grid {display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:1rem;align-items:end;}
+.commitment-filter-grid > [class*="col-"] {width:auto;max-width:none;min-width:0;padding:0;}
+.commitment-filter-grid .filter-search {grid-column:span 2;}
+.commitment-filter-grid .filter-actions {grid-column:1/-1;justify-content:flex-end;padding-top:0 !important;}
+.commitments-page .form-control,.commitments-page .form-select {height:2.5rem;min-height:2.5rem;font-size:.85rem;border-radius:.5rem;border-color:#dce0e5;}
+.commitments-page .form-label {font-weight:500 !important;font-size:.8rem;}
+.commitment-list-header {border-bottom:1px solid #e8e9ed;padding:.75rem 0 1rem;}
+.commitment-list-header form {margin-bottom:0 !important;min-width:0;}
+.commitments-page .list-sort-options {flex-wrap:wrap;overflow:visible;}
+.commitments-page .list-sort-option {min-height:1.8rem;padding:.25rem .45rem;font-size:.75rem;border-color:transparent;background:transparent;color:#606873;}
+.commitments-page .list-sort-option.btn-primary {background:#fff0f0;color:#920000;border-color:transparent;}
+.commitment-view-switch {padding:.2rem;background:#f0f1f3;border-radius:.6rem;}
+.commitment-view-switch .btn {border:0;min-height:2rem;font-size:.8rem;}
+.commitment-view-switch .btn-primary {background:#fff;color:#920000;box-shadow:0 1px 3px #00000012;}
+.commitments-page .table {font-size:.85rem;--bs-table-border-color:#eceef1;}
+.commitments-page .table thead th {background:#f5f6f8;color:#59616c;font-weight:600;border-bottom:1px solid #e4e7eb;padding:.85rem .65rem;}
+.commitments-page .table td {padding:.8rem .65rem;vertical-align:middle;}
+.commitments-page .commitment-overdue td:first-child {box-shadow:inset 3px 0 #b4232b;}
+.commitments-page .commitment-overdue .commitment-due-date {color:#b4232b !important;}
+.commitments-page td:last-child .btn {border-color:transparent;min-height:2rem;background:transparent;}
+.commitments-page td:last-child .btn-outline-danger:hover {background:#fff1f1;color:#ad0000;}
+.commitments-page .badge-status {font-size:.72rem;font-weight:500;border-radius:999px;}
+.commitments-page .kanban-item {border-left:3px solid #d5d9df !important;}
+.commitments-page .kanban-item.commitment-overdue {border-left-color:#b4232b !important;}
+@media(max-width:991.98px){.commitment-filter-grid{grid-template-columns:repeat(2,minmax(0,1fr));}.commitment-list-header{align-items:flex-start !important;}}
+@media(max-width:575.98px){.commitment-filter-grid{grid-template-columns:minmax(0,1fr);}.commitment-filter-grid .filter-search{grid-column:auto;}.commitment-filter-grid .filter-actions{justify-content:flex-start;}.commitments-page{padding-left:1rem !important;padding-right:1rem !important;}.commitments-page h2{font-size:1.35rem;}}

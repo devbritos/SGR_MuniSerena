@@ -19,29 +19,29 @@
 {% endblock %}
 {% block content %}
 <main class="followup-page">
- <a href="{% url 'atenciones:attention_list' %}" class="btn btn-outline-secondary mb-3"><i class="bi bi-arrow-left" aria-hidden="true"></i> Volver a atenciones</a>
+ {% if user|can_visit:'atenciones:attention_list' %}<a href="{% url 'atenciones:attention_list' %}" class="btn btn-outline-secondary mb-3"><i class="bi bi-arrow-left" aria-hidden="true"></i> Volver a atenciones</a>{% endif %}
  <div class="d-flex flex-wrap justify-content-between align-items-start gap-3 mb-4">
   <div><p class="text-muted small mb-1">ATENCIÓN #{{ attention.pk }} · {{ attention.created_at|date:"d/m/Y H:i" }}</p><h1 class="h3 mb-2">{{ attention.requester_name }}</h1>{% include 'atenciones/_status_badge.html' with status=attention.status label=attention.get_status_display %}</div>
-  <a class="btn btn-outline-primary" href="{% url 'atenciones:attention_update' attention.pk %}"><i class="bi bi-pencil" aria-hidden="true"></i> Editar datos de atención</a>
+  {% if user|can_visit:'atenciones:attention_update' %}<a class="btn btn-outline-primary" href="{% url 'atenciones:attention_update' attention.pk %}"><i class="bi bi-pencil" aria-hidden="true"></i> Editar datos de atención</a>{% endif %}
  </div>
  {% if attention.status == 'UNCLASSIFIED' %}<div class="alert alert-info">Esta atención es anterior al seguimiento. Revisa sus antecedentes y registra una gestión para clasificarla.</div>{% endif %}
  {% if attention.is_overdue %}<div class="alert alert-warning"><i class="bi bi-clock-history" aria-hidden="true"></i> La próxima acción está vencida desde el {{ attention.next_contact_date|date:"d/m/Y" }}. Registra lo realizado y actualiza la fecha.</div>{% endif %}
  {% if linked_letters %}
  <section class="card shadow-sm mb-4" aria-labelledby="letters-title"><div class="card-body p-3 p-md-4">
   <h2 class="h5" id="letters-title">Cartas vinculadas</h2><p class="small text-muted">La carta y esta atención mantienen sus estados por separado.</p>
-  {% for letter in linked_letters %}<div class="d-flex flex-wrap justify-content-between align-items-center gap-2 border rounded p-3 {% if not forloop.last %}mb-2{% endif %}"><div><strong>Carta #{{ letter.pk }}{% if letter.registry_number %} · {{ letter.registry_number }}{% endif %}</strong><p class="small mb-0">{{ letter.sender }} · {{ letter.received_at|date:'d/m/Y' }} · {{ letter.get_state_display }}</p></div><a class="btn btn-sm btn-outline-secondary" href="{% url 'correspondence:letter_detail' letter.pk %}">Abrir carta</a></div>{% endfor %}
+  {% for letter in linked_letters %}<div class="d-flex flex-wrap justify-content-between align-items-center gap-2 border rounded p-3 {% if not forloop.last %}mb-2{% endif %}"><div><strong>Carta #{{ letter.pk }}{% if letter.registry_number %} · {{ letter.registry_number }}{% endif %}</strong><p class="small mb-0">{{ letter.sender }} · {{ letter.received_at|date:'d/m/Y' }} · {{ letter.get_state_display }}</p></div>{% if user|can_visit:'correspondence:letter_detail' %}<a class="btn btn-sm btn-outline-secondary" href="{% url 'correspondence:letter_detail' letter.pk %}">Abrir carta</a>{% endif %}</div>{% endfor %}
  </div></section>
  {% endif %}
  <section class="card shadow-sm mb-4" aria-labelledby="commitments-title"><div class="card-body p-3 p-md-4">
   <div class="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-3">
    <div><h2 id="commitments-title" class="h5 mb-1">Compromisos de esta atención</h2><p class="text-muted small mb-0">Consulta qué se acordó, quién está a cargo y cuándo debe cumplirse.</p></div>
-   {% if attention.status != 'CLOSED' %}<a class="btn btn-outline-primary" href="{% url 'atenciones:attention_commitment_create' attention.pk %}"><i class="bi bi-calendar-plus" aria-hidden="true"></i> Crear compromiso</a>{% endif %}
+   {% if attention.status != 'CLOSED' %}{% if user|can_visit:'atenciones:attention_commitment_create' %}<a class="btn btn-outline-primary" href="{% url 'atenciones:attention_commitment_create' attention.pk %}"><i class="bi bi-calendar-plus" aria-hidden="true"></i> Crear compromiso</a>{% endif %}{% endif %}
   </div>
   {% for commitment in linked_commitments %}
   <article class="border rounded p-3 {% if not forloop.last %}mb-2{% endif %}">
    <div class="d-flex flex-wrap justify-content-between align-items-start gap-2">
     <div><h3 class="h6 mb-1">Compromiso #{{ commitment.pk }}</h3><p class="mb-2">{{ commitment.observation|truncatechars:220 }}</p></div>
-    <a class="btn btn-sm btn-outline-secondary" href="{% url 'agenda:commitment_update' commitment.pk %}" aria-label="Abrir compromiso número {{ commitment.pk }}">Abrir compromiso</a>
+    {% if user|can_visit:'agenda:commitment_update' %}<a class="btn btn-sm btn-outline-secondary" href="{% url 'agenda:commitment_update' commitment.pk %}" aria-label="Abrir compromiso número {{ commitment.pk }}">Abrir compromiso</a>{% endif %}
    </div>
    <p class="small mb-1"><strong>{{ commitment.functionary.full_name }}</strong> · {{ commitment.territory }} · <span class="{% if commitment.is_overdue %}text-danger fw-semibold{% endif %}">{% if commitment.is_overdue %}Vencido · {% endif %}{{ commitment.commitment_date|date:'d/m/Y' }}</span></p>
    {% include 'atenciones/_status_badge.html' with status=commitment.state label=commitment.get_state_display %}
@@ -51,7 +51,7 @@
  <div class="followup-layout">
    <section class="card shadow-sm followup-data" aria-labelledby="attention-data-title"><div class="card-body p-4">
     <h2 id="attention-data-title" class="h5 mb-3">Datos de la atención</h2>
-    <dl class="mb-0"><dt>Contacto</dt><dd>{{ attention.requester_contact|default:"Sin contacto registrado" }}</dd>{% if attention.organization %}<dt>Organización comunitaria</dt><dd><a href="{% url 'organizations:detail' attention.organization.pk %}">{{ attention.organization.name }}</a></dd>{% endif %}<dt>Clasificación</dt><dd>{{ attention.attention_type.name }} / {{ attention.sub_attention.name }}</dd><dt>Solicitud original</dt><dd>{{ attention.description|linebreaksbr }}</dd><dt>Delegación</dt><dd>{{ attention.delegation.name }}</dd><dt>Registrada por</dt><dd>{{ attention.functionary.full_name }}</dd><dt>Responsable del seguimiento</dt><dd>{{ attention.followup_responsible.full_name|default:"Por asignar" }}</dd></dl>
+    <dl class="mb-0"><dt>Contacto</dt><dd>{{ attention.requester_contact|default:"Sin contacto registrado" }}</dd>{% if attention.organization %}<dt>Organización comunitaria</dt><dd>{% if user|can_visit:'organizations:detail' %}<a href="{% url 'organizations:detail' attention.organization.pk %}">{{ attention.organization.name }}</a>{% endif %}</dd>{% endif %}<dt>Clasificación</dt><dd>{{ attention.attention_type.name }} / {{ attention.sub_attention.name }}</dd><dt>Solicitud original</dt><dd>{{ attention.description|linebreaksbr }}</dd><dt>Delegación</dt><dd>{{ attention.delegation.name }}</dd><dt>Registrada por</dt><dd>{{ attention.functionary.full_name }}</dd><dt>Responsable del seguimiento</dt><dd>{{ attention.followup_responsible.full_name|default:"Por asignar" }}</dd></dl>
     {% if attention.status != 'CLOSED' %}<div class="p-3 rounded bg-light"><h3 class="h6">Próxima acción</h3><p class="mb-1">{{ attention.next_action|default:"Aún no se ha programado una acción." }}</p>{% if attention.next_contact_date %}<strong class="{% if attention.is_overdue %}text-danger{% endif %}">{{ attention.next_contact_date|date:"d/m/Y" }}</strong>{% endif %}</div>{% endif %}
    </div></section>
    <section class="card shadow-sm followup-history-panel" aria-labelledby="history-title"><div class="card-body p-4">
@@ -70,8 +70,8 @@
     {% if attention.status == 'CLOSED' %}
     <h2 id="followup-title" class="h5">Atención cerrada</h2><p class="text-muted">Cerrada el {{ attention.closed_at|date:"d/m/Y H:i" }}. El historial está disponible para consulta.</p><h3 class="h6">{{ attention.get_closure_outcome_display }}</h3><p>{{ attention.closure_details|linebreaksbr }}</p>
     {% else %}
-    <h2 id="followup-title" class="h5">Registrar seguimiento</h2><p class="text-muted">Cuenta qué hiciste y deja claro el siguiente paso, o registra el resultado para cerrar la atención.</p>
-    <form method="post" id="followup-form">
+    <h2 id="followup-title" class="h5">{% if user|can_visit:'atenciones:attention_update' %}Registrar seguimiento{% else %}Consulta del seguimiento{% endif %}</h2>{% if user|can_visit:'atenciones:attention_update' %}<p class="text-muted">Cuenta qué hiciste y deja claro el siguiente paso, o registra el resultado para cerrar la atención.</p>{% endif %}
+    {% if user|can_visit:'atenciones:attention_update' %}<form method="post" id="followup-form">
      {% csrf_token %}{{ form.version }}
      {% if form.errors %}<div class="alert alert-danger" role="alert" tabindex="-1" id="followup-errors"><strong>No se guardó el seguimiento.</strong> Revisa los campos indicados.{{ form.non_field_errors }}{% for error in form.version.errors %}<p>{{ error }}</p>{% endfor %}</div>{% endif %}
      {{ form.note|as_crispy_field }}
@@ -79,7 +79,7 @@
      <fieldset id="next-action-fields" class="border rounded p-3 mb-3"><legend class="float-none w-auto h6 px-2">Dejar el siguiente paso</legend>{{ form.next_action|as_crispy_field }}{{ form.next_contact_date|as_crispy_field }}<p class="small text-muted mb-0">La fecha aparecerá en los filtros «Para hoy» y «Vencidas».</p></fieldset>
      <fieldset id="closure-fields" class="border rounded p-3 mb-3"><legend class="float-none w-auto h6 px-2">Resultado de la atención</legend><p class="small text-muted">Cerrar puede significar resolver, orientar o informar una derivación.</p>{{ form.closure_outcome|as_crispy_field }}{{ form.closure_details|as_crispy_field }}</fieldset>
      <div class="d-flex flex-wrap align-items-center justify-content-between gap-3 border-top pt-3"><span class="text-muted small">La gestión se agregará al historial.</span><button class="btn btn-primary px-4" type="submit" id="followup-save"><i class="bi bi-check2" aria-hidden="true"></i> <span>Guardar seguimiento</span></button></div>
-    </form>
+    </form>{% else %}<p class="text-muted mb-0">Tu perfil permite consultar esta atención y su historial.</p>{% endif %}
     {% endif %}
    </div></section>
  </div>

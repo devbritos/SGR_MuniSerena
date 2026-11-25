@@ -1,0 +1,16 @@
+<details class="border-top pt-3 mt-3">
+    <summary class="small fw-medium">Ver indicadores y ponderaciones</summary>
+    <div class="table-responsive mt-3">
+        <table class="table table-sm align-middle small mb-0">
+            <caption class="visually-hidden">Detalle de metas e indicadores de {{ item.functionary.full_name }}</caption>
+            <thead class="table-light"><tr><th scope="col">Indicador</th><th scope="col">Meta</th><th scope="col">Avance</th><th scope="col">Cumplimiento</th><th scope="col">Ponderación</th><th scope="col">Aporte</th></tr></thead>
+            <tbody>{% for indicator in item.items %}<tr>
+                <th scope="row" class="fw-normal">{{ indicator.measuring.service }}{% if indicator.is_percentage %}<span class="text-muted d-block">Se actualiza desde la agenda</span>{% endif %}</th>
+                <td class="text-nowrap">{% if indicator.measuring.calculation_method == 'COMMITMENTS_PENDING' %}Máx. {% endif %}{{ indicator.meta|floatformat:'-2' }} {{ indicator.unit }}</td>
+                <td class="text-nowrap">{% if indicator.has_data %}{{ indicator.avance|floatformat:'-2' }}{% if indicator.is_percentage %}%{% endif %}{% else %}<span class="text-muted">Sin datos</span>{% endif %}</td>
+                <td>{% if indicator.has_data %}{{ indicator.porcentaje_cumplimiento|floatformat:'-2' }}%{% else %}—{% endif %}</td>
+                <td>{{ indicator.ponderador|floatformat:'-2' }}%</td><td>{{ indicator.cumplimiento_ponderado|floatformat:'-2' }} ptos.</td>
+            </tr>{% endfor %}</tbody>
+        </table>
+    </div>
+</details>

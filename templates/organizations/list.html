@@ -3,13 +3,13 @@
 {% block organization_content %}
 <div class="d-flex flex-wrap justify-content-between gap-3 mb-4">
   <div><h1 class="h3">Organizaciones comunitarias</h1><p class="text-muted">Organizaciones y dirigentes de tu delegación.</p></div>
-  {% if can_manage %}<a class="btn btn-primary align-self-start" href="{% url 'organizations:create' %}">Registrar organización</a>{% endif %}
+  {% if can_manage %}{% if user|can_visit:'organizations:create' %}<a class="btn btn-primary align-self-start" href="{% url 'organizations:create' %}">Registrar organización</a>{% endif %}{% endif %}
 </div>
 <form method="get" class="card card-body mb-3">
   <div class="row g-3 align-items-end">
     <div class="col-md-6"><label for="org-query" class="form-label">Buscar organización</label><input id="org-query" type="search" name="q" value="{{ request.GET.q }}" class="form-control" placeholder="Nombre, RUT (con o sin formato), registro o sector"></div>
     <div class="col-md-3"><label for="org-status" class="form-label">Estado</label><select name="status" id="org-status" class="form-select"><option value="">Todos</option>{% for value,label in status_choices %}<option value="{{ value }}" {% if selected_status == value %}selected{% endif %}>{{ label }}</option>{% endfor %}</select></div>
-    <div class="col-md-3 d-flex gap-2"><button class="btn btn-outline-primary">Buscar</button><a class="btn btn-outline-secondary" href="{% url 'organizations:list' %}">Limpiar</a></div>
+    <div class="col-md-3 d-flex gap-2"><button class="btn btn-outline-primary">Buscar</button>{% if user|can_visit:'organizations:list' %}<a class="btn btn-outline-secondary" href="{% url 'organizations:list' %}">Limpiar</a>{% endif %}</div>
   </div>
 </form>
 <div class="card table-responsive">
@@ -17,7 +17,7 @@
     <thead><tr><th>Organización</th><th>Sector y delegación</th><th>Estado</th><th>Ficha</th></tr></thead>
     <tbody>
     {% for org in object_list %}
-      <tr><td><a class="fw-semibold" href="{% url 'organizations:detail' org.pk %}">{{ org.name }}</a><br><small class="text-muted">{{ org.organization_type|default:'Tipo sin indicar' }}{% if org.rut %} · {{ org.rut }}{% endif %}</small></td><td>{{ org.territory|default:'Sin sector registrado' }}<br><small class="text-muted">{{ org.delegation.name }}</small></td><td>{{ org.get_status_display }}</td><td><a class="btn btn-sm btn-outline-primary" href="{% url 'organizations:detail' org.pk %}">Ver ficha</a></td></tr>
+      <tr><td>{% if user|can_visit:'organizations:detail' %}<a class="fw-semibold" href="{% url 'organizations:detail' org.pk %}">{{ org.name }}</a>{% endif %}<br><small class="text-muted">{{ org.organization_type|default:'Tipo sin indicar' }}{% if org.rut %} · {{ org.rut }}{% endif %}</small></td><td>{{ org.territory|default:'Sin sector registrado' }}<br><small class="text-muted">{{ org.delegation.name }}</small></td><td>{{ org.get_status_display }}</td><td>{% if user|can_visit:'organizations:detail' %}<a class="btn btn-sm btn-outline-primary" href="{% url 'organizations:detail' org.pk %}">Ver ficha</a>{% endif %}</td></tr>
     {% empty %}<tr><td colspan="4" class="text-center p-4">No hay organizaciones que coincidan. Puedes ajustar los filtros{% if can_manage %} o registrar una organización{% endif %}.</td></tr>{% endfor %}
     </tbody>
   </table>

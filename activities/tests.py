@@ -516,13 +516,16 @@ class ActivityValidationAndTrafficLightTests(TestCase):
         )
         self.assertEqual(
             progress_response.context['traffic_light_data'][0]['status'],
-            'green',
+            'yellow',
         )
         self.assertContains(
             progress_response,
-            'traffic-light-indicator--green',
+            'traffic-light-indicator--yellow',
         )
-        self.assertContains(progress_response, 'En línea con lo esperado')
+        self.assertGreater(
+            progress_response.context['traffic_light_data'][0]['expected_percentage'], 50,
+        )
+        self.assertContains(progress_response, 'Atención')
 
     def test_functionary_can_view_only_their_own_traffic_light(self):
         self.client.force_login(self.functionary_user)

@@ -11,9 +11,9 @@
             <p class="text-muted small mb-0">{% if view_mode == 'kanban' %}Actividades organizadas por estado de validación{% else %}Registro y respaldo de atenciones e hitos ejecutados{% endif %}</p>
         </div>
         {% if user.functionary %}
-        <a href="{% url 'activities:activity_create' %}" class="btn btn-primary shadow-sm px-3 py-2 fw-semibold">
+        {% if user|can_visit:'activities:activity_create' %}<a href="{% url 'activities:activity_create' %}" class="btn btn-primary shadow-sm px-3 py-2 fw-semibold">
             <i class="bi bi-plus-lg me-1"></i> Nueva actividad
-        </a>
+        </a>{% endif %}
         {% endif %}
     </div>
 
@@ -55,7 +55,7 @@
                 </div>
                 <div class="col-12 d-flex flex-wrap gap-2 pt-2">
                     <button class="btn btn-outline-primary" type="submit"><i class="bi bi-search" aria-hidden="true"></i> Buscar</button>
-                    <a class="btn btn-outline-secondary" href="{% url 'activities:activity_list' %}?view={{ view_mode }}">Limpiar</a>
+                    {% if user|can_visit:'activities:activity_list' %}<a class="btn btn-outline-secondary" href="{% url 'activities:activity_list' %}?view={{ view_mode }}">Limpiar</a>{% endif %}
                     <a class="btn btn-outline-success" href="{{ request.path }}?{{ query_params }}{% if query_params %}&amp;{% endif %}export=xlsx"><i class="bi bi-file-earmark-excel" aria-hidden="true"></i> Exportar a Excel</a>
                 </div>
             </form>
@@ -100,13 +100,13 @@
                             </dl>
                             <div class="d-flex flex-wrap gap-2">
                                 {% if user.is_staff or user.is_superuser or user.functionary.is_admin or user.functionary.is_delegate or a.functionary_id == user.functionary.id %}
-                                <a href="{% url 'activities:activity_update' a.id %}" class="btn btn-sm btn-outline-primary">Editar</a>
+                                {% if user|can_visit:'activities:activity_update' %}<a href="{% url 'activities:activity_update' a.id %}" class="btn btn-sm btn-outline-primary">Editar</a>{% endif %}
                                 {% endif %}
                                 {% if user.is_staff or user.is_superuser or user.functionary.is_admin or user.functionary.is_delegate or a.functionary_id == user.functionary.id %}
-                                <a href="{% url 'activities:activity_delete' a.id %}" class="btn btn-sm btn-outline-danger">Eliminar</a>
+                                {% if user|can_visit:'activities:activity_delete' %}<a href="{% url 'activities:activity_delete' a.id %}" class="btn btn-sm btn-outline-danger">Eliminar</a>{% endif %}
                                 {% endif %}
                                 {% if a.functionary_id == current_functionary_id %}
-                                <a href="{% url 'activities:evidence_create' %}?activity_id={{ a.id }}" class="btn btn-sm btn-outline-success">Evidencia</a>
+                                {% if user|can_visit:'activities:evidence_create' %}<a href="{% url 'activities:evidence_create' %}?activity_id={{ a.id }}" class="btn btn-sm btn-outline-success">Evidencia</a>{% endif %}
                                 {% endif %}
                             </div>
                         </div>
@@ -167,19 +167,19 @@
                         <td class="text-center">
                             <div class="btn-group btn-group-sm">
                                 {% if user.is_staff or user.is_superuser or user.functionary.is_admin or user.functionary.is_delegate or a.functionary_id == user.functionary.id %}
-                                <a href="{% url 'activities:activity_update' a.id %}" class="btn btn-outline-primary" title="Editar">
+                                {% if user|can_visit:'activities:activity_update' %}<a href="{% url 'activities:activity_update' a.id %}" class="btn btn-outline-primary" title="Editar">
                                     <i class="bi bi-pencil-fill"></i>
-                                </a>
+                                </a>{% endif %}
                                 {% endif %}
                                 {% if user.is_staff or user.is_superuser or user.functionary.is_admin or user.functionary.is_delegate or a.functionary_id == user.functionary.id %}
-                                <a href="{% url 'activities:activity_delete' a.id %}" class="btn btn-outline-danger" title="Eliminar">
+                                {% if user|can_visit:'activities:activity_delete' %}<a href="{% url 'activities:activity_delete' a.id %}" class="btn btn-outline-danger" title="Eliminar">
                                     <i class="bi bi-trash-fill"></i>
-                                </a>
+                                </a>{% endif %}
                                 {% endif %}
                                 {% if a.functionary_id == current_functionary_id %}
-                                <a href="{% url 'activities:evidence_create' %}?activity_id={{ a.id }}" class="btn btn-outline-success" title="Subir o corregir evidencia">
+                                {% if user|can_visit:'activities:evidence_create' %}<a href="{% url 'activities:evidence_create' %}?activity_id={{ a.id }}" class="btn btn-outline-success" title="Subir o corregir evidencia">
                                     <i class="bi bi-file-earmark-arrow-up"></i>
-                                </a>
+                                </a>{% endif %}
                                 {% endif %}
                             </div>
                         </td>
